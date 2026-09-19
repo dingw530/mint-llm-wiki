@@ -6,7 +6,7 @@ const mockCleanup = vi.hoisted(() => ({
 }));
 const mockSkills = vi.hoisted(() => ({ listSkills: vi.fn().mockResolvedValue([]) }));
 
-vi.mock('../app.js', () => ({ default: mockApp }));
+vi.mock('../app.js', () => ({ default: mockApp, createApp: vi.fn(() => mockApp) }));
 vi.mock('../services/utils/toolResultArtifact.js', () => mockCleanup);
 vi.mock('../services/api/skillService.js', () => mockSkills);
 

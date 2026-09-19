@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { MarkdownRendererProps } from '@/shared/components/MarkdownRenderer';
 import ChatAreaView from './ChatAreaView';
 import useSSE from '@/hooks/useSSE';
@@ -6,6 +6,12 @@ import type { Conversation, EndpointOutput } from '@/types';
 import useChatConversationData from '../hooks/useChatConversationData';
 import useChatRunActions from '../hooks/useChatRunActions';
 import useChatAgentActions from '../hooks/useChatAgentActions';
+import {
+  getRecoverableAgentRuns,
+  resolveAgentRunRecovery,
+  type RecoverableAgentRun,
+  type RecoveryAction,
+} from '@/services/api/agentRunRecovery';
 
 export interface ChatAreaProps {
   activeConversation: string | null;
@@ -50,6 +56,7 @@ export default function ChatArea({
   onLinkClick,
 }: ChatAreaProps) {
   const { send, abort } = useSSE();
+  const [recoverableRuns, setRecoverableRuns] = useState<RecoverableAgentRun[]>([]);
   const conversationData = useChatConversationData({ activeConversation, initialMessage });
   const {
     messages,
@@ -89,7 +96,44 @@ export default function ChatArea({
     send,
     abort,
   });
-  const { handleSend } = runActions;
+  const { handleSend, handleRecoveryStream } = runActions;
+
+  const refreshRecoverableRuns = useCallback(() => {
+    if (!activeConversation) {
+      setRecoverableRuns([]);
+      return;
+    }
+    getRecoverableAgentRuns(activeConversation)
+      .then((result) => setRecoverableRuns(result.runs))
+      .catch(() => setRecoverableRuns([]));
+  }, [activeConversation]);
+
+  useEffect(() => {
+    refreshRecoverableRuns();
+  }, [refreshRecoverableRuns]);
+
+  const handleRecoveryAction = useCallback(
+    async (
+      runId: string,
+      action: RecoveryAction,
+      confirmation: boolean,
+      idempotencyKey: string,
+    ) => {
+      if (!activeConversation) return;
+      const result = await resolveAgentRunRecovery(
+        activeConversation,
+        runId,
+        action,
+        idempotencyKey,
+        confirmation,
+      );
+      if (action !== 'abandon' && result.action.successorRunId) {
+        handleRecoveryStream(result.action.id);
+      }
+      setRecoverableRuns((runs) => runs.filter((run) => run.runId !== runId));
+    },
+    [activeConversation, handleRecoveryStream],
+  );
 
   useEffect(() => {
     if (!initialMessage || !chatEnabled || conversationData.sending) return;
@@ -148,6 +192,8 @@ export default function ChatArea({
       onSkipOnboarding={onSkipOnboarding}
       onCloseConnection={onCloseConnection}
       onConnectionSuccess={onConnectionSuccess}
+      recoverableRuns={recoverableRuns}
+      onRecoveryAction={handleRecoveryAction}
     />
   );
 }

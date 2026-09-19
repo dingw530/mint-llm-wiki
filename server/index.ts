@@ -1,111 +1,91 @@
 import 'dotenv/config';
-import app from './app.js';
-import { createLogger } from './utils/logger.js';
-import { listSkills } from './services/api/skillService.js';
-import { getAddressPort, getErrorMessage } from './utils/typeGuards.js';
-import { cleanupArtifacts } from './services/utils/toolResultArtifact.js';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { createApp } from './app.js';
+import { ServerRuntime } from './runtime/serverRuntime.js';
+import { loadStartupConfig, type ListenMode, type RuntimeMode } from './runtime/startupConfig.js';
 
-const log = createLogger('server');
-const LOOPBACK_HOST = '127.0.0.1';
-const CONTAINER_HOST = '0.0.0.0';
-
-type ListenMode = 'loopback' | 'container';
-
-// 启动时检查加密密钥，防止未配置时写入加密数据导致不可恢复的错误
-if (!process.env.AI_CHAT_ENCRYPTION_KEY) {
-  console.error('FATAL: AI_CHAT_ENCRYPTION_KEY environment variable is not set');
-  process.exit(1);
-}
-
-// 启动时扫描技能
-listSkills().catch((err) => log.error('技能扫描失败', { error: err.message }));
-
-/**
- * Resolve the only supported HTTP listener addresses.
- * @param mode Restricted runtime mode selected by a trusted entry point
- * @returns IPv4 address used for the HTTP listener
- * @throws {Error} When the requested mode is not supported
- */
+/** Resolve the listener host while retaining the legacy boundary-test API. */
 export function resolveListenHost(mode: string | undefined): string {
-  if (mode === undefined || mode === 'loopback') return LOOPBACK_HOST;
-  if (mode === 'container') return CONTAINER_HOST;
+  if (mode === undefined || mode === 'loopback' || mode === 'container') {
+    return loadStartupConfig({ listenMode: mode || 'loopback' }).host;
+  }
   throw new Error(`Unsupported HTTP listen mode: ${mode}`);
 }
 
-/**
- * Start the HTTP service with a restricted listener mode.
- * @param preferredPort Preferred port, defaulting to process.env.PORT or 3001
- * @param mode Restricted listener mode selected by an internal entry point
- * @returns Actual listening port
- */
-async function startServerWithMode(
-  preferredPort: number | undefined,
-  mode: ListenMode,
-): Promise<number> {
-  const desiredPort = preferredPort ?? parseInt(process.env.PORT || '3001', 10);
-  const host = resolveListenHost(mode);
+let activeRuntime: ServerRuntime | undefined;
+let activeRuntimeMode: 'loopback' | 'container' | undefined;
 
-  try {
-    await cleanupArtifacts({ mode: 'startup' });
-  } catch (error) {
-    log.warn('Artifact 启动清理失败，继续启动服务', { error: getErrorMessage(error) });
+function requireEncryptionKey(): void {
+  if (!process.env.AI_CHAT_ENCRYPTION_KEY) {
+    throw new Error('AI_CHAT_ENCRYPTION_KEY environment variable is not set');
   }
+}
 
-  return new Promise((resolve, reject) => {
-    const server = app.listen(desiredPort, host, () => {
-      const actualPort = getAddressPort(server.address());
-      if (actualPort === null) {
-        reject(new Error('Server started without a TCP address'));
-        return;
-      }
-      log.info('服务启动完成', { port: actualPort });
-      resolve(actualPort);
-    });
-
-    server.on('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE') {
-        log.warn(`端口 ${desiredPort} 已被占用，尝试随机端口`);
-        server.close();
-        const fallback = app.listen(0, host, () => {
-          const actualPort = getAddressPort(fallback.address());
-          if (actualPort === null) {
-            reject(new Error('Fallback server started without a TCP address'));
-            return;
-          }
-          log.info('服务在随机端口启动完成', { port: actualPort });
-          resolve(actualPort);
-        });
-        fallback.on('error', reject);
-      } else {
-        log.error('服务启动失败', { error: getErrorMessage(err) });
-        reject(err);
-      }
-    });
+function createRuntime(
+  preferredPort: number | undefined,
+  mode: RuntimeMode,
+  listenMode: ListenMode,
+): ServerRuntime {
+  requireEncryptionKey();
+  const config = loadStartupConfig({ mode, listenMode, preferredPort });
+  return new ServerRuntime({
+    app: createApp(),
+    preferredPort: config.preferredPort,
+    host: config.host,
   });
 }
 
-/**
- * Start the local-only HTTP service used by Node, CLI, and Electron.
- * @param preferredPort Preferred port, defaulting to process.env.PORT or 3001
- * @returns Actual listening port
- */
+/** Start the local HTTP runtime and return its actual listening port. */
 export function startServer(preferredPort?: number): Promise<number> {
-  return startServerWithMode(preferredPort, 'loopback');
+  return startServerRuntime(preferredPort, 'node', 'loopback');
 }
 
-/**
- * Start the HTTP service for the Docker container network only.
- * @param preferredPort Preferred port, defaulting to process.env.PORT or 3001
- * @returns Actual listening port
- */
+/** Start the Docker HTTP runtime and return its actual listening port. */
 export function startDockerServer(preferredPort?: number): Promise<number> {
-  return startServerWithMode(preferredPort, 'container');
+  return startServerRuntime(preferredPort, 'docker', 'container');
 }
 
-// 独立运行（非 Electron 环境）时自动启动
-if (!process.env.AI_CHAT_CLIENT_DIST) {
-  startServer().catch((err) => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
+/** Start or reuse the process-owned runtime for an explicit listener mode. */
+export async function startServerRuntime(
+  preferredPort: number | undefined,
+  mode: RuntimeMode,
+  listenMode: ListenMode = mode === 'docker' ? 'container' : 'loopback',
+): Promise<number> {
+  if (activeRuntime && activeRuntimeMode !== listenMode) {
+    throw new Error(`HTTP runtime already started in ${activeRuntimeMode} mode`);
+  }
+  if (!activeRuntime) {
+    activeRuntime = createRuntime(preferredPort, mode, listenMode);
+    activeRuntimeMode = listenMode;
+  }
+  await activeRuntime.start();
+  return activeRuntime.port ?? preferredPort ?? 3001;
+}
+
+/** Shut down the process-owned runtime, if one was started. */
+export async function shutdownServer(reason = 'shutdown'): Promise<void> {
+  const runtime = activeRuntime;
+  if (!runtime) return;
+  await runtime.shutdown(reason);
+  activeRuntime = undefined;
+  activeRuntimeMode = undefined;
+}
+
+function isDirectEntryPoint(): boolean {
+  return Boolean(
+    process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url,
+  );
+}
+
+if (isDirectEntryPoint()) {
+  startServer().catch((error: unknown) => {
+    console.error('Failed to start server:', error);
+    process.exitCode = 1;
   });
+  const shutdown = (): void => {
+    void shutdownServer('signal').finally(() => process.exit());
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 }

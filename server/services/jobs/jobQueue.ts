@@ -4,7 +4,7 @@
 export interface JobQueue {
   start(worker: (jobId: string) => Promise<void>): void;
   enqueue(jobId: string): void;
-  stop(): void;
+  stop(): Promise<void>;
 }
 
 /**
@@ -14,6 +14,8 @@ export class InProcessJobQueue implements JobQueue {
   private worker?: (jobId: string) => Promise<void>;
   private running = false;
   private scheduled = false;
+  private activePromise?: Promise<void>;
+  private scheduledPromise?: Promise<void>;
 
   start(worker: (jobId: string) => Promise<void>): void {
     this.worker = worker;
@@ -23,15 +25,26 @@ export class InProcessJobQueue implements JobQueue {
   enqueue(_jobId: string): void {
     if (!this.running || this.scheduled) return;
     this.scheduled = true;
-    setImmediate(() => {
-      this.scheduled = false;
-      void this.drain();
+    this.scheduledPromise = new Promise<void>((resolve) => {
+      setImmediate(() => {
+        this.scheduled = false;
+        this.scheduledPromise = undefined;
+        if (!this.running) {
+          resolve();
+          return;
+        }
+        this.activePromise = this.drain();
+        void this.activePromise.then(resolve, resolve).finally(() => {
+          this.activePromise = undefined;
+        });
+      });
     });
   }
 
-  stop(): void {
+  stop(): Promise<void> {
     this.running = false;
     this.worker = undefined;
+    return Promise.all([this.activePromise, this.scheduledPromise]).then(() => undefined);
   }
 
   private async drain(): Promise<void> {

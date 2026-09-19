@@ -9,6 +9,8 @@ const { registerElectronIpcHandlers } = require('./ipc');
 let mainWindow = null;
 let serverBundlePromise = null;
 let electronServiceBootstrapPromise = null;
+let electronShutdownPromise = null;
+let electronShutdownComplete = false;
 
 const isDev = !app.isPackaged;
 if (isDev) process.env.NODE_ENV = 'development';
@@ -476,4 +478,18 @@ app.on('activate', () => {
 });
 app.on('will-quit', () => {
   logger.close();
+});
+
+app.on('before-quit', (event) => {
+  if (electronShutdownComplete) return;
+  event.preventDefault();
+  if (!electronShutdownPromise) {
+    electronShutdownPromise = getServerBundle()
+      .then((bundle) => bundle.shutdownServer('electron-quit'))
+      .catch((err) => logger.warn(`Server shutdown failed: ${err.message}`))
+      .finally(() => {
+        electronShutdownComplete = true;
+        app.quit();
+      });
+  }
 });
