@@ -30,13 +30,15 @@
 | TP-002 | 已完成   | migration #30、recovery action repository | repository/recovery focused tests 通过。           | SQLite 是唯一本期 backend。                         |
 | TP-003 | 已完成   | recovery service、后继 run 创建           | focused recovery tests 通过。                      | 未确认副作用工具不自动重放。                        |
 | TP-004 | 已完成   | HTTP/IPC recovery transport、恢复卡片     | client/server 类型检查、IPC handler tests、browser AC 通过。 | Electron 已补专用流式 IPC。                         |
-| TP-005 | 已完成   | Harness run、typecheck、build             | `harness:verify` 通过；unit 840 passed，三个 browser 场景通过。 | browser 运行保留已知 CSP meta 警告。               |
+| TP-005 | 已完成   | Harness run、typecheck、build             | `harness:verify` 通过（run `2026-09-19T09-41-16-679Z-57548`）：8 项检查全通过、7/7 AC PASS、unit 935 passed、三个 browser 场景通过。 | browser 运行保留已知 CSP meta 警告。               |
 
 ## 偏差记录
 
 | 日期 | 类型 | TP | 文件 | 原因 | 影响 | 后续动作 |
 | --- | --- | --- | --- | --- | --- |
 | 2026-09-18 | 已解决 | TP-004 | `electron/ipc/chat.js`、`electron/preload.js`、`agentRunRecovery.ts` | Electron 不可访问 Web SSE。 | 恢复 action 曾只能 reservation，无法启动 successor run。 | 新增 `chat:stream-recovery-action`，复用既有 chunk/done/error IPC 事件。 |
+
+| 2026-09-19 | 已解决 | TP-005 | `verification-plan.json` | AC-003 声明 `ordering`、AC-004 声明 `no_new_work`，但两者的 probes 均漏列唯一提供这两个不变量的 `lifecycle-integration`，导致最后一次运行判为 UNVERIFIED（探针本身全部通过）。 | 验证计划映射缺陷，非功能缺口；已补 probes 并重跑。 | 重跑结果：8 项检查全通过、7/7 AC PASS（run `2026-09-19T09-41-16-679Z-57548`）。 |
 
 ## 交接
 

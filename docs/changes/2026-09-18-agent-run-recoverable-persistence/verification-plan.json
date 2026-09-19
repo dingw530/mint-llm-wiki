@@ -23,7 +23,7 @@
       "risk": "critical",
       "invariants": ["idempotence", "ordering", "regression_free"],
       "requiredEvidence": ["integration", "browser"],
-      "probes": ["unit", "boundary", "browser-ac"]
+      "probes": ["unit", "boundary", "browser-ac", "lifecycle-integration"]
     },
     {
       "id": "AC-004",
@@ -31,7 +31,7 @@
       "risk": "critical",
       "invariants": ["no_new_work", "idempotence", "regression_free"],
       "requiredEvidence": ["integration", "browser"],
-      "probes": ["unit", "boundary", "browser-ac"]
+      "probes": ["unit", "boundary", "browser-ac", "lifecycle-integration"]
     },
     {
       "id": "AC-005",
