@@ -655,6 +655,38 @@ const migrations: Migration[] = [
       db.exec('ALTER TABLE model_endpoints ADD COLUMN verified_at TEXT');
     },
   },
+  {
+    id: 30,
+    name: 'add-agent-run-recovery-actions',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS agent_run_recovery_index (
+          run_id TEXT PRIMARY KEY,
+          conversation_id TEXT,
+          origin_message_id TEXT,
+          agent_id TEXT,
+          execution_mode TEXT,
+          last_event_sequence INTEGER NOT NULL DEFAULT 0,
+          terminal INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS agent_run_recovery_actions (
+          action_id TEXT PRIMARY KEY,
+          origin_run_id TEXT NOT NULL,
+          conversation_id TEXT NOT NULL,
+          action TEXT NOT NULL CHECK(action IN ('continue', 'retry', 'abandon')),
+          idempotency_key TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('reserved', 'started', 'completed')),
+          successor_run_id TEXT,
+          created_at TEXT NOT NULL,
+          completed_at TEXT,
+          UNIQUE(origin_run_id, action, idempotency_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_run_recovery_actions_origin
+          ON agent_run_recovery_actions(origin_run_id, status);
+      `);
+    },
+  },
 ];
 
 /**

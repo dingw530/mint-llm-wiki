@@ -8,7 +8,18 @@ describe('AgentRun', () => {
     const run = new AgentRun({
       runId: 'durable-run',
       conversationId: 'durable-conversation',
-      eventRepository: { append: (input) => { writes.push(input); return { runId: input.event.runId, sequence: input.sequence, schemaVersion: 1, event: input.event, createdAt: 'now' }; } },
+      eventRepository: {
+        append: (input) => {
+          writes.push(input);
+          return {
+            runId: input.event.runId,
+            sequence: input.sequence,
+            schemaVersion: 1,
+            event: input.event,
+            createdAt: 'now',
+          };
+        },
+      },
     });
     const received: ReactEvent[] = [];
     run.subscribe((event) => received.push(event));
@@ -27,7 +38,11 @@ describe('AgentRun', () => {
     const received: ReactEvent[] = [];
     const run = new AgentRun({
       runId: 'failed-durable-run',
-      eventRepository: { append: () => { throw new Error('disk full'); } },
+      eventRepository: {
+        append: () => {
+          throw new Error('disk full');
+        },
+      },
     });
     run.subscribe((event) => received.push(event));
 
@@ -45,9 +60,15 @@ describe('AgentRun', () => {
     run.publish({ type: 'round_started', state: 'awaiting_model', round: 1 });
     run.publish({ type: 'run_completed', state: 'completed', content: 'done', reasoning: '' });
 
-    expect(run.publish({ type: 'run_failed', state: 'failed', error: 'late error' })).toBeUndefined();
+    expect(
+      run.publish({ type: 'run_failed', state: 'failed', error: 'late error' }),
+    ).toBeUndefined();
     expect(events.map((event) => event.sequence)).toEqual([1, 2, 3]);
-    expect(events.filter((event) => ['run_completed', 'run_failed', 'run_cancelled'].includes(event.type))).toHaveLength(1);
+    expect(
+      events.filter((event) =>
+        ['run_completed', 'run_failed', 'run_cancelled'].includes(event.type),
+      ),
+    ).toHaveLength(1);
     expect(run.getSnapshot()).toMatchObject({ phase: 'completed', terminal: true, sequence: 3 });
   });
 
@@ -128,5 +149,20 @@ describe('AgentRunRegistry', () => {
 
     expect(registry.get('run-5')).toBeUndefined();
     expect(registry.getByConversation('conversation-5')).toBeUndefined();
+  });
+
+  it('cancels every active run during process shutdown', () => {
+    const registry = new AgentRunRegistry();
+    const first = new AgentRun({ runId: 'run-6' });
+    const second = new AgentRun({ runId: 'run-7' });
+    registry.register(first);
+    registry.register(second);
+
+    registry.cancelAll();
+
+    expect(first.getSnapshot()).toMatchObject({ phase: 'cancelled', terminal: true });
+    expect(second.getSnapshot()).toMatchObject({ phase: 'cancelled', terminal: true });
+    expect(registry.get('run-6')).toBeUndefined();
+    expect(registry.get('run-7')).toBeUndefined();
   });
 });

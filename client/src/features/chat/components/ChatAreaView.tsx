@@ -10,6 +10,8 @@ import ModelSwitcher from '@/shared/components/ModelSwitcher';
 import type { MarkdownRendererProps } from '@/shared/components/MarkdownRenderer';
 import type { Agent, DecisionTraceItem, EndpointOutput, Message, ReActStep } from '@/types';
 import ModelConnectionPanel from './ModelConnectionPanel';
+import RecoveryCards from './RecoveryCards';
+import type { RecoverableAgentRun, RecoveryAction } from '@/services/api/agentRunRecovery';
 
 function LoadingSpinner() {
   return (
@@ -57,6 +59,13 @@ export interface ChatAreaViewProps {
   onSkipOnboarding: () => void;
   onCloseConnection: () => void;
   onConnectionSuccess: (endpoint: EndpointOutput) => Promise<void>;
+  recoverableRuns: RecoverableAgentRun[];
+  onRecoveryAction: (
+    runId: string,
+    action: RecoveryAction,
+    confirmation: boolean,
+    idempotencyKey: string,
+  ) => Promise<void>;
 }
 
 /**
@@ -100,6 +109,8 @@ export default function ChatAreaView({
   onSkipOnboarding,
   onCloseConnection,
   onConnectionSuccess,
+  recoverableRuns,
+  onRecoveryAction,
 }: ChatAreaViewProps) {
   return (
     <div className="main-area">
@@ -120,6 +131,9 @@ export default function ChatAreaView({
               连接模型
             </button>
           </div>
+        )}
+        {activeConversation && recoverableRuns.length > 0 && (
+          <RecoveryCards runs={recoverableRuns} onResolve={onRecoveryAction} />
         )}
         {loading ? (
           <div className="messages-loading">

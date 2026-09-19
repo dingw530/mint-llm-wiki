@@ -18,7 +18,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { ReactEventEmitter, subscribeReactEvents } from './reactEvents.js';
 import type { ReactEventPayload } from './reactEvents.js';
-import { type AgentRun, agentRunRegistry, createDurableAgentRun } from './agentRun.js';
+import { type AgentRun, agentRunRegistry } from './agentRun.js';
+import { createDurableAgentRun } from './agentRunFactory.js';
 import { estimateMessagesTokens } from './utils/tokenEstimator.js';
 import {
   buildAgentStatusMessage,

@@ -5083,6 +5083,63 @@ body::after {
   gap: 8px;
   margin-top: 12px;
 }
+
+.agent-run-recovery-cards {
+  margin: 8px 24px 0;
+}
+.agent-run-recovery-card {
+  max-width: 640px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 24%, var(--border-color));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-color) 3%, var(--bg-primary));
+  box-shadow: 0 2px 8px rgba(28, 55, 47, 0.05);
+}
+.agent-run-recovery-card__header {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.agent-run-recovery-card__icon {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--accent-color);
+  color: white;
+  font-weight: 700;
+}
+.agent-run-recovery-card p {
+  margin: 2px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.agent-run-recovery-card__warning {
+  color: #a35c11 !important;
+}
+.agent-run-recovery-card__actions,
+.agent-run-recovery-card__confirmation {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.agent-run-recovery-card__confirmation p {
+  width: 100%;
+  margin: 0 0 4px;
+}
+.agent-run-recovery-card__abandon {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+}
+.agent-run-recovery-card__error {
+  color: var(--danger-color, #c53d3d) !important;
+}
 @media (max-width: 640px) {
   .model-connection-backdrop {
     padding: 16px;

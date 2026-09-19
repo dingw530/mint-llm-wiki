@@ -2,7 +2,12 @@ import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { runMigrations } from '../../migrations/index.js';
 import { AgentRunEventRepository } from '../../repositories/agentRunEventRepository.js';
-import { recoverOpenAgentRuns, reduceAgentRunEvents } from '../agentRunRecoveryService.js';
+import {
+  listRecoverableRuns,
+  recoverOpenAgentRuns,
+  reduceAgentRunEvents,
+  resolveRecoveryAction,
+} from '../agentRunRecoveryService.js';
 
 /**
  * Creates the current-schema prerequisites needed before the event migrations.
@@ -135,5 +140,84 @@ describe('agentRunRecoveryService', () => {
         { ...events[1], event: { ...events[1].event, round: 0 } },
       ]),
     ).toThrow();
+  });
+
+  it('reserves a confirmed retry exactly once and never resolves an unknown tool automatically', () => {
+    const repository = createRepository();
+    repository.append({
+      sequence: 1,
+      event: {
+        type: 'run_started',
+        runId: 'run-recovery-action',
+        conversationId: 'conversation-recovery',
+        originMessageId: 'message-origin',
+        agentId: 'general',
+        executionMode: 'stream',
+      },
+    });
+    repository.append({
+      sequence: 2,
+      event: {
+        type: 'tool_call_started',
+        runId: 'run-recovery-action',
+        callId: 'call-recovery',
+        toolName: 'bash',
+        round: 1,
+      },
+    });
+
+    expect(listRecoverableRuns('conversation-recovery', repository)).toMatchObject([
+      {
+        runId: 'run-recovery-action',
+        unknownTools: [{ callId: 'call-recovery', recoveryLevel: 'requires_confirmation' }],
+        actions: ['retry', 'abandon'],
+      },
+    ]);
+    expect(() =>
+      resolveRecoveryAction(
+        {
+          conversationId: 'conversation-recovery',
+          runId: 'run-recovery-action',
+          action: 'retry',
+          idempotencyKey: 'recovery-key',
+        },
+        repository,
+      ),
+    ).toThrow(/requires confirmation/);
+
+    const action = resolveRecoveryAction(
+      {
+        conversationId: 'conversation-recovery',
+        runId: 'run-recovery-action',
+        action: 'retry',
+        idempotencyKey: 'recovery-key',
+        confirmation: true,
+      },
+      repository,
+    );
+    const repeated = resolveRecoveryAction(
+      {
+        conversationId: 'conversation-recovery',
+        runId: 'run-recovery-action',
+        action: 'retry',
+        idempotencyKey: 'recovery-key',
+        confirmation: true,
+      },
+      repository,
+    );
+    expect(repeated).toEqual(action);
+    const recoveredReservation = resolveRecoveryAction(
+      {
+        conversationId: 'conversation-recovery',
+        runId: 'run-recovery-action',
+        action: 'retry',
+        idempotencyKey: 'new-client-key-after-restart',
+        confirmation: true,
+      },
+      repository,
+    );
+    expect(recoveredReservation).toEqual(action);
+    expect(action.successorRunId).toBeTruthy();
+    expect(repository.read('run-recovery-action')).toHaveLength(2);
   });
 });

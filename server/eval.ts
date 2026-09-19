@@ -8,7 +8,8 @@ import * as settingsService from './services/api/settingsService.js';
 import type { ReactEvent } from './services/reactEvents.js';
 import { AccumulatingSink } from './services/sink.js';
 import type { ReactExecutionPolicy } from './services/reactLoopCore.js';
-import { createDurableAgentRun, agentRunRegistry } from './services/agentRun.js';
+import { agentRunRegistry } from './services/agentRun.js';
+import { createDurableAgentRun } from './services/agentRunFactory.js';
 import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
 import { getWikiVectorHealth } from './services/api/wikiSearchService.js';
 export type {

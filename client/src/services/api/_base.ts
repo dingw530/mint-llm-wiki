@@ -41,11 +41,7 @@ export async function ipcOrHttp<T>(
   httpCall: () => Promise<T>,
 ): Promise<T> {
   if (!isElectron()) return httpCall();
-  try {
-    return await ipcCall();
-  } catch {
-    return httpCall();
-  }
+  return ipcCall();
 }
 
 // ── Endpoint Manifest ──
@@ -64,10 +60,12 @@ export interface ManifestEntry {
 function isManifestEntry(value: unknown): value is ManifestEntry {
   if (!value || typeof value !== 'object') return false;
   const entry = value as Partial<ManifestEntry>;
-  return typeof entry.id === 'string'
-    && typeof entry.ipcChannel === 'string'
-    && typeof entry.method === 'string'
-    && typeof entry.httpPath === 'string';
+  return (
+    typeof entry.id === 'string' &&
+    typeof entry.ipcChannel === 'string' &&
+    typeof entry.method === 'string' &&
+    typeof entry.httpPath === 'string'
+  );
 }
 
 let manifestCache: ManifestEntry[] | null = null;
@@ -216,9 +214,11 @@ function hasValidRunEnvelope(data: Record<string, unknown>): boolean {
   const hasRunId = Object.prototype.hasOwnProperty.call(data, 'runId');
   const hasSequence = Object.prototype.hasOwnProperty.call(data, 'sequence');
   if (!hasRunId && !hasSequence) return true;
-  return typeof data.runId === 'string'
-    && data.runId.length > 0
-    && typeof data.sequence === 'number'
-    && Number.isSafeInteger(data.sequence)
-    && data.sequence > 0;
+  return (
+    typeof data.runId === 'string' &&
+    data.runId.length > 0 &&
+    typeof data.sequence === 'number' &&
+    Number.isSafeInteger(data.sequence) &&
+    data.sequence > 0
+  );
 }

@@ -348,6 +348,7 @@ export interface ElectronAPI {
     regenerate?: boolean,
     slashCommand?: SendOptions['slashCommand'],
   ) => void;
+  streamRecoveryAction: (conversationId: string, actionId: string) => void;
   onChunk: (conversationId: string, callback: (data: string) => void) => () => void;
   onDone: (conversationId: string, callback: () => void) => () => void;
   onError: (conversationId: string, callback: (err: string) => void) => () => void;
@@ -371,6 +372,16 @@ export interface ElectronAPI {
     conversationId: string,
     approvalId: string,
     data: { action: 'approve' | 'deny' },
+  ) => Promise<unknown>;
+  getRecoverableAgentRuns: (conversationId: string) => Promise<unknown>;
+  resolveAgentRunRecovery: (
+    conversationId: string,
+    runId: string,
+    data: {
+      action: 'continue' | 'retry' | 'abandon';
+      idempotencyKey: string;
+      confirmation?: boolean;
+    },
   ) => Promise<unknown>;
 
   // 消息

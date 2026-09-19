@@ -1,0 +1,61 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "重启后开放运行在所属会话显示为已中断，终态运行不显示为待恢复。",
+      "risk": "high",
+      "invariants": ["ordering", "regression_free"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["boundary", "lifecycle-integration", "browser-ac"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "未完成工具显示结果未知，恢复读取和用户界面没有自动重放路径。",
+      "risk": "critical",
+      "invariants": ["no_new_work", "regression_free"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["boundary", "lifecycle-integration", "browser-ac"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "继续、重试和放弃均可审计且按 idempotency key 去重，不会创建多个后继运行。",
+      "risk": "critical",
+      "invariants": ["idempotence", "ordering", "regression_free"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["unit", "boundary", "browser-ac"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "未知的 never 和 requires_confirmation 工具不会在恢复路径中绕过确认或自动重放。",
+      "risk": "critical",
+      "invariants": ["no_new_work", "idempotence", "regression_free"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["unit", "boundary", "browser-ac"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "AgentRun 领域层只依赖持久化接口，SQLite 是唯一已配置 backend。",
+      "risk": "high",
+      "invariants": ["no_import_side_effect", "regression_free"],
+      "requiredEvidence": ["integration"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "migration 演进 schema，既有 AgentRun 严格序列、脱敏、审批与 SSE 行为保持回归兼容。",
+      "risk": "high",
+      "invariants": ["ordering", "idempotence", "regression_free"],
+      "requiredEvidence": ["integration"],
+      "probes": ["unit", "boundary", "lifecycle-integration"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "本期不创建、写入或 fallback 到 JSONL，默认仅解析 SQLite adapter。",
+      "risk": "medium",
+      "invariants": ["no_import_side_effect", "regression_free"],
+      "requiredEvidence": ["integration"],
+      "probes": ["unit", "boundary"]
+    }
+  ]
+}

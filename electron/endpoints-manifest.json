@@ -448,6 +448,44 @@
     "async": true
   },
   {
+    "id": "conversations:listRecoverableRuns",
+    "ipcChannel": "conversations:listRecoverableRuns",
+    "preloadMethod": "getRecoverableAgentRuns",
+    "method": "GET",
+    "httpPath": "/conversations/:id/agent-runs/recoverable",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      }
+    ],
+    "result": "direct",
+    "async": true
+  },
+  {
+    "id": "conversations:resolveRecoveryAction",
+    "ipcChannel": "conversations:resolveRecoveryAction",
+    "preloadMethod": "resolveAgentRunRecovery",
+    "method": "POST",
+    "httpPath": "/conversations/:id/agent-runs/:runId/recovery-actions",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      },
+      {
+        "from": "path",
+        "name": "runId"
+      },
+      {
+        "from": "body",
+        "name": ""
+      }
+    ],
+    "result": "direct",
+    "async": true
+  },
+  {
     "id": "conversations:resolveToolApproval",
     "ipcChannel": "conversations:resolveToolApproval",
     "preloadMethod": "resolveToolApproval",

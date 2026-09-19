@@ -1,13 +1,8 @@
 import type { ReactEvent, ReactEventBase, ReactEventPayload } from './reactEvents.js';
-import { agentRunEventRepository, type AgentRunEventWriter, type PersistedAgentRunEvent } from '../repositories/agentRunEventRepository.js';
-import { attachLangfuseObserver } from './observability/langfuse.js';
+import type { AgentRunEventWriter, PersistedAgentRunEvent } from './agentRunPersistence.js';
 
 export type AgentRunPhase =
-  | 'running'
-  | 'paused_for_approval'
-  | 'completed'
-  | 'failed'
-  | 'cancelled';
+  'running' | 'paused_for_approval' | 'completed' | 'failed' | 'cancelled';
 
 export interface AgentRunApproval {
   approvalId?: string;
@@ -19,7 +14,8 @@ export interface AgentRunApproval {
 export interface AgentRunToolState {
   callId: string;
   toolName: string;
-  status: 'running' | 'success' | 'failed' | 'retrying' | 'approval_required' | 'tool_outcome_unknown';
+  status:
+    'running' | 'success' | 'failed' | 'retrying' | 'approval_required' | 'tool_outcome_unknown';
 }
 
 export interface AgentRunSnapshot {
@@ -38,6 +34,9 @@ export type AgentRunSubscriber = (event: ReactEvent) => void;
 export interface AgentRunOptions {
   runId: string;
   conversationId?: string;
+  originMessageId?: string;
+  agentId?: string;
+  executionMode?: 'react' | 'stream';
   eventRepository?: AgentRunEventWriter;
 }
 
@@ -99,7 +98,11 @@ export class AgentRun {
 
   /** Resumes a paused run only when the supplied approval belongs to its active pause. */
   resumeApproval(approvalId: string): boolean {
-    if (this.terminal || this.phase !== 'paused_for_approval' || this.approval?.approvalId !== approvalId) {
+    if (
+      this.terminal ||
+      this.phase !== 'paused_for_approval' ||
+      this.approval?.approvalId !== approvalId
+    ) {
       return false;
     }
     this.phase = 'running';
@@ -161,7 +164,7 @@ export class AgentRun {
   }
 
   private persist(payload: ReactEventPayload): void {
-    const event = toPersistedEvent(payload, this.options.runId, this.options.conversationId);
+    const event = toPersistedEvent(payload, this.options);
     if (!event || !this.options.eventRepository) return;
     const record = this.options.eventRepository.append({
       sequence: this.durableSequence + 1,
@@ -181,28 +184,63 @@ export class AgentRun {
   }
 }
 
-function toPersistedEvent(payload: ReactEventPayload, runId: string, conversationId?: string): PersistedAgentRunEvent | undefined {
+function toPersistedEvent(
+  payload: ReactEventPayload,
+  options: AgentRunOptions,
+): PersistedAgentRunEvent | undefined {
   switch (payload.type) {
-    case 'run_started': return { type: 'run_started', runId, ...(conversationId ? { conversationId } : {}) };
-    case 'round_started': return { type: 'round_started', runId, round: payload.round };
-    case 'tool_call_start': return { type: 'tool_call_started', runId, callId: payload.callId, toolName: payload.toolName, round: payload.round };
-    case 'tool_call_end': return { type: 'tool_call_finished', runId, callId: payload.callId, toolName: payload.toolName, status: 'success' };
+    case 'run_started':
+      return {
+        type: 'run_started',
+        runId: options.runId,
+        ...(options.conversationId ? { conversationId: options.conversationId } : {}),
+        ...(options.originMessageId ? { originMessageId: options.originMessageId } : {}),
+        ...(options.agentId ? { agentId: options.agentId } : {}),
+        ...(options.executionMode ? { executionMode: options.executionMode } : {}),
+      };
+    case 'round_started':
+      return { type: 'round_started', runId: options.runId, round: payload.round };
+    case 'tool_call_start':
+      return {
+        type: 'tool_call_started',
+        runId: options.runId,
+        callId: payload.callId,
+        toolName: payload.toolName,
+        round: payload.round,
+      };
+    case 'tool_call_end':
+      return {
+        type: 'tool_call_finished',
+        runId: options.runId,
+        callId: payload.callId,
+        toolName: payload.toolName,
+        status: 'success',
+      };
     case 'tool_call_error':
       if (payload.phase !== 'final' || payload.status === 'approval_required') return undefined;
-      return { type: 'tool_call_finished', runId, callId: payload.callId, toolName: payload.toolName, status: 'failed' };
-    case 'approval_required': return { type: 'approval_required', runId, callId: payload.callId, approvalId: payload.approvalId };
-    case 'run_completed': return { type: 'run_terminal', runId, outcome: 'completed' };
-    case 'run_failed': return { type: 'run_terminal', runId, outcome: 'failed' };
-    case 'run_cancelled': return { type: 'run_terminal', runId, outcome: 'cancelled' };
-    default: return undefined;
+      return {
+        type: 'tool_call_finished',
+        runId: options.runId,
+        callId: payload.callId,
+        toolName: payload.toolName,
+        status: 'failed',
+      };
+    case 'approval_required':
+      return {
+        type: 'approval_required',
+        runId: options.runId,
+        callId: payload.callId,
+        approvalId: payload.approvalId,
+      };
+    case 'run_completed':
+      return { type: 'run_terminal', runId: options.runId, outcome: 'completed' };
+    case 'run_failed':
+      return { type: 'run_terminal', runId: options.runId, outcome: 'failed' };
+    case 'run_cancelled':
+      return { type: 'run_terminal', runId: options.runId, outcome: 'cancelled' };
+    default:
+      return undefined;
   }
-}
-
-/** Creates a production AgentRun with the durable event writer enabled. */
-export function createDurableAgentRun(options: Omit<AgentRunOptions, 'eventRepository'>): AgentRun {
-  const run = new AgentRun({ ...options, eventRepository: agentRunEventRepository });
-  attachLangfuseObserver(run);
-  return run;
 }
 
 function withEventIdentity<T extends ReactEventPayload>(
@@ -227,7 +265,8 @@ export class AgentRunRegistry {
   register(run: AgentRun): () => void {
     const snapshot = run.getSnapshot();
     this.runs.set(snapshot.runId, run);
-    if (snapshot.conversationId) this.runsByConversation.set(snapshot.conversationId, snapshot.runId);
+    if (snapshot.conversationId)
+      this.runsByConversation.set(snapshot.conversationId, snapshot.runId);
     return run.subscribe((event) => {
       if (TERMINAL_EVENT_TYPES.has(event.type)) this.delete(event.runId);
     });
@@ -260,6 +299,11 @@ export class AgentRunRegistry {
   clear(): void {
     this.runs.clear();
     this.runsByConversation.clear();
+  }
+
+  /** Cancels every active run and publishes one terminal cancellation event per run. */
+  cancelAll(): void {
+    for (const run of [...this.runs.values()]) run.cancel();
   }
 }
 

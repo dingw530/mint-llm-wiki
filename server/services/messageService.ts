@@ -18,8 +18,19 @@ import { AI_REQUEST_TIMEOUT_MS } from './adapters/apiAdapter.js';
 import * as a2uiRepository from '../repositories/a2uiRepository.js';
 import type { PersistedUiBlock } from '../types.js';
 import { applyContextProviders } from './contextProvider.js';
-import { type AgentRun, agentRunRegistry, createDurableAgentRun } from './agentRun.js';
-import { buildSlashCommandContext, validateSlashCommand, type SlashCommandIntent } from './api/slashCommandService.js';
+import { type AgentRun, agentRunRegistry } from './agentRun.js';
+import { createDurableAgentRun } from './agentRunFactory.js';
+import { ReactEventEmitter } from './reactEvents.js';
+import {
+  buildSlashCommandContext,
+  validateSlashCommand,
+  type SlashCommandIntent,
+} from './api/slashCommandService.js';
+import {
+  claimRecoveryAction,
+  completeRecoveryAction,
+  recoverAgentRun,
+} from './agentRunRecoveryService.js';
 
 export function getMessages(conversationId: string) {
   const conversation = conversationRepo.findById(conversationId);
@@ -71,6 +82,56 @@ export function resumeToolApproval(
   return streamToolApproval(conversationId, approvalId, action, sink);
 }
 
+/** Streams a one-time, user-confirmed retry from its durable message reference. */
+export async function streamRecoveryAction(
+  conversationId: string,
+  actionId: string,
+  sink: Sink,
+): Promise<void> {
+  const action = claimRecoveryAction(actionId);
+  if (action.conversationId !== conversationId || !action.successorRunId) {
+    throw new Error('Recovery action does not belong to this conversation');
+  }
+  const origin = recoverAgentRun(action.originRunId);
+  if (!origin.originMessageId || !origin.executionMode) {
+    throw new Error('AgentRun has no recoverable execution reference');
+  }
+  const history = messageRepo.getHistoryThroughMessageId(conversationId, origin.originMessageId);
+  const settings = settingsService.getAiSettings();
+  const agentInfo = origin.agentId ? agentService.findById(origin.agentId) : undefined;
+  const systemPrompt = agentInfo?.systemPrompt || settings.systemPrompt;
+  const requestMessages: HistoryMessage[] = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, ...history]
+    : history;
+  const run = createDurableAgentRun({
+    runId: action.successorRunId,
+    conversationId,
+    originMessageId: origin.originMessageId,
+    ...(origin.agentId ? { agentId: origin.agentId } : {}),
+    executionMode: origin.executionMode,
+  });
+  agentRunRegistry.register(run);
+  new ReactEventEmitter(run).emit({ type: 'run_started', state: 'running' });
+  try {
+    if (origin.executionMode === 'react') {
+      await reactChat(
+        requestMessages,
+        settings,
+        sink,
+        origin.agentId,
+        undefined,
+        conversationId,
+        undefined,
+        run,
+      );
+    } else {
+      await streamChat(requestMessages, settings, sink, origin.agentId, conversationId, run);
+    }
+  } finally {
+    completeRecoveryAction(actionId);
+  }
+}
+
 // 发送消息：保存用户消息 → 路由决策 → 拼接历史 → SSE 流式调用 AI → 保存 AI 回复
 interface FileAttachment {
   name: string;
@@ -78,7 +139,15 @@ interface FileAttachment {
   type?: string;
 }
 
-export async function sendMessage(conversationId: string, content: string, sink: Sink, agent?: string, regenerate?: boolean, files?: FileAttachment[], slashCommand?: SlashCommandIntent): Promise<void> {
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  sink: Sink,
+  agent?: string,
+  regenerate?: boolean,
+  files?: FileAttachment[],
+  slashCommand?: SlashCommandIntent,
+): Promise<void> {
   const deferredSink = new DeferredEndSink(sink);
   const conversation = conversationRepo.findById(conversationId);
   if (!conversation) {
@@ -86,7 +155,8 @@ export async function sendMessage(conversationId: string, content: string, sink:
     err.status = 404;
     throw err;
   }
-  const validatedSlashCommand = slashCommand === undefined ? undefined : validateSlashCommand(slashCommand);
+  const validatedSlashCommand =
+    slashCommand === undefined ? undefined : validateSlashCommand(slashCommand);
   if (slashCommand !== undefined && !validatedSlashCommand) {
     const err: HttpError = new Error('Invalid slash command or empty command input');
     err.status = 400;
@@ -114,13 +184,20 @@ export async function sendMessage(conversationId: string, content: string, sink:
       }
     }
     if (fileParts.length > 0) {
-      augmentedContent = (content || '') + '\n\n以下是从上传文件中提取的内容：\n' + fileParts.join('\n');
+      augmentedContent =
+        (content || '') + '\n\n以下是从上传文件中提取的内容：\n' + fileParts.join('\n');
     }
   }
 
   // 先持久化用户消息（非重新生成场景），确保不丢失
   if (!regenerate) {
-    messageRepo.create({ id: userMsgId, conversationId, role: 'user', content: augmentedContent, createdAt: now });
+    messageRepo.create({
+      id: userMsgId,
+      conversationId,
+      role: 'user',
+      content: augmentedContent,
+      createdAt: now,
+    });
     messageRepo.updateConversationTimestamp(conversationId, now);
   }
 
@@ -164,7 +241,10 @@ export async function sendMessage(conversationId: string, content: string, sink:
       systemPrompt = agentInfo.systemPrompt;
     }
   }
-  if (validatedSlashCommand) systemPrompt = [systemPrompt, buildSlashCommandContext(validatedSlashCommand)].filter(Boolean).join('\n\n');
+  if (validatedSlashCommand)
+    systemPrompt = [systemPrompt, buildSlashCommandContext(validatedSlashCommand)]
+      .filter(Boolean)
+      .join('\n\n');
 
   const messages: HistoryMessage[] = systemPrompt
     ? [{ role: 'system', content: systemPrompt }, ...history]
@@ -188,25 +268,39 @@ export async function sendMessage(conversationId: string, content: string, sink:
       }
     }
 
-    const { content: fullContent, reasoning: fullReasoning, uiBlocks: fullUiBlocks } = useReact
+    const {
+      content: fullContent,
+      reasoning: fullReasoning,
+      uiBlocks: fullUiBlocks,
+    } = useReact
       ? await reactChat(
-        requestMessages,
-        settings,
-        deferredSink,
-        resolvedAgent,
-        orchestratorSignal,
-        conversationId,
-        undefined,
-        createRegisteredRun(conversationId),
-      )
+          requestMessages,
+          settings,
+          deferredSink,
+          resolvedAgent,
+          orchestratorSignal,
+          conversationId,
+          undefined,
+          createRegisteredRun(
+            conversationId,
+            regenerate ? undefined : userMsgId,
+            resolvedAgent,
+            'react',
+          ),
+        )
       : await streamChat(
-        requestMessages,
-        settings,
-        deferredSink,
-        resolvedAgent,
-        conversationId,
-        createRegisteredRun(conversationId),
-      );
+          requestMessages,
+          settings,
+          deferredSink,
+          resolvedAgent,
+          conversationId,
+          createRegisteredRun(
+            conversationId,
+            regenerate ? undefined : userMsgId,
+            resolvedAgent,
+            'stream',
+          ),
+        );
 
     clearTimeout(orchestratorTimer);
     // AI 回复完成后持久化（流式结束时才写入）
@@ -241,8 +335,19 @@ export async function sendMessage(conversationId: string, content: string, sink:
 }
 
 /** Creates the process-local run that owns one user-visible chat invocation. */
-function createRegisteredRun(conversationId: string): AgentRun {
-  const run = createDurableAgentRun({ runId: uuidv4(), conversationId });
+function createRegisteredRun(
+  conversationId: string,
+  originMessageId: string | undefined,
+  agentId: string | undefined,
+  executionMode: 'react' | 'stream',
+): AgentRun {
+  const run = createDurableAgentRun({
+    runId: uuidv4(),
+    conversationId,
+    ...(originMessageId ? { originMessageId } : {}),
+    ...(agentId ? { agentId } : {}),
+    executionMode,
+  });
   agentRunRegistry.register(run);
   return run;
 }
