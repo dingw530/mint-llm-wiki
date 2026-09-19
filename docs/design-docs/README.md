@@ -53,3 +53,4 @@
 | [SQLite 迁移失败关闭](../changes/2026-09-06-migration-fail-closed/design-doc.md)                                | 2026-09-06 | 已完成 |
 | [http_fetch SSRF 目标校验](../changes/2026-09-06-http-fetch-ssrf-hardening/design-doc.md)                       | 2026-09-06 | 已完成 |
 | [外部服务韧性治理](../changes/2026-09-08-external-service-resilience/design-doc.md)                             | 2026-09-08 | 已完成 |
+| [启动与关闭生命周期整改](../changes/2026-09-11-server-lifecycle-remediation/design-doc.md)                    | 2026-09-11 | 已完成 |

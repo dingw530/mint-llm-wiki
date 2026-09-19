@@ -1,0 +1,5 @@
+{
+  "changeId": "2026-09-11-server-lifecycle-remediation",
+  "scenarios": [],
+  "notApplicable": "本变更不修改浏览器用户流程；Electron、Docker 和信号退出通过 runtime smoke 与进程级验证完成。"
+}
