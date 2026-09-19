@@ -121,7 +121,8 @@ export class WikiIngestionJobService {
     if (this.started) return;
     this.started = true;
     this.dependencies.queue.start(() => this.runNext());
-    if (this.dependencies.store.recoverRunning() > 0) this.dependencies.queue.enqueue('recovered');
+    this.dependencies.store.recoverRunning();
+    this.dependencies.queue.enqueue('startup');
   }
 
   /** Stop accepting new queue work and wait for the current worker to finish. */

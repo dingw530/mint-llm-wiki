@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWikiIngestionJobService } from '../wikiIngestionJobService.js';
 import type { WikiJob, WikiUploadInput, WikiChatIngestionInput } from '../wikiIngestionTypes.js';
 import type { JobStore } from '../../jobs/jobStore.js';
+import type { JobQueue } from '../../jobs/jobQueue.js';
 import type { AiSettings } from '../../../types.js';
 
 const settings = {
@@ -17,6 +18,27 @@ const input: WikiUploadInput = {
 
 describe('wikiIngestionJobService', () => {
   beforeEach(() => vi.restoreAllMocks());
+
+  it('drains persisted queued jobs when the worker starts', () => {
+    const queue: JobQueue = {
+      start: vi.fn(),
+      enqueue: vi.fn(),
+      stop: vi.fn().mockResolvedValue(undefined),
+    };
+    const store = {
+      recoverRunning: vi.fn(() => 0),
+      claimNext: vi.fn(() => undefined),
+    } as unknown as JobStore;
+    const service = createWikiIngestionJobService({ queue, store });
+
+    service.startWorker();
+    service.startWorker();
+
+    expect(queue.start).toHaveBeenCalledTimes(1);
+    expect(store.recoverRunning).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue).toHaveBeenCalledWith('startup');
+  });
 
   it('starts a job and exposes the compatibility response', () => {
     const createJob = vi.fn(() => 'job-1');
@@ -73,7 +95,12 @@ describe('wikiIngestionJobService', () => {
 
     await service.run('job-1', input, settings, 'sources/notes.md');
 
-    expect(updates.map((update) => update.status)).toEqual(['parsing', 'compiling', 'committing', 'completed']);
+    expect(updates.map((update) => update.status)).toEqual([
+      'parsing',
+      'compiling',
+      'committing',
+      'completed',
+    ]);
     expect(updates[3]).toMatchObject({
       status: 'completed',
       progress: 100,
@@ -149,14 +176,27 @@ describe('wikiIngestionJobService', () => {
       discardWikiStagedFile,
     });
 
-    expect(() => service.startChat({
-      files: [{ name: 'good.md', content: 'good' }, { name: 'bad.exe', content: 'bad' }],
-    })).toThrow('不支持的文件类型');
-    expect(discardWikiStagedFile).toHaveBeenCalledWith('/tmp/test-wiki', 'ingestion-pending/good.md');
+    expect(() =>
+      service.startChat({
+        files: [
+          { name: 'good.md', content: 'good' },
+          { name: 'bad.exe', content: 'bad' },
+        ],
+      }),
+    ).toThrow('不支持的文件类型');
+    expect(discardWikiStagedFile).toHaveBeenCalledWith(
+      '/tmp/test-wiki',
+      'ingestion-pending/good.md',
+    );
   });
 
   it('returns the existing job for a repeated idempotency key', () => {
-    const existing = { id: 'job-existing', fileName: 'notes.md', fileSize: 5, fileCount: 1 } as WikiJob;
+    const existing = {
+      id: 'job-existing',
+      fileName: 'notes.md',
+      fileSize: 5,
+      fileCount: 1,
+    } as WikiJob;
     const archiveWikiUpload = vi.fn(() => 'sources/notes.md');
     const store = {
       getByIdempotencyKey: vi.fn(() => existing),
@@ -177,23 +217,52 @@ describe('wikiIngestionJobService', () => {
 
   it('preserves successful inputs when one chat input fails', async () => {
     const updates: Array<Partial<WikiJob>> = [];
-    let current: WikiJob = { id: 'job-1', status: 'queued', fileName: 'batch', fileSize: 2, fileCount: 2, progress: 0, step: '等待处理', createdAt: '', updatedAt: '' };
+    let current: WikiJob = {
+      id: 'job-1',
+      status: 'queued',
+      fileName: 'batch',
+      fileSize: 2,
+      fileCount: 2,
+      progress: 0,
+      step: '等待处理',
+      createdAt: '',
+      updatedAt: '',
+    };
     const store = {
       get: vi.fn(() => current),
-      update: vi.fn((_id: string, patch: Partial<WikiJob>) => { current = { ...current, ...patch }; updates.push(patch); return current; }),
+      update: vi.fn((_id: string, patch: Partial<WikiJob>) => {
+        current = { ...current, ...patch };
+        updates.push(patch);
+        return current;
+      }),
       recoverRunning: vi.fn(() => 0),
       claimNext: vi.fn(() => undefined),
     } as unknown as JobStore;
-    const input: WikiChatIngestionInput = { files: [{ name: 'good.md', content: Buffer.from('good').toString('base64') }, { name: 'bad.md', content: Buffer.from('bad').toString('base64') }] };
+    const input: WikiChatIngestionInput = {
+      files: [
+        { name: 'good.md', content: Buffer.from('good').toString('base64') },
+        { name: 'bad.md', content: Buffer.from('bad').toString('base64') },
+      ],
+    };
     const service = createWikiIngestionJobService({
       getAiSettings: () => settings,
       store,
       archiveWikiUpload: (_path, _settings, file) => `sources/${file.name}`,
       readArchivedWikiFile: (_path, file) => Buffer.from(file.includes('bad') ? 'bad' : 'good'),
-      parseFile: async ({ name }) => ({ text: name.includes('bad') ? 'bad' : 'good', format: 'md', originalName: name }),
+      parseFile: async ({ name }) => ({
+        text: name.includes('bad') ? 'bad' : 'good',
+        format: 'md',
+        originalName: name,
+      }),
       ingestWikiSource: async (_settings, _path, options) => {
         if (options.sourceText.includes('bad')) throw new Error('bad input');
-        return { sourceFile: 'sources/good.md', archivedFiles: [], pages: [], summary: 'done', manifestId: 'manifest-1' };
+        return {
+          sourceFile: 'sources/good.md',
+          archivedFiles: [],
+          pages: [],
+          summary: 'done',
+          manifestId: 'manifest-1',
+        };
       },
     });
 
@@ -203,13 +272,24 @@ describe('wikiIngestionJobService', () => {
     ]);
 
     expect(updates.at(-1)).toMatchObject({ status: 'partial_failed' });
-    expect(updates.at(-1)?.result).toMatchObject({ failedItems: [{ name: 'bad.md', error: 'bad input' }] });
+    expect(updates.at(-1)?.result).toMatchObject({
+      failedItems: [{ name: 'bad.md', error: 'bad input' }],
+    });
   });
 
   it('serializes Wiki commits for the same Wiki path', async () => {
     let active = 0;
     let maximum = 0;
-    const current = { id: 'job-1', status: 'queued', fileName: 'batch', fileSize: 1, progress: 0, step: '等待处理', createdAt: '', updatedAt: '' } as WikiJob;
+    const current = {
+      id: 'job-1',
+      status: 'queued',
+      fileName: 'batch',
+      fileSize: 1,
+      progress: 0,
+      step: '等待处理',
+      createdAt: '',
+      updatedAt: '',
+    } as WikiJob;
     const store = {
       get: vi.fn(() => current),
       update: vi.fn((_id: string, patch: Partial<WikiJob>) => ({ ...current, ...patch })),
@@ -225,7 +305,13 @@ describe('wikiIngestionJobService', () => {
         maximum = Math.max(maximum, active);
         await new Promise((resolve) => setTimeout(resolve, 5));
         active -= 1;
-        return { sourceFile: 'sources/notes.md', archivedFiles: [], pages: [], summary: 'done', manifestId: 'manifest-1' };
+        return {
+          sourceFile: 'sources/notes.md',
+          archivedFiles: [],
+          pages: [],
+          summary: 'done',
+          manifestId: 'manifest-1',
+        };
       },
     });
 
@@ -237,21 +323,50 @@ describe('wikiIngestionJobService', () => {
   });
 
   it('enforces retry and cancel state boundaries', () => {
-    let current = { id: 'job-1', status: 'failed', fileName: 'notes.md', fileSize: 1, progress: 100, step: '处理失败', result: { sourceFile: 'sources/notes.md' }, createdAt: '', updatedAt: '' } as WikiJob;
+    let current = {
+      id: 'job-1',
+      status: 'failed',
+      fileName: 'notes.md',
+      fileSize: 1,
+      progress: 100,
+      step: '处理失败',
+      result: { sourceFile: 'sources/notes.md' },
+      createdAt: '',
+      updatedAt: '',
+    } as WikiJob;
     const store = {
       get: vi.fn(() => current),
-      update: vi.fn((_id: string, patch: Partial<WikiJob>) => { current = { ...current, ...patch }; return current; }),
+      update: vi.fn((_id: string, patch: Partial<WikiJob>) => {
+        current = { ...current, ...patch };
+        return current;
+      }),
       recoverRunning: vi.fn(() => 0),
       claimNext: vi.fn(() => undefined),
     } as unknown as JobStore;
     const service = createWikiIngestionJobService({ store });
-    expect(service.retry('job-1')).toMatchObject({ status: 'queued', progress: 0, step: '等待重试', result: undefined });
+    expect(service.retry('job-1')).toMatchObject({
+      status: 'queued',
+      progress: 0,
+      step: '等待重试',
+      result: undefined,
+    });
     expect(service.cancel('job-1').status).toBe('cancelled');
     expect(() => service.retry('job-1')).toThrow('当前任务状态不支持重试');
   });
 
   it('removes terminal jobs but rejects active jobs', () => {
-    let current = { id: 'job-1', status: 'completed', fileName: 'notes.md', fileSize: 1, progress: 100, step: '完成', createdAt: '', updatedAt: '', isTerminal: true, isSuccessful: true } as WikiJob;
+    let current = {
+      id: 'job-1',
+      status: 'completed',
+      fileName: 'notes.md',
+      fileSize: 1,
+      progress: 100,
+      step: '完成',
+      createdAt: '',
+      updatedAt: '',
+      isTerminal: true,
+      isSuccessful: true,
+    } as WikiJob;
     const remove = vi.fn(() => true);
     const store = {
       get: vi.fn(() => current),

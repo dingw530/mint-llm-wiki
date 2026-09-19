@@ -228,6 +228,10 @@ async function loadServiceModules() {
     registerIpcHandlers: bundle.registerIpcHandlers,
     conversationsIpcOnlyEndpoints: bundle.conversationsIpcOnlyEndpoints,
   };
+  if (!services.wikiIngestionJobService) {
+    throw new Error('Wiki ingestion service not loaded');
+  }
+  services.wikiIngestionJobService.startWorker();
   logger.info('Service modules loaded');
 
   try {
