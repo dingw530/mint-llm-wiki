@@ -15,6 +15,26 @@
 
 规则：每条 AC 至少一行；跨模块、用户可见或外部进程行为至少需要 integration、e2e 或 runtime 证据；代码搜索、类型检查和文件存在只能作为 static 证据。存在 FAIL 或未验证项时不能标记阶段完成。
 
+## Evidence Contract
+
+每条 AC 必须补充以下字段：
+
+| 字段 | 要求 |
+| --- | --- |
+| risk | low / medium / high；高风险 AC 不能只依赖 unit 或 static |
+| invariants | 可观察的不变量，如 no_new_work、drain、ordering、idempotence、bounded_timeout、rollback、no_resource_leak |
+| requiredEvidence | 最低证据等级，如 unit、integration、process-smoke、browser、manual |
+| probes | 执行该验证的测试、脚本或命令 ID |
+
+Mock 调用断言只能证明调用发生，不能单独证明 drain、真实进程退出、端口释放、资源无泄漏或外部系统行为。证据必须记录观察值或可复核的 artifact，而不只是命令 exit code。
+
+AC 状态聚合规则：
+
+- `PASS`：所有 requiredEvidence 存在，且所有 invariants 有证据覆盖；
+- `UNVERIFIED`：命令通过但证据等级不足、只有 mock 证据或缺少关键观察值；
+- `FAIL`：探针断言失败或观察值违反不变量；
+- `BLOCKED`：外部环境使必需探针无法执行。
+
 ## Verify 检查项
 
 完整审计至少检查：
@@ -26,7 +46,7 @@
 5. 项目规范：目录、依赖方向、注释、测试和安全约定是否符合
 6. 关键参数：超时、重试、截断、返回上限等是否与设计一致
 
-若环境没有独立审计 agent，必须明确标记“审计能力降级”，不能把主 agent 自检冒充独立审计。
+若环境没有独立审计 agent，必须明确标记“审计能力降级”，不能把主 agent 自检冒充独立审计。审计能力降级不妨碍输出报告，但不能将其作为 L4/L5 完成证据。
 
 ## 逐 TP 差异报告
 
@@ -48,7 +68,7 @@
 | P2   | 次要问题，不影响功能但影响质量     |
 | P3   | 建议性改进，非必须                 |
 
-审查报告是验证证据的一部分，不改变需求、设计决策或 TP 范围。报告发现问题时保留 FAIL、未验证或偏差状态；只有完成门禁满足时，才能更新 traceability 的完成状态。对进行中的变更可以直接审查当前工作区快照，不要求额外确认；无法确定审查目标时才请求路径或 change-id。
+审查报告是验证证据的一部分，不改变需求、设计决策或 TP 范围。报告发现问题时保留 FAIL、未验证或偏差状态；只有完成门禁满足时，才能更新 traceability 的完成状态。不得因为 unit、coverage、build 或 Harness runner 全部通过，就自动将 AC/TP 标记为完成。对进行中的变更可以直接审查当前工作区快照，不要求额外确认；无法确定审查目标时才请求路径或 change-id。
 
 ## 结论等级
 

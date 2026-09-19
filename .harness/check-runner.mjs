@@ -8,6 +8,15 @@ function trimOutput(value, maxLength = 12000) {
   return `${value.slice(0, maxLength)}\n...[truncated ${value.length - maxLength} chars]`;
 }
 
+function inferEvidenceLevel(check) {
+  if (check.evidenceLevel) return check.evidenceLevel;
+  if (check.name === 'browser-ac') return 'browser';
+  if (check.name.includes('smoke')) return 'process-smoke';
+  if (check.name === 'boundary') return 'integration';
+  if (check.name === 'coverage') return 'static';
+  return 'unit';
+}
+
 /** Try to parse stdout as structured test runner JSON. */
 function tryParseStructuredOutput(stdout) {
   try {
@@ -122,6 +131,8 @@ export async function runCheck(check, { rootDir, artifactDir, signal, task }) {
     cwd,
     exitCode: result.exitCode,
     signal: result.signal || null,
+    evidenceLevel: inferEvidenceLevel(check),
+    invariants: check.invariants || [],
     durationMs,
     failure,
     logPath,

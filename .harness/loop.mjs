@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { captureWorktree, evaluateDiff } from './diff-policy.mjs';
 import { allChecksPassed, runChecks } from './check-runner.mjs';
+import { claimsPassed, evaluateClaims } from './claim-evaluator.mjs';
 import { writeIteration, writeJson } from './evidence.mjs';
 
 function runEditor(command, { rootDir, taskFile, failureFile, iteration, runDir }) {
@@ -37,13 +38,18 @@ export async function runLoop(task, { run, rootDir, editCommand, dryRun = false 
   const history = [];
   let status = 'max_iterations';
   let lastResults = [];
+  let lastVerification = null;
 
   for (let iteration = 1; iteration <= task.maxIterations; iteration += 1) {
     const iterationDir = path.join(run.artifactDir, `iteration-${iteration}`);
     const results = await runChecks(task, { rootDir, artifactDir: iterationDir });
     lastResults = results;
-    const passed = allChecksPassed(results);
-    const record = { iteration, results, passed };
+    lastVerification = evaluateClaims(task, results);
+    await writeJson(path.join(iterationDir, 'claim-verification.json'), lastVerification);
+    const passed =
+      allChecksPassed(results) &&
+      (task.verification.mode !== 'claims' || claimsPassed(lastVerification));
+    const record = { iteration, results, verification: lastVerification, passed };
 
     if (passed) {
       status = 'completed';
@@ -54,7 +60,9 @@ export async function runLoop(task, { run, rootDir, editCommand, dryRun = false 
 
     if (!editCommand || dryRun) {
       status = 'blocked';
-      record.reason = dryRun ? 'dry-run: edit command was not executed' : 'no edit command configured';
+      record.reason = dryRun
+        ? 'dry-run: edit command was not executed'
+        : 'no edit command configured';
       history.push(record);
       await writeIteration(run, iteration, record);
       break;
@@ -64,11 +72,20 @@ export async function runLoop(task, { run, rootDir, editCommand, dryRun = false 
     const taskFile = `${run.artifactDir}/task.json`;
 
     // Merge structured test failures from check results
-    const structuredFailures = results.flatMap(r => {
+    const structuredFailures = results.flatMap((r) => {
       const fPath = path.join(iterationDir, `${r.name}-failures.json`);
-      try { return JSON.parse(fs.readFileSync(fPath, 'utf8')); } catch { return []; }
+      try {
+        return JSON.parse(fs.readFileSync(fPath, 'utf8'));
+      } catch {
+        return [];
+      }
     });
-    await writeJson(failureFile, { iteration, results, structuredFailures });
+    await writeJson(failureFile, {
+      iteration,
+      results,
+      verification: lastVerification,
+      structuredFailures,
+    });
     const editExitCode = await runEditor(editCommand, {
       rootDir,
       taskFile,
@@ -78,7 +95,9 @@ export async function runLoop(task, { run, rootDir, editCommand, dryRun = false 
     });
     const after = await captureWorktree(rootDir);
     const artifactPath = path.relative(rootDir, run.artifactDir).replaceAll(path.sep, '/');
-    const diff = evaluateDiff(before, after, task.allowedPaths, task.protectedPaths, [`${artifactPath}/`]);
+    const diff = evaluateDiff(before, after, task.allowedPaths, task.protectedPaths, [
+      `${artifactPath}/`,
+    ]);
     record.editExitCode = editExitCode;
     record.diff = diff;
 
@@ -105,6 +124,7 @@ export async function runLoop(task, { run, rootDir, editCommand, dryRun = false 
     iterations: history.length,
     history,
     lastResults,
+    lastVerification,
     changedPaths: history.at(-1)?.diff?.changedPaths || [],
   };
 }
