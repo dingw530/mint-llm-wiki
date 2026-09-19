@@ -1,6 +1,8 @@
 import path from 'path';
 import express from 'express';
 import cors from 'cors';
+import { rateLimit } from 'express-rate-limit';
+import type { RequestHandler } from 'express';
 import { errorHandler } from './middleware/errorHandler.js';
 import { createResourceRouter, endpointRegistry } from './endpoints/index.js';
 import conversationsRouter from './routes/conversations.js';
@@ -13,6 +15,24 @@ const defaultCorsOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
 ];
+
+const CLIENT_ASSET_RATE_LIMIT_WINDOW_MS = 60_000;
+const CLIENT_ASSET_RATE_LIMIT_MAX_REQUESTS = 120;
+
+/**
+ * Create the rate limiter for production client assets and SPA fallback.
+ * @returns Middleware that limits non-API client asset requests per IP
+ */
+export function createClientAssetRateLimiter(): RequestHandler {
+  return rateLimit({
+    windowMs: CLIENT_ASSET_RATE_LIMIT_WINDOW_MS,
+    limit: CLIENT_ASSET_RATE_LIMIT_MAX_REQUESTS,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    skip: (req) => req.path.startsWith('/api') || !['GET', 'HEAD'].includes(req.method),
+    message: { error: 'Too many client asset requests, please try again later.' },
+  });
+}
 
 /**
  * Resolves configured development origins without opening the API to the
@@ -57,6 +77,7 @@ export function createApp(): express.Express {
   // ── 生产模式静态文件服务 ──
   const clientDistPath = process.env.AI_CHAT_CLIENT_DIST;
   if (clientDistPath) {
+    app.use(createClientAssetRateLimiter());
     app.use(express.static(clientDistPath));
     app.get('*', (req, res) => {
       if (!req.path.startsWith('/api')) {
