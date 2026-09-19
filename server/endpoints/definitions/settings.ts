@@ -3,6 +3,8 @@ import { httpError } from '../helpers.js';
 import type { EndpointDescriptor } from '../types.js';
 import type { SettingsInput } from '../../types.js';
 import * as vectorConnectionService from '../../services/api/vectorConnectionService.js';
+import * as jevConnectionService from '../../services/api/jevConnectionService.js';
+import { MAX_JEV_TIMEOUT_MS, MIN_JEV_TIMEOUT_MS } from '../../services/api/settingsService.js';
 
 function toSettingsInput(data: Record<string, unknown>): SettingsInput {
   return {
@@ -31,7 +33,57 @@ function toSettingsInput(data: Record<string, unknown>): SettingsInput {
       data.vectorStore === 'chroma' || data.vectorStore === 'sqlite' ? data.vectorStore : undefined,
     chromaUrl: typeof data.chromaUrl === 'string' ? data.chromaUrl : undefined,
     chromaApiKey: typeof data.chromaApiKey === 'string' ? data.chromaApiKey : undefined,
+    jevApiUrl: typeof data.jevApiUrl === 'string' ? data.jevApiUrl : undefined,
+    jevApiKey: typeof data.jevApiKey === 'string' ? data.jevApiKey : undefined,
+    jevModel: typeof data.jevModel === 'string' ? data.jevModel : undefined,
+    jevTimeoutMs: typeof data.jevTimeoutMs === 'number' ? data.jevTimeoutMs : undefined,
+    jevRoutingEnabled:
+      typeof data.jevRoutingEnabled === 'boolean' ? data.jevRoutingEnabled : undefined,
+    jevRoutingMinConfidence:
+      typeof data.jevRoutingMinConfidence === 'number' ? data.jevRoutingMinConfidence : undefined,
+    jevRoutingBypassOnKeyword:
+      typeof data.jevRoutingBypassOnKeyword === 'boolean'
+        ? data.jevRoutingBypassOnKeyword
+        : undefined,
+    jevMemoryEnabled:
+      typeof data.jevMemoryEnabled === 'boolean' ? data.jevMemoryEnabled : undefined,
+    jevMemoryGateThreshold:
+      typeof data.jevMemoryGateThreshold === 'number' ? data.jevMemoryGateThreshold : undefined,
   };
+}
+
+/** 校验 Jev 端点与阈值；非法时抛 400。 */
+function validateJevSettings(data: Record<string, unknown>): void {
+  if (data.jevApiUrl !== undefined) {
+    if (typeof data.jevApiUrl !== 'string' || !data.jevApiUrl.trim()) {
+      throw httpError(400, 'jevApiUrl must be a valid URL');
+    }
+    try {
+      new URL(data.jevApiUrl);
+    } catch {
+      throw httpError(400, 'jevApiUrl must be a valid URL');
+    }
+  }
+  if (data.jevModel !== undefined && (typeof data.jevModel !== 'string' || !data.jevModel.trim())) {
+    throw httpError(400, 'jevModel is required');
+  }
+  if (
+    data.jevTimeoutMs !== undefined &&
+    (typeof data.jevTimeoutMs !== 'number' ||
+      data.jevTimeoutMs < MIN_JEV_TIMEOUT_MS ||
+      data.jevTimeoutMs > MAX_JEV_TIMEOUT_MS)
+  ) {
+    throw httpError(
+      400,
+      `jevTimeoutMs must be between ${MIN_JEV_TIMEOUT_MS} and ${MAX_JEV_TIMEOUT_MS}`,
+    );
+  }
+  for (const key of ['jevRoutingMinConfidence', 'jevMemoryGateThreshold'] as const) {
+    const value = data[key];
+    if (value !== undefined && (typeof value !== 'number' || value < 0 || value > 1)) {
+      throw httpError(400, `${key} must be between 0 and 1`);
+    }
+  }
 }
 
 // ── settings:save 的包装函数（包含验证逻辑，Express/IPC 共享） ──
@@ -84,8 +136,19 @@ function saveSettings(data: Record<string, unknown>) {
       throw httpError(400, 'chromaUrl must be a valid URL');
     }
   }
+  validateJevSettings(data);
   settingsService.save(toSettingsInput(data));
   return { success: true };
+}
+
+/** 校验 Jev 前先解析出待测连接配置：表单值优先，留空则用已存值。 */
+function resolveJevConnectionTarget(data: Record<string, unknown>) {
+  const stored = settingsService.getJevSettings();
+  return {
+    apiUrl: typeof data.apiUrl === 'string' && data.apiUrl.trim() ? data.apiUrl : stored.apiUrl,
+    apiKey: typeof data.apiKey === 'string' && data.apiKey.trim() ? data.apiKey : stored.apiKey,
+    model: typeof data.model === 'string' && data.model.trim() ? data.model : stored.model,
+  };
 }
 
 export const settingsEndpoints: EndpointDescriptor[] = [
@@ -133,6 +196,17 @@ export const settingsEndpoints: EndpointDescriptor[] = [
           ? data.apiKey
           : settingsService.getChromaApiKey(),
       ),
+    args: [{ from: 'body' }],
+    result: 'direct',
+    async: true,
+  },
+  {
+    id: 'settings:testJevConnection',
+    method: 'POST',
+    path: '/test-jev-connection',
+    preloadMethod: 'testJevConnection',
+    service: (data: Record<string, unknown>) =>
+      jevConnectionService.testJevConnection(resolveJevConnectionTarget(data)),
     args: [{ from: 'body' }],
     result: 'direct',
     async: true,

@@ -209,3 +209,75 @@ describe('settingsService', () => {
     });
   });
 });
+
+describe('settingsService Jev settings', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.keys(mockSettings).forEach((k) => delete mockSettings[k]);
+    vi.mocked(endpointRepo.getActive).mockReturnValue(null);
+    vi.mocked(settingsRepo.getAll).mockReturnValue(mockSettings);
+  });
+
+  it('exposes the documented defaults with both switches off', () => {
+    const jev = settingsService.getJevSettings();
+    expect(jev).toEqual({
+      apiUrl: 'https://api.typesafe.ai/v1/systemone',
+      apiKey: '',
+      model: 'jev-latest',
+      timeoutMs: 3000,
+      routingEnabled: false,
+      routingMinConfidence: 0.5,
+      routingBypassOnKeyword: true,
+      memoryEnabled: false,
+      memoryGateThreshold: 0.4,
+    });
+  });
+
+  it('masks the API key in the visible settings', () => {
+    settingsService.save({ jevApiKey: 'sk-secret-value' });
+
+    const visible = settingsService.get();
+    expect(visible.jevApiKeyMasked).toBe('sk-****e');
+    expect(JSON.stringify(visible)).not.toContain('sk-secret-value');
+  });
+
+  it('keeps the stored key when a later save omits it', () => {
+    settingsService.save({ jevApiKey: 'sk-secret-value' });
+    const encryptedOnce = mockSettings.jevApiKey;
+
+    settingsService.save({ jevRoutingEnabled: true });
+
+    expect(mockSettings.jevApiKey).toBe(encryptedOnce);
+    expect(settingsService.getJevSettings().apiKey).toBe('sk-secret-value');
+    expect(settingsService.getJevSettings().routingEnabled).toBe(true);
+  });
+
+  it('resets the switches to off when a save omits them, matching the full-overwrite contract', () => {
+    settingsService.save({ jevRoutingEnabled: true, jevMemoryEnabled: true });
+    expect(settingsService.getJevSettings().routingEnabled).toBe(true);
+
+    settingsService.save({ systemPrompt: 'next' });
+
+    expect(settingsService.getJevSettings().routingEnabled).toBe(false);
+    expect(settingsService.getJevSettings().memoryEnabled).toBe(false);
+  });
+
+  it('clamps out-of-range thresholds and timeouts instead of storing them', () => {
+    settingsService.save({
+      jevRoutingMinConfidence: 5,
+      jevMemoryGateThreshold: -1,
+      jevTimeoutMs: 999_999,
+    });
+
+    const jev = settingsService.getJevSettings();
+    expect(jev.routingMinConfidence).toBe(1);
+    expect(jev.memoryGateThreshold).toBe(0);
+    expect(jev.timeoutMs).toBe(15_000);
+  });
+
+  it('returns an empty API key when the stored ciphertext cannot be decrypted', () => {
+    mockSettings.jevApiKey = 'not-a-valid-ciphertext';
+    expect(settingsService.getJevSettings().apiKey).toBe('');
+    expect(settingsService.get().jevApiKeyMasked).toBe('****');
+  });
+});

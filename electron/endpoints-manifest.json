@@ -52,6 +52,20 @@
     "async": true
   },
   {
+    "id": "settings:testJevConnection",
+    "ipcChannel": "settings:testJevConnection",
+    "preloadMethod": "testJevConnection",
+    "method": "POST",
+    "httpPath": "/settings/test-jev-connection",
+    "args": [
+      {
+        "from": "body"
+      }
+    ],
+    "result": "direct",
+    "async": true
+  },
+  {
     "id": "memories:list",
     "ipcChannel": "memories:list",
     "preloadMethod": "getMemories",

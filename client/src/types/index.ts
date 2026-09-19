@@ -137,6 +137,13 @@ export interface VisibleSettings {
   vectorStore: 'sqlite' | 'chroma';
   chromaUrl: string;
   chromaApiKeyMasked: string;
+  jevApiUrl: string;
+  jevModel: string;
+  jevApiKeyMasked: string;
+  jevRoutingEnabled: boolean;
+  jevRoutingMinConfidence: number;
+  jevMemoryEnabled: boolean;
+  jevMemoryGateThreshold: number;
 }
 
 export interface SettingsInput {
@@ -158,6 +165,15 @@ export interface SettingsInput {
   vectorStore?: 'sqlite' | 'chroma';
   chromaUrl?: string;
   chromaApiKey?: string;
+  jevApiUrl?: string;
+  jevApiKey?: string;
+  jevModel?: string;
+  jevTimeoutMs?: number;
+  jevRoutingEnabled?: boolean;
+  jevRoutingMinConfidence?: number;
+  jevRoutingBypassOnKeyword?: boolean;
+  jevMemoryEnabled?: boolean;
+  jevMemoryGateThreshold?: number;
 }
 
 // ── SSE 流类型 ──
@@ -398,6 +414,10 @@ export interface ElectronAPI {
   testChromaConnection: (data: { url: string; apiKey?: string }) => Promise<{
     success: boolean;
     message?: string;
+  }>;
+  testJevConnection: (data: { apiUrl?: string; apiKey?: string; model?: string }) => Promise<{
+    success: boolean;
+    message: string;
   }>;
 
   // Agent

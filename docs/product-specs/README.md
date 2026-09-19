@@ -53,3 +53,4 @@
 | [http_fetch SSRF 目标校验](../changes/2026-09-06-http-fetch-ssrf-hardening/product-spec.md)                       | 2026-09-06 | 已完成 |
 | [外部服务韧性治理](../changes/2026-09-08-external-service-resilience/product-spec.md)                             | 2026-09-08 | 已完成 |
 | [启动与关闭生命周期整改](../changes/2026-09-11-server-lifecycle-remediation/product-spec.md)                    | 2026-09-11 | 已完成 |
+| [Jev 实验性接入（路由与记忆分类）](../changes/2026-09-19-jev-experimental-integration/product-spec.md) | 2026-09-19 | 已完成 |

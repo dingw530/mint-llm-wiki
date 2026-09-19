@@ -4,6 +4,8 @@ import * as messageRepo from '../repositories/messageRepository.js';
 import * as settingsService from './api/settingsService.js';
 import * as memoryService from './api/memoryService.js';
 import { enqueueMemoryProcessing } from './api/memoryJobService.js';
+import { evaluateMemoryGate } from './memoryGateProviders/index.js';
+import { getErrorMessage } from '../utils/typeGuards.js';
 import * as agentService from './api/agentService.js';
 import { routingService } from './api/routingService.js';
 import { streamChat } from './aiProxy.js';
@@ -304,8 +306,10 @@ export async function sendMessage(
 
     clearTimeout(orchestratorTimer);
     // AI 回复完成后持久化（流式结束时才写入）
+    let persistedAssistantMessageId: string | null = null;
     if (fullContent) {
       const assistantMessageId = uuidv4();
+      persistedAssistantMessageId = assistantMessageId;
       messageRepo.create({
         id: assistantMessageId,
         conversationId,
@@ -315,15 +319,13 @@ export async function sendMessage(
         createdAt: new Date().toISOString(),
       });
       persistUiBlocks(assistantMessageId, fullUiBlocks);
-
-      // 异步提取记忆（v1.5.1 增加价值判断预检查）
-      if (settings.memoryEnabled) {
-        if (memoryService.isConversationValuable(content)) {
-          enqueueMemoryProcessing(conversationId, assistantMessageId);
-        }
-      }
     }
     deferredSink.flush();
+
+    // 记忆门控可能发起网络调用，必须在响应结束之后异步执行，否则会延长单条消息的响应时间。
+    if (persistedAssistantMessageId && settings.memoryEnabled) {
+      scheduleMemoryExtraction(content, conversationId, persistedAssistantMessageId);
+    }
   } catch (err) {
     console.error('AI streaming error:', err);
     if (!deferredSink.writableEnded) {
@@ -350,4 +352,38 @@ function createRegisteredRun(
   });
   agentRunRegistry.register(run);
   return run;
+}
+
+/**
+ * 执行一次记忆门控：读取实验设置 → 判定 → 写审计 → 命中时入队提取任务。
+ * @param userContent 触发本轮的 user 消息
+ * @param conversationId 会话 id
+ * @param assistantMessageId 助手消息 id，用作提取快照锚点与审计来源
+ */
+async function runMemoryGate(
+  userContent: string,
+  conversationId: string,
+  assistantMessageId: string,
+): Promise<void> {
+  const jev = settingsService.getJevSettings();
+  const resolution = await evaluateMemoryGate({ userContent, conversationId }, { jev });
+  memoryService.recordMemoryGateOutcome(resolution, conversationId, assistantMessageId);
+  if (resolution.memorize) enqueueMemoryProcessing(conversationId, assistantMessageId);
+}
+
+/**
+ * 响应结束后异步执行记忆门控，命中则入队提取任务。
+ * 门控失败不影响对话，只记录审计事件。
+ * @param userContent 触发本轮的 user 消息
+ * @param conversationId 会话 id
+ * @param assistantMessageId 助手消息 id
+ */
+function scheduleMemoryExtraction(
+  userContent: string,
+  conversationId: string,
+  assistantMessageId: string,
+): void {
+  void runMemoryGate(userContent, conversationId, assistantMessageId).catch((error) => {
+    console.error('[memory] gate failed', getErrorMessage(error));
+  });
 }

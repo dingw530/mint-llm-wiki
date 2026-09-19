@@ -17,6 +17,18 @@ vi.mock('../../../services/api/agentService.js', () => ({
 vi.mock('../../../services/api/settingsService.js', () => ({
   get: vi.fn(() => ({ apiUrl: '', modelId: '' })),
   save: vi.fn(),
+  getJevSettings: vi.fn(() => ({
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    timeoutMs: 0,
+    routingEnabled: false,
+    routingMinConfidence: 0,
+    routingBypassOnKeyword: false,
+    memoryEnabled: false,
+    memoryGateThreshold: 0,
+  })),
+  getChromaApiKey: vi.fn(() => ''),
 }));
 
 const { settingsEndpoints } = await import('../../definitions/settings.js');
@@ -57,6 +69,7 @@ describe('standard IPC handlers', () => {
       'settings:save',
       'settings:testEmbeddingConnection',
       'settings:testChromaConnection',
+      'settings:testJevConnection',
     ]);
   });
 
@@ -146,7 +159,7 @@ describe('standard IPC handlers', () => {
     }
     registerIpcHandlers(conversationsIpcOnlyEndpoints, {}, ipcMain);
 
-    expect(handlers.size).toBe(56);
+    expect(handlers.size).toBe(57);
     expect(handlers.has('conversations:rename')).toBe(true);
     expect(handlers.has('conversations:lockAgent')).toBe(true);
     expect(handlers.has('conversations:resolveToolApproval')).toBe(true);

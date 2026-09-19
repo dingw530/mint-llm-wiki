@@ -1,7 +1,13 @@
 import * as settingsRepo from '../../repositories/settingsRepository.js';
 import * as endpointRepo from '../../repositories/endpointRepository.js';
 import { encrypt, decrypt, maskApiKey } from '../utils/encryption.js';
-import type { RawSettings, SettingsInput, AiSettings, VisibleSettings } from '../../types.js';
+import type {
+  RawSettings,
+  SettingsInput,
+  AiSettings,
+  JevSettings,
+  VisibleSettings,
+} from '../../types.js';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -42,6 +48,18 @@ export const DEFAULT_EMBEDDING_MODEL = 'bge-m3';
 export const DEFAULT_EMBEDDING_DIMENSIONS = 1024;
 export const DEFAULT_CHROMA_URL = 'http://127.0.0.1:8000';
 
+// ── Jev 实验功能默认值 ──
+
+export const DEFAULT_JEV_API_URL = 'https://api.typesafe.ai/v1/systemone';
+export const DEFAULT_JEV_MODEL = 'jev-latest';
+export const DEFAULT_JEV_TIMEOUT_MS = 3_000;
+export const MIN_JEV_TIMEOUT_MS = 500;
+export const MAX_JEV_TIMEOUT_MS = 15_000;
+/** Jev 路由步的置信度门槛起步值；低于该值回退原有路由。 */
+export const DEFAULT_JEV_ROUTING_MIN_CONFIDENCE = 0.5;
+/** 记忆门控的 noul 门槛；故意偏低，因为漏记的代价高于多记。 */
+export const DEFAULT_JEV_MEMORY_GATE_THRESHOLD = 0.4;
+
 function getSearchMode(raw: RawSettings): 'keyword' | 'hybrid' {
   return raw.wikiSearchMode === 'hybrid' ? 'hybrid' : 'keyword';
 }
@@ -65,6 +83,92 @@ function getMaskedSecret(value: string | undefined): string {
   } catch {
     return '****';
   }
+}
+
+/**
+ * 把配置值夹到合法区间；非数字输入退回默认值。
+ * @param value 原始字符串
+ * @param min 下限
+ * @param max 上限
+ * @param fallback 无法解析时的默认值
+ * @returns 夹取后的整数
+ */
+function clampInt(
+  value: string | number | undefined,
+  min: number,
+  max: number,
+  fallback: number,
+): number {
+  const parsed = typeof value === 'number' ? value : Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(max, Math.max(min, parsed));
+}
+
+/**
+ * 把配置值夹到 [0, 1]；非数字输入退回默认值。
+ * @param value 原始字符串
+ * @param fallback 无法解析时的默认值
+ * @returns 夹取后的概率值
+ */
+function clampScore(value: string | number | undefined, fallback: number): number {
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value ?? '');
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(1, Math.max(0, parsed));
+}
+
+/**
+ * 解密密钥；失败时返回空字符串，调用方按"未配置"处理。
+ * @param value 加密后的密钥
+ * @returns 明文密钥
+ */
+function safeDecrypt(value: string | undefined): string {
+  if (!value) return '';
+  try {
+    return decrypt(value);
+  } catch {
+    return '';
+  }
+}
+
+/** Jev 设置的写入入参。 */
+type JevSettingsInput = Pick<
+  SettingsInput,
+  | 'jevApiUrl'
+  | 'jevApiKey'
+  | 'jevModel'
+  | 'jevTimeoutMs'
+  | 'jevRoutingEnabled'
+  | 'jevRoutingMinConfidence'
+  | 'jevRoutingBypassOnKeyword'
+  | 'jevMemoryEnabled'
+  | 'jevMemoryGateThreshold'
+>;
+
+/**
+ * 把 Jev 设置写入待持久化的键值表。
+ * 非密钥字段一律落默认值（与 `save` 的既有全量覆盖契约一致），密钥仅在提供新值时写入。
+ * @param target 待写入的键值表
+ * @param input Jev 相关入参
+ */
+function applyJevSettings(target: Record<string, string>, input: JevSettingsInput): void {
+  target.jevApiUrl = input.jevApiUrl || DEFAULT_JEV_API_URL;
+  target.jevModel = input.jevModel || DEFAULT_JEV_MODEL;
+  target.jevTimeoutMs = String(
+    clampInt(input.jevTimeoutMs, MIN_JEV_TIMEOUT_MS, MAX_JEV_TIMEOUT_MS, DEFAULT_JEV_TIMEOUT_MS),
+  );
+  target.jevRoutingEnabled = input.jevRoutingEnabled ? 'true' : 'false';
+  target.jevRoutingMinConfidence = String(
+    clampScore(input.jevRoutingMinConfidence, DEFAULT_JEV_ROUTING_MIN_CONFIDENCE),
+  );
+  target.jevRoutingBypassOnKeyword =
+    input.jevRoutingBypassOnKeyword !== undefined
+      ? String(input.jevRoutingBypassOnKeyword)
+      : 'true';
+  target.jevMemoryEnabled = input.jevMemoryEnabled ? 'true' : 'false';
+  target.jevMemoryGateThreshold = String(
+    clampScore(input.jevMemoryGateThreshold, DEFAULT_JEV_MEMORY_GATE_THRESHOLD),
+  );
+  if (input.jevApiKey) target.jevApiKey = encrypt(input.jevApiKey);
 }
 
 function ensureWikiPath(wikiPath: string): void {
@@ -141,6 +245,7 @@ export function get(): VisibleSettings {
     vectorStore: getVectorStore(raw),
     chromaUrl: raw.chromaUrl || DEFAULT_CHROMA_URL,
     chromaApiKeyMasked: getMaskedSecret(raw.chromaApiKey),
+    ...getVisibleJevSettings(),
   };
 }
 
@@ -153,6 +258,69 @@ export function getChromaApiKey(): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * 读取 Jev 实验设置；所有默认值集中在此单一出口。
+ *
+ * 刻意不并入 `AiSettings`：Jev 是自包含子系统，只被 jevClient 与路由/记忆 provider 消费，
+ * 而 `AiSettings` 有 60+ 处消费方且带有重复的返回分支。
+ *
+ * @returns 已解密并带默认值的 Jev 设置
+ */
+export function getJevSettings(): JevSettings {
+  const raw: RawSettings = settingsRepo.getAll();
+  return {
+    apiUrl: raw.jevApiUrl || DEFAULT_JEV_API_URL,
+    apiKey: safeDecrypt(raw.jevApiKey),
+    model: raw.jevModel || DEFAULT_JEV_MODEL,
+    timeoutMs: clampInt(
+      raw.jevTimeoutMs,
+      MIN_JEV_TIMEOUT_MS,
+      MAX_JEV_TIMEOUT_MS,
+      DEFAULT_JEV_TIMEOUT_MS,
+    ),
+    routingEnabled: raw.jevRoutingEnabled === 'true',
+    routingMinConfidence: clampScore(
+      raw.jevRoutingMinConfidence,
+      DEFAULT_JEV_ROUTING_MIN_CONFIDENCE,
+    ),
+    routingBypassOnKeyword: raw.jevRoutingBypassOnKeyword !== 'false',
+    memoryEnabled: raw.jevMemoryEnabled === 'true',
+    memoryGateThreshold: clampScore(raw.jevMemoryGateThreshold, DEFAULT_JEV_MEMORY_GATE_THRESHOLD),
+  };
+}
+
+/**
+ * 返回给前端的 Jev 可见设置；API Key 只以掩码形式出现。
+ * @returns 掩码后的 Jev 设置
+ */
+export function getVisibleJevSettings(): Pick<
+  VisibleSettings,
+  | 'jevApiUrl'
+  | 'jevModel'
+  | 'jevApiKeyMasked'
+  | 'jevRoutingEnabled'
+  | 'jevRoutingMinConfidence'
+  | 'jevMemoryEnabled'
+  | 'jevMemoryGateThreshold'
+> {
+  const raw: RawSettings = settingsRepo.getAll();
+  return {
+    jevApiUrl: raw.jevApiUrl || DEFAULT_JEV_API_URL,
+    jevModel: raw.jevModel || DEFAULT_JEV_MODEL,
+    jevApiKeyMasked: getMaskedSecret(raw.jevApiKey),
+    jevRoutingEnabled: raw.jevRoutingEnabled === 'true',
+    jevRoutingMinConfidence: clampScore(
+      raw.jevRoutingMinConfidence,
+      DEFAULT_JEV_ROUTING_MIN_CONFIDENCE,
+    ),
+    jevMemoryEnabled: raw.jevMemoryEnabled === 'true',
+    jevMemoryGateThreshold: clampScore(
+      raw.jevMemoryGateThreshold,
+      DEFAULT_JEV_MEMORY_GATE_THRESHOLD,
+    ),
+  };
 }
 
 // 获取内部使用的 AI 设置（优先从激活端点读取，兜底旧 settings）
@@ -240,6 +408,15 @@ export function save({
   vectorStore,
   chromaUrl,
   chromaApiKey,
+  jevApiUrl,
+  jevApiKey,
+  jevModel,
+  jevTimeoutMs,
+  jevRoutingEnabled,
+  jevRoutingMinConfidence,
+  jevRoutingBypassOnKeyword,
+  jevMemoryEnabled,
+  jevMemoryGateThreshold,
 }: SettingsInput): void {
   const settings: Record<string, string> = {
     systemPrompt: systemPrompt || '',
@@ -258,6 +435,17 @@ export function save({
     vectorStore: vectorStore === 'chroma' ? 'chroma' : 'sqlite',
     chromaUrl: chromaUrl || DEFAULT_CHROMA_URL,
   };
+  applyJevSettings(settings, {
+    jevApiUrl,
+    jevApiKey,
+    jevModel,
+    jevTimeoutMs,
+    jevRoutingEnabled,
+    jevRoutingMinConfidence,
+    jevRoutingBypassOnKeyword,
+    jevMemoryEnabled,
+    jevMemoryGateThreshold,
+  });
   if (apiUrl !== undefined) settings.apiUrl = apiUrl;
   if (modelId !== undefined) settings.modelId = modelId;
   if (apiKey) {
