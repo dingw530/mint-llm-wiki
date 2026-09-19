@@ -5,16 +5,15 @@ import { groupConversationsByDate } from '@/shared/utils/conversationGroups';
 
 function ChatIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 4a1 1 0 011 1v6h6a1 1 0 110 2h-6v6a1 1 0 11-2 0v-6H5a1 1 0 110-2h6V5a1 1 0 011-1z" />
     </svg>
   );
 }
@@ -40,7 +39,6 @@ interface ChatSidebarProps {
   loading: boolean;
   activeId: string | null;
   onSelect: (id: string) => void;
-  onCreate: () => void;
   onRename: (id: string, title: string) => void;
   onDelete: (id: string) => void;
 }
@@ -50,7 +48,6 @@ export default function ChatSidebar({
   loading,
   activeId,
   onSelect,
-  onCreate,
   onRename,
   onDelete,
 }: ChatSidebarProps) {
@@ -64,15 +61,18 @@ export default function ChatSidebar({
     onConfirm: () => void;
   } | null>(null);
 
-  const showConfirm = useCallback((opts: {
-    variant: 'danger' | 'accent';
-    title: string;
-    message: string;
-    confirmLabel?: string;
-    onConfirm: () => void;
-  }) => {
-    setConfirmDialog(opts);
-  }, []);
+  const showConfirm = useCallback(
+    (opts: {
+      variant: 'danger' | 'accent';
+      title: string;
+      message: string;
+      confirmLabel?: string;
+      onConfirm: () => void;
+    }) => {
+      setConfirmDialog(opts);
+    },
+    [],
+  );
 
   const startRename = (conv: Conversation) => {
     setEditingId(conv.id);
@@ -88,31 +88,30 @@ export default function ChatSidebar({
 
   const handleRenameKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter') submitRename();
-    else if (e.key === 'Escape') { setEditingId(null); setEditTitle(''); }
+    else if (e.key === 'Escape') {
+      setEditingId(null);
+      setEditTitle('');
+    }
   };
 
   const conversationGroups = groupConversationsByDate(conversations);
 
   return (
     <div className="sidebar-chat-content">
-      <div className="sidebar-actions">
-        <button className="new-chat-btn" onClick={onCreate} disabled={loading}>
-          <PlusIcon />
-          新建对话
-        </button>
-      </div>
       <div className="conversation-list">
         {loading ? (
           <div className="conversation-list-skeleton">
-            {[1,2,3,4,5].map(i => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="skeleton-sidebar-item">
                 <div className="skeleton skeleton-icon" />
                 <div className="skeleton skeleton-title" />
               </div>
             ))}
           </div>
-        ) : conversations.length === 0 && (
-          <div className="empty-state">暂无对话，点击上方按钮新建</div>
+        ) : (
+          conversations.length === 0 && (
+            <div className="empty-state">暂无对话，点击上方按钮新建</div>
+          )
         )}
         {conversationGroups.map((group) => (
           <section className="conversation-group" key={group.label}>
@@ -135,22 +134,33 @@ export default function ChatSidebar({
                   />
                 ) : (
                   <>
-                    <div className="conv-icon"><ChatIcon /></div>
+                    <div className="conv-icon">
+                      <ChatIcon />
+                    </div>
                     <span className="title">{conv.title}</span>
                     <span className="actions">
-                      <button title="重命名" onClick={(e) => { e.stopPropagation(); startRename(conv); }}>
+                      <button
+                        title="重命名"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          startRename(conv);
+                        }}
+                      >
                         <EditIcon />
                       </button>
-                      <button title="删除" onClick={(e) => {
-                        e.stopPropagation();
-                        showConfirm({
-                          variant: 'danger',
-                          title: '删除对话',
-                          message: `确定要删除"${conv.title}"吗？`,
-                          confirmLabel: '删除',
-                          onConfirm: () => onDelete(conv.id),
-                        });
-                      }}>
+                      <button
+                        title="删除"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showConfirm({
+                            variant: 'danger',
+                            title: '删除对话',
+                            message: `确定要删除"${conv.title}"吗？`,
+                            confirmLabel: '删除',
+                            onConfirm: () => onDelete(conv.id),
+                          });
+                        }}
+                      >
                         <TrashIcon />
                       </button>
                     </span>
@@ -168,7 +178,10 @@ export default function ChatSidebar({
           message={confirmDialog.message}
           confirmLabel={confirmDialog.confirmLabel}
           variant={confirmDialog.variant}
-          onConfirm={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+          onConfirm={() => {
+            confirmDialog.onConfirm();
+            setConfirmDialog(null);
+          }}
           onCancel={() => setConfirmDialog(null)}
         />
       )}
