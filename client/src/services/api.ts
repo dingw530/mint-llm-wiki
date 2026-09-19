@@ -36,6 +36,7 @@ export {
   saveSettings,
   testEmbeddingConnection,
   testChromaConnection,
+  testJevConnection,
 } from './api/settings';
 export { sendMessageStream } from './api/streaming';
 export { resolveToolApproval } from './api/toolApprovals';

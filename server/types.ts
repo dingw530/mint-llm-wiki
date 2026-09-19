@@ -115,6 +115,15 @@ export interface SettingsInput {
   vectorStore?: 'sqlite' | 'chroma';
   chromaUrl?: string;
   chromaApiKey?: string;
+  jevApiUrl?: string;
+  jevApiKey?: string;
+  jevModel?: string;
+  jevTimeoutMs?: number;
+  jevRoutingEnabled?: boolean;
+  jevRoutingMinConfidence?: number;
+  jevRoutingBypassOnKeyword?: boolean;
+  jevMemoryEnabled?: boolean;
+  jevMemoryGateThreshold?: number;
 }
 
 // AI 代理内部使用的设置（apiKey 已解密）
@@ -141,6 +150,20 @@ export interface AiSettings {
   chromaApiKey: string;
 }
 
+// TypeSafe Jev 实验功能的内部配置（apiKey 已解密）
+// 刻意不并入 AiSettings：Jev 是自包含子系统，只被 jevClient 与路由/记忆 provider 消费。
+export interface JevSettings {
+  apiUrl: string;
+  apiKey: string;
+  model: string;
+  timeoutMs: number;
+  routingEnabled: boolean;
+  routingMinConfidence: number;
+  routingBypassOnKeyword: boolean;
+  memoryEnabled: boolean;
+  memoryGateThreshold: number;
+}
+
 // 返回给前端的设置（apiKey 脱敏显示）
 export interface VisibleSettings {
   apiUrl: string;
@@ -165,6 +188,13 @@ export interface VisibleSettings {
   vectorStore: 'sqlite' | 'chroma';
   chromaUrl: string;
   chromaApiKeyMasked: string;
+  jevApiUrl: string;
+  jevModel: string;
+  jevApiKeyMasked: string;
+  jevRoutingEnabled: boolean;
+  jevRoutingMinConfidence: number;
+  jevMemoryEnabled: boolean;
+  jevMemoryGateThreshold: number;
 }
 
 // ── Tool call 类型（兼容 OpenAI function calling 格式） ──

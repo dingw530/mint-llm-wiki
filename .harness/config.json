@@ -12,27 +12,84 @@
   "checks": [
     {
       "name": "unit",
+      "evidenceLevel": "unit",
+      "invariants": ["no_import_side_effect", "idempotence", "bounded_timeout"],
       "command": "node",
       "args": ["scripts/test-runner.mjs"],
       "timeoutMs": 180000
     },
     {
       "name": "browser-ac",
+      "evidenceLevel": "browser",
       "command": "node",
       "args": [".harness/browser-scenario.mjs"],
       "timeoutMs": 120000
     },
     {
       "name": "coverage",
+      "evidenceLevel": "static",
       "command": "npm",
-      "args": ["run", "--workspace=server", "test:coverage:check", "--", "--poolOptions.threads.singleThread"],
+      "args": [
+        "run",
+        "--workspace=server",
+        "test:coverage:check",
+        "--",
+        "--poolOptions.threads.singleThread"
+      ],
       "timeoutMs": 120000
     },
     {
       "name": "boundary",
+      "evidenceLevel": "integration",
+      "invariants": ["regression_free"],
       "command": "npm",
       "args": ["run", "--workspace=server", "test:boundary"],
       "timeoutMs": 30000
+    },
+    {
+      "name": "lifecycle-integration",
+      "evidenceLevel": "integration",
+      "invariants": ["rollback", "ordering", "no_new_work", "drain", "bounded_timeout"],
+      "command": "../node_modules/.bin/vitest",
+      "args": [
+        "run",
+        "runtime/__tests__/lifecycle.integration.test.ts",
+        "--config",
+        "vitest.config.ts",
+        "--poolOptions.threads.singleThread"
+      ],
+      "cwd": "server",
+      "timeoutMs": 60000
+    },
+    {
+      "name": "signal-smoke",
+      "evidenceLevel": "process-smoke",
+      "invariants": [
+        "single_start",
+        "explicit_listen_mode",
+        "drain",
+        "bounded_timeout",
+        "no_resource_leak"
+      ],
+      "command": "node",
+      "args": ["scripts/lifecycle-signal-smoke.mjs"],
+      "timeoutMs": 60000
+    },
+    {
+      "name": "docker-smoke",
+      "evidenceLevel": "process-smoke",
+      "invariants": ["single_start", "explicit_listen_mode", "bounded_timeout", "no_resource_leak"],
+      "command": "node",
+      "args": ["scripts/docker-lifecycle-smoke.mjs"],
+      "timeoutMs": 900000
+    },
+    {
+      "name": "electron-smoke",
+      "evidenceLevel": "process-smoke",
+      "invariants": ["single_start", "drain", "no_resource_leak"],
+      "command": "node",
+      "args": ["scripts/electron-lifecycle-smoke.mjs"],
+      "timeoutMs": 180000
     }
   ]
 }

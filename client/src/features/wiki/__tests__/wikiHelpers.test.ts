@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   getFadedColor,
+  getGraphEdgeStrokeStyle,
+  getGraphEdgeLabelOpacity,
   getGraphEdgeWidth,
   getGraphNodeLabel,
+  getGraphNodeSize,
+  isReferenceGraphEdge,
   isWeakGraphEdge,
   removeIsolatedGraphNodes,
 } from '../WikiGraphPanel';
@@ -91,6 +95,9 @@ describe('graph and file display helpers', () => {
   it('fades colors, truncates labels and formats file sizes', () => {
     expect(getFadedColor('#123456')).toBe('rgba(18,52,86,0.12)');
     expect(getGraphNodeLabel('12345678901234567')).toBe('1234567890123456...');
+    expect(getGraphNodeSize(0)).toBe(8);
+    expect(getGraphNodeSize(16)).toBe(18);
+    expect(getGraphNodeSize(200)).toBe(28);
     expect(formatFileSize(0)).toBe('0 B');
     expect(formatFileSize(1024)).toBe('1.0 KB');
     expect(formatFileSize(1024 * 1024)).toBe('1.0 MB');
@@ -104,6 +111,15 @@ describe('graph and file display helpers', () => {
     expect(getGraphEdgeWidth(edge({ relation: 'references' }))).toBe(0.6);
     expect(isWeakGraphEdge({ relation: 'shared_tag', strength: 'weak' })).toBe(true);
     expect(getGraphEdgeWidth({ relation: 'shared_tag', strength: 'strong' })).toBeCloseTo(0.92);
+  });
+
+  it('styles reference edges as faded dashed lines', () => {
+    expect(isReferenceGraphEdge(edge({ relation: 'references' }))).toBe(true);
+    expect(isReferenceGraphEdge(edge({ relation: 'supports' }))).toBe(false);
+    expect(getGraphEdgeStrokeStyle(edge({ relation: 'references' }))).toBe('#DDE3E8');
+    expect(getGraphEdgeStrokeStyle(edge({ relation: 'supports' }))).toBe('#C3CBD3');
+    expect(getGraphEdgeLabelOpacity(edge({ relation: 'references' }))).toBe(0);
+    expect(getGraphEdgeLabelOpacity(edge({ relation: 'supports' }))).toBe(1);
   });
 
   it('removes isolated nodes while retaining connected edges', () => {

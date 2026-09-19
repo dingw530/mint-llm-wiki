@@ -6,7 +6,7 @@
  * require() shim 由 scripts/bundle.cjs 在打包后注入到文件头部，
  * 确保动态 require()（如 better-sqlite3 wrapper）在 ESM 环境下可用。
  */
-export { startServer } from './index.js';
+export { shutdownServer, startServer, startServerRuntime } from './index.js';
 export { IpcSink } from './services/sink.js';
 export { endpointRegistry, registerIpcHandlers } from './endpoints/index.js';
 export { conversationsIpcOnlyEndpoints } from './endpoints/definitions/conversations.js';

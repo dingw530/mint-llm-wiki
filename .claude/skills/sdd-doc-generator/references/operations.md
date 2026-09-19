@@ -31,6 +31,16 @@ spec → design → plan → apply → verify → check-doc → archive
 4. 每完成一个 TP，立即更新 exec-plan 和 traceability。
 5. 所有验收证据通过后才进入归档。
 
+### Evidence-first completion gate
+
+阶段完成前必须完成以下聚合检查：
+
+```text
+AC statement → invariant → probe → evidence artifact → AC status
+```
+
+仅有测试命令成功不等于证据充分。`apply` 可以记录局部通过，但 `verify` 必须把证据不足的 AC 标记为 `UNVERIFIED`，不能提前改成 `PASS`。
+
 ## Goal 详细规则
 
 ### 启动预算
@@ -81,7 +91,7 @@ Claude Code 由 Haiku 读取进度区块；Codex 自检全部 PASS 后才执行 
 | design | design-doc 创建，方案/决策/DS 追溯完整，验收证据矩阵建立 |
 | plan | exec-plan 创建，TP 初始化为“待启动”，继承证据矩阵 |
 | apply | 全部 TP 完成，执行记录完整，矩阵逐项更新，self-check 通过 |
-| verify | consistency + convention 报告完成或记录降级，矩阵无 FAIL/未验证项，等级不足已修复 |
+| verify | consistency + convention 报告完成或记录降级；每条 AC 的 requiredEvidence 和 invariants 均满足；矩阵无 FAIL/UNVERIFIED 项 |
 | pipeline | 各阶段依次通过并完成 archive |
 
 ## 追溯、执行与偏差
@@ -109,5 +119,6 @@ verify、check-doc 通过后：
 2. 更新 product-spec/design-doc/exec-plan 快捷索引。
 3. 保存审计报告。
 4. 交接记录写明当前进度、下一步、阻塞/风险和关键决策。
+5. 若变更关联技术债务，确认债务状态与 AC/证据一致；不得留下“已实现但关联债务仍待开始”的矛盾状态。
 
 存在 FAIL、未验证项或未处理阻塞时，不得标记完成。

@@ -1,0 +1,274 @@
+{
+  "scenarios": [
+    {
+      "id": "recoverable-run-is-visible-with-unknown-tool-result",
+      "acceptanceCriteria": ["AC-001", "AC-002"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": { "agents": [{ "id": "general", "label": "通用助手", "available": true }] }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": { "showReactSteps": true, "routingMode": "manual" }
+          },
+          { "pattern": "**/api/endpoints", "method": "GET", "body": { "endpoints": [] } },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "recovery",
+                  "title": "恢复会话",
+                  "type": "chat",
+                  "createdAt": "2026-09-18T09:00:00.000Z",
+                  "updatedAt": "2026-09-18T09:00:00.000Z",
+                  "lockedAgent": null,
+                  "routingMode": "manual"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/*/messages",
+            "method": "GET",
+            "body": { "messages": [] }
+          },
+          {
+            "pattern": "**/api/conversations/*/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ""
+          },
+          {
+            "pattern": "**/api/conversations/recovery/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": [
+                {
+                  "runId": "run-interrupted",
+                  "status": "interrupted",
+                  "unknownToolCount": 1,
+                  "unknownTools": [
+                    { "toolName": "bash", "recoveryLevel": "requires_confirmation" }
+                  ],
+                  "actions": ["retry", "abandon"]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "markers": ["等待回复..."],
+      "steps": [
+        { "action": "waitFor", "text": "运行已中断", "exact": true },
+        { "action": "assertText", "text": "工具结果未知", "exact": true },
+        { "action": "assertText", "text": "不会自动重放", "exact": true },
+        { "action": "assertRequests" }
+      ],
+      "assertRequests": [
+        {
+          "method": "GET",
+          "contains": "/api/conversations/recovery/agent-runs/recoverable",
+          "status": 200,
+          "countExactly": 1
+        }
+      ]
+    },
+    {
+      "id": "abandon-recoverable-run-is-idempotent",
+      "acceptanceCriteria": ["AC-003", "AC-004"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": { "agents": [{ "id": "general", "label": "通用助手", "available": true }] }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": { "showReactSteps": true, "routingMode": "manual" }
+          },
+          { "pattern": "**/api/endpoints", "method": "GET", "body": { "endpoints": [] } },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "abandon",
+                  "title": "放弃恢复",
+                  "type": "chat",
+                  "createdAt": "2026-09-18T09:00:00.000Z",
+                  "updatedAt": "2026-09-18T09:00:00.000Z",
+                  "lockedAgent": null,
+                  "routingMode": "manual"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/*/messages",
+            "method": "GET",
+            "body": { "messages": [] }
+          },
+          {
+            "pattern": "**/api/conversations/*/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ""
+          },
+          {
+            "pattern": "**/api/conversations/abandon/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": [
+                {
+                  "runId": "run-abandon",
+                  "status": "interrupted",
+                  "unknownToolCount": 1,
+                  "unknownTools": [{ "toolName": "bash", "recoveryLevel": "never" }],
+                  "actions": ["abandon"]
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/abandon/agent-runs/run-abandon/recovery-actions",
+            "method": "POST",
+            "body": { "action": "abandon", "status": "resolved_abandoned", "runId": "run-abandon" }
+          }
+        ]
+      },
+      "markers": ["等待回复..."],
+      "steps": [
+        { "action": "waitFor", "target": { "role": "button", "name": "放弃运行" } },
+        { "action": "click", "target": { "role": "button", "name": "放弃运行" } },
+        { "action": "assertNotText", "text": "运行已中断" },
+        { "action": "assertRequests" }
+      ],
+      "assertRequests": [
+        {
+          "method": "POST",
+          "contains": "/api/conversations/abandon/agent-runs/run-abandon/recovery-actions",
+          "status": 200,
+          "countExactly": 1
+        }
+      ]
+    },
+    {
+      "id": "retry-requires-explicit-confirmation-and-creates-one-successor",
+      "acceptanceCriteria": ["AC-003", "AC-004"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": { "agents": [{ "id": "general", "label": "通用助手", "available": true }] }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": { "showReactSteps": true, "routingMode": "manual" }
+          },
+          { "pattern": "**/api/endpoints", "method": "GET", "body": { "endpoints": [] } },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "retry",
+                  "title": "重试恢复",
+                  "type": "chat",
+                  "createdAt": "2026-09-18T09:00:00.000Z",
+                  "updatedAt": "2026-09-18T09:00:00.000Z",
+                  "lockedAgent": null,
+                  "routingMode": "manual"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/*/messages",
+            "method": "GET",
+            "body": { "messages": [] }
+          },
+          {
+            "pattern": "**/api/conversations/*/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ""
+          },
+          {
+            "pattern": "**/api/conversations/retry/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": [
+                {
+                  "runId": "run-retry",
+                  "status": "interrupted",
+                  "unknownToolCount": 1,
+                  "unknownTools": [
+                    { "toolName": "http_fetch", "recoveryLevel": "requires_confirmation" }
+                  ],
+                  "actions": ["retry", "abandon"]
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/retry/agent-runs/run-retry/recovery-actions",
+            "method": "POST",
+            "body": {
+              "action": {
+                "id": "action-retry",
+                "action": "retry",
+                "status": "reserved",
+                "successorRunId": "run-successor"
+              }
+            }
+          },
+          {
+            "pattern": "**/api/conversations/retry/agent-runs/recovery-actions/action-retry/stream",
+            "method": "POST",
+            "contentType": "text/event-stream",
+            "body": "data: [DONE]\n\n"
+          }
+        ]
+      },
+      "markers": ["等待回复..."],
+      "steps": [
+        { "action": "waitFor", "target": { "role": "button", "name": "重试运行" } },
+        { "action": "click", "target": { "role": "button", "name": "重试运行" } },
+        {
+          "action": "waitFor",
+          "text": "这会创建新的运行，无法确认旧工具调用是否已经执行。",
+          "exact": true
+        },
+        { "action": "click", "target": { "role": "button", "name": "确认重试" } },
+        { "action": "assertNotText", "text": "运行已中断" },
+        { "action": "assertRequests" }
+      ],
+      "assertRequests": [
+        {
+          "method": "POST",
+          "contains": "/api/conversations/retry/agent-runs/run-retry/recovery-actions",
+          "status": 200,
+          "countExactly": 1
+        }
+      ]
+    }
+  ]
+}

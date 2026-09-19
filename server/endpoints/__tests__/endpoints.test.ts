@@ -16,7 +16,10 @@ process.env.AI_CHAT_DB_PATH = TEST_DB_PATH;
 
 type RequestFn = (url: string, options?: any) => Promise<Response>;
 
-const { server, request } = await (async (): Promise<{ server: Server | null; request: RequestFn | null }> => {
+const { server, request } = await (async (): Promise<{
+  server: Server | null;
+  request: RequestFn | null;
+}> => {
   try {
     const appModule = await import('../../app.js');
     const app = appModule.default;
@@ -26,7 +29,8 @@ const { server, request } = await (async (): Promise<{ server: Server | null; re
     await new Promise<void>((resolve, reject) => {
       srv = app.listen(0, () => {
         const address = srv.address();
-        if (!address || typeof address === 'string') throw new Error('Test server did not bind to a port');
+        if (!address || typeof address === 'string')
+          throw new Error('Test server did not bind to a port');
         const baseUrl = `http://localhost:${address.port}`;
         req = (url: string, options: any = {}) => {
           return fetch(`${baseUrl}${url}`, {
@@ -51,11 +55,20 @@ afterAll(() => {
     server.close();
   }
   if (fs.existsSync(TEST_DB_PATH)) {
-    try { fs.unlinkSync(TEST_DB_PATH); } catch { /* ignore */ }
+    try {
+      fs.unlinkSync(TEST_DB_PATH);
+    } catch {
+      /* ignore */
+    }
   }
   for (const ext of ['-wal', '-shm']) {
     const p = TEST_DB_PATH + ext;
-    if (fs.existsSync(p)) try { fs.unlinkSync(p); } catch { /* ignore */ }
+    if (fs.existsSync(p))
+      try {
+        fs.unlinkSync(p);
+      } catch {
+        /* ignore */
+      }
   }
 });
 
@@ -479,5 +492,89 @@ runIf(server)('NF-004: Endpoint CRUD Response Time', () => {
     const duration = performance.now() - start;
     expect(duration).toBeLessThan(500);
     expect(res.ok).toBe(true);
+  });
+});
+
+runIf(server)('AC-013: Jev 设置声明式端点', () => {
+  it('saves Jev settings and returns them masked over HTTP', async () => {
+    const save = await request!('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify({
+        jevApiUrl: 'https://api.typesafe.ai/v1/systemone',
+        jevApiKey: 'sk-http-test-key',
+        jevModel: 'jev-latest',
+        jevRoutingEnabled: true,
+        jevRoutingMinConfidence: 0.6,
+        jevMemoryEnabled: true,
+        jevMemoryGateThreshold: 0.4,
+      }),
+    });
+    expect(save.status).toBe(200);
+    expect((await save.json()).success).toBe(true);
+
+    const res = await request!('/api/settings');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      jevApiUrl: 'https://api.typesafe.ai/v1/systemone',
+      jevModel: 'jev-latest',
+      jevRoutingEnabled: true,
+      jevRoutingMinConfidence: 0.6,
+      jevMemoryEnabled: true,
+      jevMemoryGateThreshold: 0.4,
+    });
+    expect(body.jevApiKeyMasked).toBe('sk-****y');
+    expect(JSON.stringify(body)).not.toContain('sk-http-test-key');
+  });
+
+  it('rejects an invalid Jev endpoint URL', async () => {
+    const res = await request!('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ jevApiUrl: 'not-a-url' }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('jevApiUrl');
+  });
+
+  it('rejects an out-of-range Jev confidence threshold', async () => {
+    const res = await request!('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ jevRoutingMinConfidence: 1.5 }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain('jevRoutingMinConfidence');
+  });
+
+  it('reports a readable failure from the Jev connection test endpoint without throwing', async () => {
+    // 指向本机未监听端口，避免测试依赖外网；连接被拒应快速返回可读失败。
+    const res = await request!('/api/settings/test-jev-connection', {
+      method: 'POST',
+      body: JSON.stringify({
+        apiUrl: 'http://127.0.0.1:1/v1/systemone',
+        apiKey: 'sk-probe-key',
+        model: 'jev-latest',
+      }),
+    });
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.success).toBe(false);
+    expect(body.message).toBe('Jev 端点不可达或返回异常状态');
+  });
+
+  it('does not create a database migration for the Jev settings', async () => {
+    // settings 是纯 KV 表，Jev 设置只新增键，不新增列或表。
+    const res = await request!('/api/settings');
+    const body = await res.json();
+    expect(Object.keys(body)).toEqual(
+      expect.arrayContaining([
+        'jevApiUrl',
+        'jevModel',
+        'jevApiKeyMasked',
+        'jevRoutingEnabled',
+        'jevRoutingMinConfidence',
+        'jevMemoryEnabled',
+        'jevMemoryGateThreshold',
+      ]),
+    );
   });
 });

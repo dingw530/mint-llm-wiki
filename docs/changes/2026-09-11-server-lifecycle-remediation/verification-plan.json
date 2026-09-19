@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "Importing app and index has no startup side effects",
+      "risk": "medium",
+      "invariants": ["no_import_side_effect"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "Node, CLI and Docker each start one HTTP server",
+      "risk": "high",
+      "invariants": ["single_start", "explicit_listen_mode"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["lifecycle-integration", "docker-smoke"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "Runtime start and shutdown are idempotent",
+      "risk": "high",
+      "invariants": ["idempotence", "bounded_timeout"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "Startup failure rolls back every resource already created",
+      "risk": "high",
+      "invariants": ["rollback", "ordering"],
+      "requiredEvidence": ["integration"],
+      "probes": ["lifecycle-integration"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "Shutdown stops new work and drains or bounds active work before dependency close",
+      "risk": "high",
+      "invariants": ["no_new_work", "drain", "ordering", "no_resource_leak"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["lifecycle-integration", "signal-smoke"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "Worker, queue, SSE/HTTP, MCP, Langfuse, timer and SQLite close in the required order",
+      "risk": "high",
+      "invariants": ["ordering", "bounded_timeout"],
+      "requiredEvidence": ["integration"],
+      "probes": ["lifecycle-integration"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "Electron production waits for runtime shutdown and development does not duplicate HTTP",
+      "risk": "high",
+      "invariants": ["single_start", "drain", "no_resource_leak"],
+      "requiredEvidence": ["process-smoke"],
+      "probes": ["electron-smoke"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "Docker startup, request, SIGTERM, exit and port release are verified",
+      "risk": "high",
+      "invariants": ["explicit_listen_mode", "bounded_timeout", "no_resource_leak"],
+      "requiredEvidence": ["process-smoke"],
+      "probes": ["docker-smoke"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "Project regression checks pass",
+      "risk": "medium",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["unit", "integration"],
+      "probes": ["unit", "boundary"]
+    }
+  ]
+}

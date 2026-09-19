@@ -137,6 +137,13 @@ export interface VisibleSettings {
   vectorStore: 'sqlite' | 'chroma';
   chromaUrl: string;
   chromaApiKeyMasked: string;
+  jevApiUrl: string;
+  jevModel: string;
+  jevApiKeyMasked: string;
+  jevRoutingEnabled: boolean;
+  jevRoutingMinConfidence: number;
+  jevMemoryEnabled: boolean;
+  jevMemoryGateThreshold: number;
 }
 
 export interface SettingsInput {
@@ -158,6 +165,15 @@ export interface SettingsInput {
   vectorStore?: 'sqlite' | 'chroma';
   chromaUrl?: string;
   chromaApiKey?: string;
+  jevApiUrl?: string;
+  jevApiKey?: string;
+  jevModel?: string;
+  jevTimeoutMs?: number;
+  jevRoutingEnabled?: boolean;
+  jevRoutingMinConfidence?: number;
+  jevRoutingBypassOnKeyword?: boolean;
+  jevMemoryEnabled?: boolean;
+  jevMemoryGateThreshold?: number;
 }
 
 // ── SSE 流类型 ──
@@ -348,6 +364,7 @@ export interface ElectronAPI {
     regenerate?: boolean,
     slashCommand?: SendOptions['slashCommand'],
   ) => void;
+  streamRecoveryAction: (conversationId: string, actionId: string) => void;
   onChunk: (conversationId: string, callback: (data: string) => void) => () => void;
   onDone: (conversationId: string, callback: () => void) => () => void;
   onError: (conversationId: string, callback: (err: string) => void) => () => void;
@@ -372,6 +389,16 @@ export interface ElectronAPI {
     approvalId: string,
     data: { action: 'approve' | 'deny' },
   ) => Promise<unknown>;
+  getRecoverableAgentRuns: (conversationId: string) => Promise<unknown>;
+  resolveAgentRunRecovery: (
+    conversationId: string,
+    runId: string,
+    data: {
+      action: 'continue' | 'retry' | 'abandon';
+      idempotencyKey: string;
+      confirmation?: boolean;
+    },
+  ) => Promise<unknown>;
 
   // 消息
   getMessages: (convId: string) => Promise<{ messages: Message[] }>;
@@ -387,6 +414,10 @@ export interface ElectronAPI {
   testChromaConnection: (data: { url: string; apiKey?: string }) => Promise<{
     success: boolean;
     message?: string;
+  }>;
+  testJevConnection: (data: { apiUrl?: string; apiKey?: string; model?: string }) => Promise<{
+    success: boolean;
+    message: string;
   }>;
 
   // Agent

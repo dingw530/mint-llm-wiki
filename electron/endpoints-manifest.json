@@ -52,6 +52,20 @@
     "async": true
   },
   {
+    "id": "settings:testJevConnection",
+    "ipcChannel": "settings:testJevConnection",
+    "preloadMethod": "testJevConnection",
+    "method": "POST",
+    "httpPath": "/settings/test-jev-connection",
+    "args": [
+      {
+        "from": "body"
+      }
+    ],
+    "result": "direct",
+    "async": true
+  },
+  {
     "id": "memories:list",
     "ipcChannel": "memories:list",
     "preloadMethod": "getMemories",
@@ -442,6 +456,44 @@
       {
         "from": "path",
         "name": "id"
+      }
+    ],
+    "result": "direct",
+    "async": true
+  },
+  {
+    "id": "conversations:listRecoverableRuns",
+    "ipcChannel": "conversations:listRecoverableRuns",
+    "preloadMethod": "getRecoverableAgentRuns",
+    "method": "GET",
+    "httpPath": "/conversations/:id/agent-runs/recoverable",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      }
+    ],
+    "result": "direct",
+    "async": true
+  },
+  {
+    "id": "conversations:resolveRecoveryAction",
+    "ipcChannel": "conversations:resolveRecoveryAction",
+    "preloadMethod": "resolveAgentRunRecovery",
+    "method": "POST",
+    "httpPath": "/conversations/:id/agent-runs/:runId/recovery-actions",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      },
+      {
+        "from": "path",
+        "name": "runId"
+      },
+      {
+        "from": "body",
+        "name": ""
       }
     ],
     "result": "direct",

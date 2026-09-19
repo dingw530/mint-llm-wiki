@@ -76,6 +76,14 @@ export function getDb(): DatabaseConstructor.Database {
   return db;
 }
 
+/** Close the process-owned database handle after all workers stop. */
+export function closeDb(): void {
+  if (!db) return;
+  db.close();
+  db = undefined;
+  vectorExtensionLoaded = false;
+}
+
 // ── 阶段一：Schema 定义 ──
 // 完整的当前表结构（含所有后续迁移加的列），新数据库通过此处一次性建齐
 function createSchema(): void {

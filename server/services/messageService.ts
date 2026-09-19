@@ -4,6 +4,8 @@ import * as messageRepo from '../repositories/messageRepository.js';
 import * as settingsService from './api/settingsService.js';
 import * as memoryService from './api/memoryService.js';
 import { enqueueMemoryProcessing } from './api/memoryJobService.js';
+import { evaluateMemoryGate } from './memoryGateProviders/index.js';
+import { getErrorMessage } from '../utils/typeGuards.js';
 import * as agentService from './api/agentService.js';
 import { routingService } from './api/routingService.js';
 import { streamChat } from './aiProxy.js';
@@ -18,8 +20,19 @@ import { AI_REQUEST_TIMEOUT_MS } from './adapters/apiAdapter.js';
 import * as a2uiRepository from '../repositories/a2uiRepository.js';
 import type { PersistedUiBlock } from '../types.js';
 import { applyContextProviders } from './contextProvider.js';
-import { type AgentRun, agentRunRegistry, createDurableAgentRun } from './agentRun.js';
-import { buildSlashCommandContext, validateSlashCommand, type SlashCommandIntent } from './api/slashCommandService.js';
+import { type AgentRun, agentRunRegistry } from './agentRun.js';
+import { createDurableAgentRun } from './agentRunFactory.js';
+import { ReactEventEmitter } from './reactEvents.js';
+import {
+  buildSlashCommandContext,
+  validateSlashCommand,
+  type SlashCommandIntent,
+} from './api/slashCommandService.js';
+import {
+  claimRecoveryAction,
+  completeRecoveryAction,
+  recoverAgentRun,
+} from './agentRunRecoveryService.js';
 
 export function getMessages(conversationId: string) {
   const conversation = conversationRepo.findById(conversationId);
@@ -71,6 +84,56 @@ export function resumeToolApproval(
   return streamToolApproval(conversationId, approvalId, action, sink);
 }
 
+/** Streams a one-time, user-confirmed retry from its durable message reference. */
+export async function streamRecoveryAction(
+  conversationId: string,
+  actionId: string,
+  sink: Sink,
+): Promise<void> {
+  const action = claimRecoveryAction(actionId);
+  if (action.conversationId !== conversationId || !action.successorRunId) {
+    throw new Error('Recovery action does not belong to this conversation');
+  }
+  const origin = recoverAgentRun(action.originRunId);
+  if (!origin.originMessageId || !origin.executionMode) {
+    throw new Error('AgentRun has no recoverable execution reference');
+  }
+  const history = messageRepo.getHistoryThroughMessageId(conversationId, origin.originMessageId);
+  const settings = settingsService.getAiSettings();
+  const agentInfo = origin.agentId ? agentService.findById(origin.agentId) : undefined;
+  const systemPrompt = agentInfo?.systemPrompt || settings.systemPrompt;
+  const requestMessages: HistoryMessage[] = systemPrompt
+    ? [{ role: 'system', content: systemPrompt }, ...history]
+    : history;
+  const run = createDurableAgentRun({
+    runId: action.successorRunId,
+    conversationId,
+    originMessageId: origin.originMessageId,
+    ...(origin.agentId ? { agentId: origin.agentId } : {}),
+    executionMode: origin.executionMode,
+  });
+  agentRunRegistry.register(run);
+  new ReactEventEmitter(run).emit({ type: 'run_started', state: 'running' });
+  try {
+    if (origin.executionMode === 'react') {
+      await reactChat(
+        requestMessages,
+        settings,
+        sink,
+        origin.agentId,
+        undefined,
+        conversationId,
+        undefined,
+        run,
+      );
+    } else {
+      await streamChat(requestMessages, settings, sink, origin.agentId, conversationId, run);
+    }
+  } finally {
+    completeRecoveryAction(actionId);
+  }
+}
+
 // 发送消息：保存用户消息 → 路由决策 → 拼接历史 → SSE 流式调用 AI → 保存 AI 回复
 interface FileAttachment {
   name: string;
@@ -78,7 +141,15 @@ interface FileAttachment {
   type?: string;
 }
 
-export async function sendMessage(conversationId: string, content: string, sink: Sink, agent?: string, regenerate?: boolean, files?: FileAttachment[], slashCommand?: SlashCommandIntent): Promise<void> {
+export async function sendMessage(
+  conversationId: string,
+  content: string,
+  sink: Sink,
+  agent?: string,
+  regenerate?: boolean,
+  files?: FileAttachment[],
+  slashCommand?: SlashCommandIntent,
+): Promise<void> {
   const deferredSink = new DeferredEndSink(sink);
   const conversation = conversationRepo.findById(conversationId);
   if (!conversation) {
@@ -86,7 +157,8 @@ export async function sendMessage(conversationId: string, content: string, sink:
     err.status = 404;
     throw err;
   }
-  const validatedSlashCommand = slashCommand === undefined ? undefined : validateSlashCommand(slashCommand);
+  const validatedSlashCommand =
+    slashCommand === undefined ? undefined : validateSlashCommand(slashCommand);
   if (slashCommand !== undefined && !validatedSlashCommand) {
     const err: HttpError = new Error('Invalid slash command or empty command input');
     err.status = 400;
@@ -114,13 +186,20 @@ export async function sendMessage(conversationId: string, content: string, sink:
       }
     }
     if (fileParts.length > 0) {
-      augmentedContent = (content || '') + '\n\n以下是从上传文件中提取的内容：\n' + fileParts.join('\n');
+      augmentedContent =
+        (content || '') + '\n\n以下是从上传文件中提取的内容：\n' + fileParts.join('\n');
     }
   }
 
   // 先持久化用户消息（非重新生成场景），确保不丢失
   if (!regenerate) {
-    messageRepo.create({ id: userMsgId, conversationId, role: 'user', content: augmentedContent, createdAt: now });
+    messageRepo.create({
+      id: userMsgId,
+      conversationId,
+      role: 'user',
+      content: augmentedContent,
+      createdAt: now,
+    });
     messageRepo.updateConversationTimestamp(conversationId, now);
   }
 
@@ -164,7 +243,10 @@ export async function sendMessage(conversationId: string, content: string, sink:
       systemPrompt = agentInfo.systemPrompt;
     }
   }
-  if (validatedSlashCommand) systemPrompt = [systemPrompt, buildSlashCommandContext(validatedSlashCommand)].filter(Boolean).join('\n\n');
+  if (validatedSlashCommand)
+    systemPrompt = [systemPrompt, buildSlashCommandContext(validatedSlashCommand)]
+      .filter(Boolean)
+      .join('\n\n');
 
   const messages: HistoryMessage[] = systemPrompt
     ? [{ role: 'system', content: systemPrompt }, ...history]
@@ -188,30 +270,46 @@ export async function sendMessage(conversationId: string, content: string, sink:
       }
     }
 
-    const { content: fullContent, reasoning: fullReasoning, uiBlocks: fullUiBlocks } = useReact
+    const {
+      content: fullContent,
+      reasoning: fullReasoning,
+      uiBlocks: fullUiBlocks,
+    } = useReact
       ? await reactChat(
-        requestMessages,
-        settings,
-        deferredSink,
-        resolvedAgent,
-        orchestratorSignal,
-        conversationId,
-        undefined,
-        createRegisteredRun(conversationId),
-      )
+          requestMessages,
+          settings,
+          deferredSink,
+          resolvedAgent,
+          orchestratorSignal,
+          conversationId,
+          undefined,
+          createRegisteredRun(
+            conversationId,
+            regenerate ? undefined : userMsgId,
+            resolvedAgent,
+            'react',
+          ),
+        )
       : await streamChat(
-        requestMessages,
-        settings,
-        deferredSink,
-        resolvedAgent,
-        conversationId,
-        createRegisteredRun(conversationId),
-      );
+          requestMessages,
+          settings,
+          deferredSink,
+          resolvedAgent,
+          conversationId,
+          createRegisteredRun(
+            conversationId,
+            regenerate ? undefined : userMsgId,
+            resolvedAgent,
+            'stream',
+          ),
+        );
 
     clearTimeout(orchestratorTimer);
     // AI 回复完成后持久化（流式结束时才写入）
+    let persistedAssistantMessageId: string | null = null;
     if (fullContent) {
       const assistantMessageId = uuidv4();
+      persistedAssistantMessageId = assistantMessageId;
       messageRepo.create({
         id: assistantMessageId,
         conversationId,
@@ -221,15 +319,13 @@ export async function sendMessage(conversationId: string, content: string, sink:
         createdAt: new Date().toISOString(),
       });
       persistUiBlocks(assistantMessageId, fullUiBlocks);
-
-      // 异步提取记忆（v1.5.1 增加价值判断预检查）
-      if (settings.memoryEnabled) {
-        if (memoryService.isConversationValuable(content)) {
-          enqueueMemoryProcessing(conversationId, assistantMessageId);
-        }
-      }
     }
     deferredSink.flush();
+
+    // 记忆门控可能发起网络调用，必须在响应结束之后异步执行，否则会延长单条消息的响应时间。
+    if (persistedAssistantMessageId && settings.memoryEnabled) {
+      scheduleMemoryExtraction(content, conversationId, persistedAssistantMessageId);
+    }
   } catch (err) {
     console.error('AI streaming error:', err);
     if (!deferredSink.writableEnded) {
@@ -241,8 +337,53 @@ export async function sendMessage(conversationId: string, content: string, sink:
 }
 
 /** Creates the process-local run that owns one user-visible chat invocation. */
-function createRegisteredRun(conversationId: string): AgentRun {
-  const run = createDurableAgentRun({ runId: uuidv4(), conversationId });
+function createRegisteredRun(
+  conversationId: string,
+  originMessageId: string | undefined,
+  agentId: string | undefined,
+  executionMode: 'react' | 'stream',
+): AgentRun {
+  const run = createDurableAgentRun({
+    runId: uuidv4(),
+    conversationId,
+    ...(originMessageId ? { originMessageId } : {}),
+    ...(agentId ? { agentId } : {}),
+    executionMode,
+  });
   agentRunRegistry.register(run);
   return run;
+}
+
+/**
+ * 执行一次记忆门控：读取实验设置 → 判定 → 写审计 → 命中时入队提取任务。
+ * @param userContent 触发本轮的 user 消息
+ * @param conversationId 会话 id
+ * @param assistantMessageId 助手消息 id，用作提取快照锚点与审计来源
+ */
+async function runMemoryGate(
+  userContent: string,
+  conversationId: string,
+  assistantMessageId: string,
+): Promise<void> {
+  const jev = settingsService.getJevSettings();
+  const resolution = await evaluateMemoryGate({ userContent, conversationId }, { jev });
+  memoryService.recordMemoryGateOutcome(resolution, conversationId, assistantMessageId);
+  if (resolution.memorize) enqueueMemoryProcessing(conversationId, assistantMessageId);
+}
+
+/**
+ * 响应结束后异步执行记忆门控，命中则入队提取任务。
+ * 门控失败不影响对话，只记录审计事件。
+ * @param userContent 触发本轮的 user 消息
+ * @param conversationId 会话 id
+ * @param assistantMessageId 助手消息 id
+ */
+function scheduleMemoryExtraction(
+  userContent: string,
+  conversationId: string,
+  assistantMessageId: string,
+): void {
+  void runMemoryGate(userContent, conversationId, assistantMessageId).catch((error) => {
+    console.error('[memory] gate failed', getErrorMessage(error));
+  });
 }

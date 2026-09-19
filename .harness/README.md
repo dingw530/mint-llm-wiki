@@ -2,6 +2,8 @@
 
 独立于 `sdd-doc-generator` 的运行时反馈层。它读取 `docs/changes/<change-id>/` 下的 SDD 产物，执行显式检查，并保存测试—修改—测试循环的证据。默认浏览器检查读取当前变更的 `browser-scenarios.json`，只执行绑定到当前 Spec AC 的外部 `playwright-cli` 场景，不要求把 Playwright 或 Electron 绑定为项目依赖。
 
+L2 变更应在同一目录提供 `verification-plan.json`，声明每条 AC 的 `requiredEvidence` 和 probe。配置了验证计划时，Harness 会聚合 AC 级别的 `PASS`、`UNVERIFIED`、`FAIL` 或 `BLOCKED`；命令 exit code 全部为 0 但证据等级不足时，verify 仍失败。没有验证计划的历史变更进入 legacy 模式，只有显式传入 `--allow-legacy` 才允许命令返回 completed。
+
 ## 命令
 
 ```bash
@@ -24,6 +26,12 @@ npm run dev
 HARNESS_BROWSER_URL=http://localhost:5800 npm run harness:browser -- --change 2026-07-24-harness-feedback-loop
 ```
 
+调试历史变更可以显式允许 legacy 验证，但不得将其作为完整规格验收证据：
+
+```bash
+node .harness/cli.mjs verify --change <change-id> --allow-legacy
+```
+
 编辑器通过 JSON 数组注入，避免把失败输出拼进 shell：
 
 ```bash
@@ -33,7 +41,7 @@ npm run harness:loop -- \
   --edit-command '["node","scripts/harness-editor.mjs"]'
 ```
 
-检查项也可以通过 `--checks '[{"name":"unit","command":"npm","args":["run","test:client"]}]'` 注入；生产使用时建议把检查项和允许路径放入受版本控制的配置文件。
+检查项也可以通过 `--checks '[{"name":"unit","command":"npm","args":["run","test:client"],"evidenceLevel":"unit","invariants":["regression_free"]}]'` 注入；生产使用时建议把检查项、证据等级、不变量和允许路径放入受版本控制的配置文件。
 
 编辑器可读取：
 

@@ -72,7 +72,7 @@ describe('runMigrations', () => {
       id: number;
     }[];
     expect(appliedIds.map(({ id }) => id)).toEqual(
-      Array.from({ length: 29 }, (_, index) => index + 1),
+      Array.from({ length: 30 }, (_, index) => index + 1),
     );
     expect(warningLog).toHaveBeenCalledWith(
       '[db/migration] Skipped compatible: #1 add-reasoning-to-messages: duplicate column name: reasoning',

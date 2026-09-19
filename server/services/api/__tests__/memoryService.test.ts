@@ -23,12 +23,34 @@ vi.mock('../../adapters/apiAdapter.js', () => ({
 import * as memoryService from '../memoryService.js';
 import * as memoryRepo from '../../../repositories/memoryRepository.js';
 import { getAdapter } from '../../adapters/apiAdapter.js';
+import type { MemoryGateResolution } from '../../memoryGateProviders/types.js';
 import type { Memory } from '../../../types.js';
 
 const SAMPLE_MEMORIES: Memory[] = [
-  { id: '1', content: '用户叫张三', category: 'personal', sourceConversationId: 'c1', createdAt: '', updatedAt: '' },
-  { id: '2', content: '喜欢简洁回答', category: 'preference', sourceConversationId: 'c1', createdAt: '', updatedAt: '' },
-  { id: '3', content: '项目信息', category: 'project', sourceConversationId: 'c2', createdAt: '', updatedAt: '' },
+  {
+    id: '1',
+    content: '用户叫张三',
+    category: 'personal',
+    sourceConversationId: 'c1',
+    createdAt: '',
+    updatedAt: '',
+  },
+  {
+    id: '2',
+    content: '喜欢简洁回答',
+    category: 'preference',
+    sourceConversationId: 'c1',
+    createdAt: '',
+    updatedAt: '',
+  },
+  {
+    id: '3',
+    content: '项目信息',
+    category: 'project',
+    sourceConversationId: 'c2',
+    createdAt: '',
+    updatedAt: '',
+  },
 ];
 
 describe('memoryService', () => {
@@ -57,7 +79,14 @@ describe('memoryService', () => {
 
   describe('createMemory', () => {
     it('creates', () => {
-      const m: Memory = { id: 'n', content: 'x', category: 'general', sourceConversationId: null, createdAt: '', updatedAt: '' };
+      const m: Memory = {
+        id: 'n',
+        content: 'x',
+        category: 'general',
+        sourceConversationId: null,
+        createdAt: '',
+        updatedAt: '',
+      };
       vi.mocked(memoryRepo.create).mockReturnValue(m);
       expect(memoryService.createMemory({ id: 'n', content: 'x' }).content).toBe('x');
     });
@@ -149,47 +178,95 @@ describe('memoryService', () => {
 
   describe('structured memory operations', () => {
     it('parses JSON operations', () => {
-      expect(memoryService.extractMemoryOperations('{"operations":[{"action":"ADD","memoryKey":"personal.name","content":"用户叫张三"}]}')).toHaveLength(1);
+      expect(
+        memoryService.extractMemoryOperations(
+          '{"operations":[{"action":"ADD","memoryKey":"personal.name","content":"用户叫张三"}]}',
+        ),
+      ).toHaveLength(1);
       expect(memoryService.extractMemoryOperations('not json')).toEqual([]);
     });
 
     it('rejects invalid action, oversized content, and non-finite score', () => {
-      expect(memoryService.extractMemoryOperations('{"operations":[{"action":"UPSERT","content":"x"}]}')).toEqual([]);
-      expect(memoryService.extractMemoryOperations('{"operations":[{"action":"ADD","memoryKey":"   ","content":"x"}]}')).toEqual([]);
-      expect(memoryService.extractMemoryOperations(`{"operations":[{"action":"ADD","content":"${'x'.repeat(501)}"}]}`)).toEqual([]);
-      expect(memoryService.extractMemoryOperations('{"operations":[{"action":"ADD","content":"x","confidence":2}]}')).toEqual([]);
+      expect(
+        memoryService.extractMemoryOperations('{"operations":[{"action":"UPSERT","content":"x"}]}'),
+      ).toEqual([]);
+      expect(
+        memoryService.extractMemoryOperations(
+          '{"operations":[{"action":"ADD","memoryKey":"   ","content":"x"}]}',
+        ),
+      ).toEqual([]);
+      expect(
+        memoryService.extractMemoryOperations(
+          `{"operations":[{"action":"ADD","content":"${'x'.repeat(501)}"}]}`,
+        ),
+      ).toEqual([]);
+      expect(
+        memoryService.extractMemoryOperations(
+          '{"operations":[{"action":"ADD","content":"x","confidence":2}]}',
+        ),
+      ).toEqual([]);
     });
 
     it('allows key-only DELETE and NOOP operations', () => {
-      expect(memoryService.extractMemoryOperations('{"operations":[{"action":"DELETE","memoryKey":"personal.name"},{"action":"NOOP","memoryKey":"personal.name"}]}')).toHaveLength(2);
+      expect(
+        memoryService.extractMemoryOperations(
+          '{"operations":[{"action":"DELETE","memoryKey":"personal.name"},{"action":"NOOP","memoryKey":"personal.name"}]}',
+        ),
+      ).toHaveLength(2);
     });
 
     it('creates an updated fact and supersedes the active version', () => {
       vi.mocked(memoryRepo.findActiveByKey).mockReturnValue([SAMPLE_MEMORIES[0]]);
-      vi.mocked(memoryRepo.create).mockReturnValue({ ...SAMPLE_MEMORIES[0], content: '用户住在上海' });
-      const result = memoryService.applyMemoryOperations([
-        { action: 'UPDATE', memoryKey: 'personal.location', subject: 'user', content: '用户住在上海' },
-      ], 'c2');
-      expect(memoryRepo.create).toHaveBeenCalledWith(expect.objectContaining({ memoryKey: 'personal.location' }));
+      vi.mocked(memoryRepo.create).mockReturnValue({
+        ...SAMPLE_MEMORIES[0],
+        content: '用户住在上海',
+      });
+      const result = memoryService.applyMemoryOperations(
+        [
+          {
+            action: 'UPDATE',
+            memoryKey: 'personal.location',
+            subject: 'user',
+            content: '用户住在上海',
+          },
+        ],
+        'c2',
+      );
+      expect(memoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ memoryKey: 'personal.location' }),
+      );
       expect(memoryRepo.supersede).toHaveBeenCalledWith('1', expect.any(String));
       expect(result).toHaveLength(1);
       expect(memoryRepo.withTransaction).toHaveBeenCalledTimes(1);
-      expect(memoryRepo.createEvent).toHaveBeenCalledWith(expect.objectContaining({
-        action: 'UPDATE', status: 'applied', resultMemoryId: expect.any(String),
-      }));
-      expect(memoryRepo.createEvent).not.toHaveBeenCalledWith(expect.objectContaining({ content: expect.any(String) }));
+      expect(memoryRepo.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'UPDATE',
+          status: 'applied',
+          resultMemoryId: expect.any(String),
+        }),
+      );
+      expect(memoryRepo.createEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ content: expect.any(String) }),
+      );
     });
 
     it('turns a duplicate ADD into an auditable NOOP', () => {
       vi.mocked(memoryRepo.findActiveByKey).mockReturnValue([SAMPLE_MEMORIES[0]]);
-      const result = memoryService.applyMemoryOperations([
-        { action: 'ADD', memoryKey: 'personal.name', content: SAMPLE_MEMORIES[0].content },
-      ], 'c2', 'job-1');
+      const result = memoryService.applyMemoryOperations(
+        [{ action: 'ADD', memoryKey: 'personal.name', content: SAMPLE_MEMORIES[0].content }],
+        'c2',
+        'job-1',
+      );
       expect(result).toEqual([]);
       expect(memoryRepo.create).not.toHaveBeenCalled();
-      expect(memoryRepo.createEvent).toHaveBeenCalledWith(expect.objectContaining({
-        jobId: 'job-1', action: 'ADD', status: 'noop', resultMemoryId: '1',
-      }));
+      expect(memoryRepo.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          jobId: 'job-1',
+          action: 'ADD',
+          status: 'noop',
+          resultMemoryId: '1',
+        }),
+      );
     });
   });
 
@@ -200,7 +277,11 @@ describe('memoryService', () => {
     });
 
     it('returns early when apiUrl missing', async () => {
-      await memoryService.performExtraction({ memoryEnabled: true, apiUrl: '', apiKey: '' } as any, [], 'c1');
+      await memoryService.performExtraction(
+        { memoryEnabled: true, apiUrl: '', apiKey: '' } as any,
+        [],
+        'c1',
+      );
       expect(getAdapter).not.toHaveBeenCalled();
     });
 
@@ -216,10 +297,21 @@ describe('memoryService', () => {
       vi.mocked(memoryRepo.create).mockReturnValue({ ...SAMPLE_MEMORIES[0], id: 'created' });
 
       await memoryService.performExtraction(
-        { memoryEnabled: true, apiUrl: 'https://api.test.com', apiKey: 'sk-key', apiType: 'openai-chat', modelId: 'gpt-4' } as any,
+        {
+          memoryEnabled: true,
+          apiUrl: 'https://api.test.com',
+          apiKey: 'sk-key',
+          apiType: 'openai-chat',
+          modelId: 'gpt-4',
+        } as any,
         [
           { id: 'u1', role: 'user', content: 'user msg', createdAt: '2026-08-03T00:00:00.000Z' },
-          { id: 'a1', role: 'assistant', content: 'assistant msg', createdAt: '2026-08-03T00:00:01.000Z' },
+          {
+            id: 'a1',
+            role: 'assistant',
+            content: 'assistant msg',
+            createdAt: '2026-08-03T00:00:01.000Z',
+          },
         ],
         'conv-1',
       );
@@ -243,7 +335,13 @@ describe('memoryService', () => {
       vi.mocked(getAdapter).mockReturnValue(mockAdapter as any);
 
       await memoryService.performExtraction(
-        { memoryEnabled: true, apiUrl: 'https://api.test.com', apiKey: 'sk-key', apiType: 'openai-chat', modelId: 'gpt-4' } as any,
+        {
+          memoryEnabled: true,
+          apiUrl: 'https://api.test.com',
+          apiKey: 'sk-key',
+          apiType: 'openai-chat',
+          modelId: 'gpt-4',
+        } as any,
         [{ id: 'u1', role: 'user', content: 'user msg', createdAt: '2026-08-03T00:00:00.000Z' }],
         'conv-1',
       );
@@ -263,18 +361,107 @@ describe('memoryService', () => {
       vi.mocked(getAdapter).mockReturnValue(mockAdapter as any);
 
       await memoryService.performExtraction(
-        { memoryEnabled: true, apiUrl: 'https://api.test.com', apiKey: 'sk-key', apiType: 'openai-chat', modelId: 'gpt-4' } as any,
+        {
+          memoryEnabled: true,
+          apiUrl: 'https://api.test.com',
+          apiKey: 'sk-key',
+          apiType: 'openai-chat',
+          modelId: 'gpt-4',
+        } as any,
         [
           { id: 'u1', role: 'user', content: 'user msg', createdAt: '2026-08-03T00:00:00.000Z' },
-          { id: 'a1', role: 'assistant', content: 'assistant msg', createdAt: '2026-08-03T00:00:01.000Z' },
+          {
+            id: 'a1',
+            role: 'assistant',
+            content: 'assistant msg',
+            createdAt: '2026-08-03T00:00:01.000Z',
+          },
         ],
         'conv-1',
       );
 
       expect(memoryRepo.create).not.toHaveBeenCalled();
-      expect(memoryRepo.createEvent).toHaveBeenCalledWith(expect.objectContaining({
-        status: 'rejected', errorCode: 'memory_operation_schema_invalid',
-      }));
+      expect(memoryRepo.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'rejected',
+          errorCode: 'memory_operation_schema_invalid',
+        }),
+      );
     });
+  });
+});
+
+describe('recordMemoryGateOutcome', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(memoryRepo.withTransaction).mockImplementation((work: () => unknown) => work());
+  });
+
+  /** 构造一个"Jev 判定跳过"的门控结论。 */
+  const declinedGate = (): MemoryGateResolution => ({
+    memorize: false,
+    providerId: 'jev',
+    attempts: [{ providerId: 'jev', outcome: 'skip', latencyMs: 1 }],
+  });
+
+  it('records a memorized gate as applied with the Jev category', () => {
+    memoryService.recordMemoryGateOutcome(
+      {
+        memorize: true,
+        providerId: 'jev',
+        hint: { category: 'project', importance: 3, action: 'ADD', confidence: 0.7, worth: 0.9 },
+        attempts: [{ providerId: 'jev', outcome: 'memorize', latencyMs: 1 }],
+      },
+      'conv-1',
+      'msg-1',
+    );
+
+    expect(memoryRepo.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'GATE',
+        conversationId: 'conv-1',
+        sourceMessageId: 'msg-1',
+        subject: 'user',
+        memoryKey: 'project',
+        status: 'applied',
+      }),
+    );
+  });
+
+  it('records a declined gate as noop', () => {
+    memoryService.recordMemoryGateOutcome(declinedGate(), 'conv-1', 'msg-1');
+
+    expect(memoryRepo.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'noop', memoryKey: 'general', errorCode: null }),
+    );
+  });
+
+  it('records a degraded gate as failed with the Jev failure reason', () => {
+    memoryService.recordMemoryGateOutcome(
+      {
+        memorize: false,
+        providerId: 'legacy',
+        attempts: [
+          { providerId: 'jev', outcome: 'unavailable', reason: 'rate_limited', latencyMs: 1 },
+          { providerId: 'legacy', outcome: 'skip', latencyMs: 1 },
+        ],
+      },
+      'conv-1',
+      'msg-1',
+    );
+
+    expect(memoryRepo.createEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorCode: 'jev_gate_rate_limited' }),
+    );
+  });
+
+  it('never throws when the audit write fails', () => {
+    vi.mocked(memoryRepo.createEvent).mockImplementationOnce(() => {
+      throw new Error('db unavailable');
+    });
+
+    expect(() =>
+      memoryService.recordMemoryGateOutcome(declinedGate(), 'conv-1', null),
+    ).not.toThrow();
   });
 });

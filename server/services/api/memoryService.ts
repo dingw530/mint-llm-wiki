@@ -2,12 +2,17 @@ import { v4 as uuidv4 } from 'uuid';
 import * as memoryRepo from '../../repositories/memoryRepository.js';
 import { AI_REQUEST_TIMEOUT_MS, getAdapter } from '../adapters/apiAdapter.js';
 import type {
-  Memory, CreateMemoryParams, UpdateMemoryParams, AiSettings,
+  Memory,
+  CreateMemoryParams,
+  UpdateMemoryParams,
+  AiSettings,
   MemoryOperationAction,
 } from '../../types.js';
+import type { MemoryGateResolution } from '../memoryGateProviders/types.js';
 
-const CATEGORY_ORDER = ['personal', 'preference', 'feedback', 'project', 'goal', 'general'];
-const CATEGORY_LABELS: Record<string, string> = {
+/** 记忆分类的规范顺序；Jev 门控的 choice 选项必须与之一致（见 jev/questions.test.ts）。 */
+export const CATEGORY_ORDER = ['personal', 'preference', 'feedback', 'project', 'goal', 'general'];
+export const CATEGORY_LABELS: Record<string, string> = {
   personal: '个人信息',
   preference: '偏好',
   feedback: '行为反馈',
@@ -41,7 +46,7 @@ export function deleteMemory(id: string): void {
 
 export function buildMemoryContext(query?: string): string {
   const profile = memoryRepo.findActiveProfile?.(24) || memoryRepo.findAll();
-  const relevant = query ? (memoryRepo.search?.(query, 8) || []) : [];
+  const relevant = query ? memoryRepo.search?.(query, 8) || [] : [];
   const seen = new Set<string>();
   const memories = [...profile, ...relevant].filter((memory) => {
     if (seen.has(memory.id)) return false;
@@ -111,11 +116,9 @@ function isNullableString(value: unknown): value is string | null | undefined {
 }
 
 function isFiniteScore(value: unknown): boolean {
-  return value === undefined || (
-    typeof value === 'number'
-    && Number.isFinite(value)
-    && value >= 0
-    && value <= 1
+  return (
+    value === undefined ||
+    (typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1)
   );
 }
 
@@ -125,13 +128,42 @@ function isMemoryOperationAction(value: unknown): value is MemoryOperationAction
 
 function normalizeOperation(value: unknown): MemoryOperation | null {
   if (!isRecord(value) || !isMemoryOperationAction(value.action)) return null;
-  if (typeof value.memoryKey !== 'string' || value.memoryKey.trim().length === 0 || value.memoryKey.trim().length > MAX_MEMORY_KEY_LENGTH) return null;
-  if (value.subject !== undefined && (typeof value.subject !== 'string' || value.subject.trim().length === 0 || value.subject.trim().length > MAX_MEMORY_SUBJECT_LENGTH)) return null;
-  if (value.content !== undefined && (typeof value.content !== 'string' || value.content.trim().length > MAX_MEMORY_CONTENT_LENGTH)) return null;
-  if (value.category !== undefined && (typeof value.category !== 'string' || value.category.trim().length > MAX_MEMORY_KEY_LENGTH)) return null;
-  if (value.memoryType !== undefined && (typeof value.memoryType !== 'string' || value.memoryType.trim().length > MAX_MEMORY_KEY_LENGTH)) return null;
+  if (
+    typeof value.memoryKey !== 'string' ||
+    value.memoryKey.trim().length === 0 ||
+    value.memoryKey.trim().length > MAX_MEMORY_KEY_LENGTH
+  )
+    return null;
+  if (
+    value.subject !== undefined &&
+    (typeof value.subject !== 'string' ||
+      value.subject.trim().length === 0 ||
+      value.subject.trim().length > MAX_MEMORY_SUBJECT_LENGTH)
+  )
+    return null;
+  if (
+    value.content !== undefined &&
+    (typeof value.content !== 'string' || value.content.trim().length > MAX_MEMORY_CONTENT_LENGTH)
+  )
+    return null;
+  if (
+    value.category !== undefined &&
+    (typeof value.category !== 'string' || value.category.trim().length > MAX_MEMORY_KEY_LENGTH)
+  )
+    return null;
+  if (
+    value.memoryType !== undefined &&
+    (typeof value.memoryType !== 'string' || value.memoryType.trim().length > MAX_MEMORY_KEY_LENGTH)
+  )
+    return null;
   if (!isFiniteScore(value.confidence) || !isFiniteScore(value.importance)) return null;
-  if (!isNullableString(value.relationship) || !isNullableString(value.validFrom) || !isNullableString(value.validTo) || !isNullableString(value.sourceMessageId)) return null;
+  if (
+    !isNullableString(value.relationship) ||
+    !isNullableString(value.validFrom) ||
+    !isNullableString(value.validTo) ||
+    !isNullableString(value.sourceMessageId)
+  )
+    return null;
 
   const operation: MemoryOperation = {
     action: value.action,
@@ -158,14 +190,18 @@ function normalizeOperation(value: unknown): MemoryOperation | null {
     if (!serializedValue || serializedValue.length > MAX_MEMORY_VALUE_LENGTH) return null;
   }
   const content = operation.content || (typeof operation.value === 'string' ? operation.value : '');
-  if ((operation.action === 'ADD' || operation.action === 'UPDATE') && (
-    content.trim().length === 0 || content.trim().length > MAX_MEMORY_CONTENT_LENGTH
-  )) return null;
+  if (
+    (operation.action === 'ADD' || operation.action === 'UPDATE') &&
+    (content.trim().length === 0 || content.trim().length > MAX_MEMORY_CONTENT_LENGTH)
+  )
+    return null;
   return operation;
 }
 
 function clampScore(value: unknown, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
+  return typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : fallback;
 }
 
 /** 将结构化记忆操作应用到 SQLite，并保留被替代事实。 */
@@ -180,32 +216,73 @@ export function applyMemoryOperations(
       const action = operation.action;
       const memoryKey = operation.memoryKey?.trim() || 'general';
       const subject = operation.subject?.trim() || 'user';
-      const content = operation.content?.trim() || (typeof operation.value === 'string' ? operation.value.trim() : '');
+      const content =
+        operation.content?.trim() ||
+        (typeof operation.value === 'string' ? operation.value.trim() : '');
       if (!isMemoryOperationAction(action)) continue;
 
       const candidates = memoryRepo.findActiveByKey(memoryKey, subject);
       const candidateIds = candidates.map((candidate) => candidate.id);
       if (action === 'NOOP') {
-        memoryRepo.createEvent({ id: uuidv4(), jobId, conversationId: sourceConversationId, sourceMessageId: operation.sourceMessageId, action, memoryKey, subject, candidateIds, status: 'noop' });
+        memoryRepo.createEvent({
+          id: uuidv4(),
+          jobId,
+          conversationId: sourceConversationId,
+          sourceMessageId: operation.sourceMessageId,
+          action,
+          memoryKey,
+          subject,
+          candidateIds,
+          status: 'noop',
+        });
         continue;
       }
       if (action === 'DELETE') {
         for (const candidate of candidates) memoryRepo.update(candidate.id, { status: 'deleted' });
-        memoryRepo.createEvent({ id: uuidv4(), jobId, conversationId: sourceConversationId, sourceMessageId: operation.sourceMessageId, action, memoryKey, subject, candidateIds, supersededIds: candidateIds, status: 'deleted' });
+        memoryRepo.createEvent({
+          id: uuidv4(),
+          jobId,
+          conversationId: sourceConversationId,
+          sourceMessageId: operation.sourceMessageId,
+          action,
+          memoryKey,
+          subject,
+          candidateIds,
+          supersededIds: candidateIds,
+          status: 'deleted',
+        });
         continue;
       }
       if (!content) continue;
       const same = candidates.find((candidate) => candidate.content === content);
       if (same) {
-        memoryRepo.createEvent({ id: uuidv4(), jobId, conversationId: sourceConversationId, sourceMessageId: operation.sourceMessageId, action, memoryKey, subject, candidateIds, resultMemoryId: same.id, status: 'noop' });
+        memoryRepo.createEvent({
+          id: uuidv4(),
+          jobId,
+          conversationId: sourceConversationId,
+          sourceMessageId: operation.sourceMessageId,
+          action,
+          memoryKey,
+          subject,
+          candidateIds,
+          resultMemoryId: same.id,
+          status: 'noop',
+        });
         continue;
       }
 
       const next = memoryRepo.create({
-        id: uuidv4(), content, category: operation.category || 'general', memoryKey,
-        value: operation.value ?? content, memoryType: operation.memoryType || 'semantic', subject,
-        relationship: operation.relationship || null, confidence: clampScore(operation.confidence, 0.8),
-        importance: clampScore(operation.importance, 0.6), validFrom: operation.validFrom || null,
+        id: uuidv4(),
+        content,
+        category: operation.category || 'general',
+        memoryKey,
+        value: operation.value ?? content,
+        memoryType: operation.memoryType || 'semantic',
+        subject,
+        relationship: operation.relationship || null,
+        confidence: clampScore(operation.confidence, 0.8),
+        importance: clampScore(operation.importance, 0.6),
+        validFrom: operation.validFrom || null,
         validTo: operation.validTo || null,
         supersedesId: action === 'UPDATE' ? candidates[0]?.id || null : null,
         sourceMessageId: operation.sourceMessageId || null,
@@ -215,7 +292,19 @@ export function applyMemoryOperations(
       for (const candidate of candidates) {
         if (action === 'UPDATE') memoryRepo.supersede(candidate.id, next.id);
       }
-      memoryRepo.createEvent({ id: uuidv4(), jobId, conversationId: sourceConversationId, sourceMessageId: operation.sourceMessageId, action, memoryKey, subject, candidateIds, resultMemoryId: next.id, supersededIds, status: 'applied' });
+      memoryRepo.createEvent({
+        id: uuidv4(),
+        jobId,
+        conversationId: sourceConversationId,
+        sourceMessageId: operation.sourceMessageId,
+        action,
+        memoryKey,
+        subject,
+        candidateIds,
+        resultMemoryId: next.id,
+        supersededIds,
+        status: 'applied',
+      });
       created.push(next);
     }
     return created;
@@ -223,11 +312,21 @@ export function applyMemoryOperations(
 }
 
 /** 记录不含原始错误正文的记忆处理失败摘要。 */
-export function recordMemoryProcessingFailure(conversationId: string, jobId: string, errorCode: string): void {
+export function recordMemoryProcessingFailure(
+  conversationId: string,
+  jobId: string,
+  errorCode: string,
+): void {
   try {
     memoryRepo.createEvent({
-      id: uuidv4(), jobId, conversationId, action: 'EXTRACTION', memoryKey: 'general', subject: 'user',
-      status: 'failed', errorCode: errorCode || 'unknown_error',
+      id: uuidv4(),
+      jobId,
+      conversationId,
+      action: 'EXTRACTION',
+      memoryKey: 'general',
+      subject: 'user',
+      status: 'failed',
+      errorCode: errorCode || 'unknown_error',
     });
   } catch {
     // 失败审计不能反过来阻塞任务状态更新。
@@ -236,41 +335,38 @@ export function recordMemoryProcessingFailure(conversationId: string, jobId: str
 
 // ── 价值判断（v1.5.1） ──
 
-// 纯感叹/寒暄列表——过滤无信息含量的常见短语
-const GREETING_SET = new Set([
-  '哈哈', '好的', '谢谢', '明白了', '知道了', '收到', '嗯嗯', '好的呢',
-  'ok', 'okay', '好的谢谢', '好的谢谢啦', '明白了谢谢', '好的明白了',
-  '对', '是', '好', '嗯', '行', '可以', '没问题', '不错', '厉害',
-  '你好', 'hello', 'hi', '嗨',
-]);
-
-// 自指模式正则——检测用户是否在分享个人信息
-const SELF_REF_PATTERNS = [
-  /我(?:叫|是|的|来自|从事|做|在|就[职任]|有|喜欢|爱|希望|想|要|觉得|认为|习惯|通常|用|正在|之前|过去|目前|现在|以后|未来)/,
-  /(?:喜欢|不喜欢|偏爱|倾向于|习惯|愿意|希望|想要|更(?:愿意|喜欢|倾向于))(?![^。]*[？?])/,
-  /(?:不对|不是|错了|更正|纠正|应该说|其实是|我[的想]意思是|你说[得错]|你理解错)/,
-  /(?:在做|在搞|开发|项目中|项目是|技术栈|用的|使用|采用|负责|从事|参与)/,
-  /(?:打算|计划|目标|想要|希望|准备|正在[学研调开]|学习|研究|调研)/,
-  /(?:在[哪这]|来自|毕业于|工作在|就职于|负责|从事|主[要做]).{2,}/,
-  /我(?:的名字叫|的称呼是|可以叫我|全名(?:是|为)).{1,}/,
-  /(?:年[龄纪]|岁[数了]).{0,5}\d+/,
-];
+// 原有启发式已迁到 memoryGateProviders/legacyMemoryGateProvider.ts，
+// 在这里再导出以保住既有调用方与测试的导入路径。
+export { isConversationValuable } from '../memoryGateProviders/legacyMemoryGateProvider.js';
 
 /**
- * 判断用户消息是否包含值得记忆的信息。
- * 在调用 LLM 提取 API 前执行，避免无效 API 调用。
- * 纯同步操作，<5ms。
+ * 记录一次记忆门控尝试，供实验稳定性统计。
+ * 审计失败不能影响对话主流程，因此整体包在 try/catch 中。
+ * @param resolution 门控结论
+ * @param conversationId 会话 id
+ * @param sourceMessageId 触发门控的助手消息 id
  */
-export function isConversationValuable(userContent: string): boolean {
-  if (!userContent || typeof userContent !== 'string') return false;
-  const text = userContent.trim();
-  if (text.length < 10) return false;        // 太短，不太可能有有效信息
-  if (GREETING_SET.has(text.toLowerCase())) return false; // 纯寒暄
-
-  for (const pattern of SELF_REF_PATTERNS) {
-    if (pattern.test(text)) return true;
+export function recordMemoryGateOutcome(
+  resolution: MemoryGateResolution,
+  conversationId: string,
+  sourceMessageId: string | null,
+): void {
+  try {
+    const degraded = resolution.attempts.find((attempt) => attempt.outcome === 'unavailable');
+    memoryRepo.createEvent({
+      id: uuidv4(),
+      jobId: null,
+      conversationId,
+      sourceMessageId,
+      action: 'GATE',
+      memoryKey: resolution.hint?.category ?? 'general',
+      subject: 'user',
+      status: degraded ? 'failed' : resolution.memorize ? 'applied' : 'noop',
+      errorCode: degraded ? `jev_gate_${degraded.reason ?? 'unknown'}` : null,
+    });
+  } catch {
+    // 审计写入失败不应影响门控结果与对话。
   }
-  return false;
 }
 
 // ── 执行 AI 提取 ──
@@ -308,9 +404,9 @@ export async function performExtraction(
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
-  const transcript = messages.map((message) => (
-    `[${message.createdAt}] ${message.role} (${message.id})：${message.content}`
-  )).join('\n');
+  const transcript = messages
+    .map((message) => `[${message.createdAt}] ${message.role} (${message.id})：${message.content}`)
+    .join('\n');
 
   try {
     const adapter = getAdapter(settings.apiType || 'openai-chat');
@@ -335,22 +431,40 @@ export async function performExtraction(
     if (parsedOperations.isStructured) {
       if (parsedOperations.rejected) {
         memoryRepo.createEvent({
-          id: uuidv4(), jobId, conversationId, action: 'EXTRACTION', memoryKey: 'general', subject: 'user',
-          status: 'rejected', errorCode: 'memory_operation_schema_invalid',
+          id: uuidv4(),
+          jobId,
+          conversationId,
+          action: 'EXTRACTION',
+          memoryKey: 'general',
+          subject: 'user',
+          status: 'rejected',
+          errorCode: 'memory_operation_schema_invalid',
         });
         return true;
       }
       applyMemoryOperations(parsedOperations.operations, conversationId, jobId);
     } else {
       const sourceMessageId = messages.find((message) => message.role === 'user')?.id || null;
-      const legacyOperations = extractMemoriesFromResponse(content).map((entry) => normalizeOperation({
-        action: 'ADD', memoryKey: entry.category, subject: 'user', category: entry.category,
-        content: entry.content, sourceMessageId,
-      }));
+      const legacyOperations = extractMemoriesFromResponse(content).map((entry) =>
+        normalizeOperation({
+          action: 'ADD',
+          memoryKey: entry.category,
+          subject: 'user',
+          category: entry.category,
+          content: entry.content,
+          sourceMessageId,
+        }),
+      );
       if (legacyOperations.some((operation) => operation === null)) {
         memoryRepo.createEvent({
-          id: uuidv4(), jobId, conversationId, action: 'EXTRACTION', memoryKey: 'general', subject: 'user',
-          status: 'rejected', errorCode: 'memory_operation_schema_invalid',
+          id: uuidv4(),
+          jobId,
+          conversationId,
+          action: 'EXTRACTION',
+          memoryKey: 'general',
+          subject: 'user',
+          status: 'rejected',
+          errorCode: 'memory_operation_schema_invalid',
         });
         return true;
       }
@@ -362,7 +476,10 @@ export async function performExtraction(
     }
     return true;
   } catch (err) {
-    const errorCode = err instanceof Error && err.name === 'AbortError' ? 'extraction_timeout' : 'extraction_failed';
+    const errorCode =
+      err instanceof Error && err.name === 'AbortError'
+        ? 'extraction_timeout'
+        : 'extraction_failed';
     console.error('[memory] extraction failed', { errorCode });
     return false;
   } finally {
@@ -383,17 +500,24 @@ interface ParsedMemoryOperations {
 
 /** 解析并校验结构化操作；结构化响应一旦非法不得降级为写入。 */
 function parseMemoryOperations(text: string): ParsedMemoryOperations {
-  const normalized = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+  const normalized = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '');
   const isStructured = normalized.startsWith('{');
   if (!isStructured) return { isStructured: false, operations: [], rejected: false };
   try {
     const parsed: unknown = JSON.parse(normalized);
-    if (!isRecord(parsed) || !Array.isArray(parsed.operations)) return { isStructured: true, operations: [], rejected: true };
+    if (!isRecord(parsed) || !Array.isArray(parsed.operations))
+      return { isStructured: true, operations: [], rejected: true };
     const operations = parsed.operations.map(normalizeOperation);
-    if (operations.some((operation) => operation === null)) return { isStructured: true, operations: [], rejected: true };
+    if (operations.some((operation) => operation === null))
+      return { isStructured: true, operations: [], rejected: true };
     return {
       isStructured: true,
-      operations: operations.filter((operation): operation is MemoryOperation => operation !== null),
+      operations: operations.filter(
+        (operation): operation is MemoryOperation => operation !== null,
+      ),
       rejected: false,
     };
   } catch {

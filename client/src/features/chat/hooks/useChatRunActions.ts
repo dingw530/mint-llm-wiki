@@ -1,5 +1,6 @@
 import { useCallback, useRef, type SetStateAction } from 'react';
 import { generateTitle } from '@/services/api';
+import { streamAgentRunRecovery } from '@/services/api/agentRunRecovery';
 import type { Conversation, Message, SendOptions } from '@/types';
 import { parseSlashCommand } from '../commands/slashCommands';
 import type { AgentRunStatusData } from '../components/AgentRunStatus';
@@ -131,6 +132,7 @@ export default function useChatRunActions({
       agent?: string,
       options?: SendOptions,
       onCompleted?: () => void,
+      recoveryActionId?: string,
     ) => {
       const streamBufferRef = { current: { id: tempId, content: '' } };
       let streamFailed = false;
@@ -178,32 +180,28 @@ export default function useChatRunActions({
       };
       activeRunsRef.current.set(conversationId, { tempId, finish: () => finishStream(tempId) });
       const conversation = conversations.find((item) => item.id === conversationId);
-      send(
-        conversationId,
-        content,
-        createChatStreamCallbacks({
-          tempId,
-          isAutoRoute: isAutoRoute(conversation),
-          streamBufferRef,
-          flushStream,
-          scheduleFlush,
-          finishStream,
-          onCompleted: () => {
-            if (!streamFailed) {
-              recordModelConnectionEventOnce('first_response_completed_saved');
-              onCompleted?.();
-            }
-          },
-          updateTempMessage: (messageTempId, update) =>
-            updateTempMessage(conversationId, messageTempId, update),
-          setActiveAgent: (value) => setActiveAgent(value, conversationId),
-          setAutoRoutedAgent: (value) => setAutoRoutedAgent(value, conversationId),
-          setAgentRunStatus: (value) => setAgentRunStatus(value, conversationId),
-          dispatchReactEvent: (event) => dispatchReactEvent(event, conversationId),
-        }),
-        agent,
-        options,
-      );
+      const callbacks = createChatStreamCallbacks({
+        tempId,
+        isAutoRoute: isAutoRoute(conversation),
+        streamBufferRef,
+        flushStream,
+        scheduleFlush,
+        finishStream,
+        onCompleted: () => {
+          if (!streamFailed) {
+            recordModelConnectionEventOnce('first_response_completed_saved');
+            onCompleted?.();
+          }
+        },
+        updateTempMessage: (messageTempId, update) =>
+          updateTempMessage(conversationId, messageTempId, update),
+        setActiveAgent: (value) => setActiveAgent(value, conversationId),
+        setAutoRoutedAgent: (value) => setAutoRoutedAgent(value, conversationId),
+        setAgentRunStatus: (value) => setAgentRunStatus(value, conversationId),
+        dispatchReactEvent: (event) => dispatchReactEvent(event, conversationId),
+      });
+      if (recoveryActionId) streamAgentRunRecovery(conversationId, recoveryActionId, callbacks);
+      else send(conversationId, content, callbacks, agent, options);
     },
     [
       conversations,
@@ -349,11 +347,39 @@ export default function useChatRunActions({
     setStreamingId,
   ]);
 
+  const handleRecoveryStream = useCallback(
+    (actionId: string) => {
+      if (!activeConversation) return;
+      const assistantMessage = createAssistantMessage(activeConversation);
+      setMessages((previous) => [...previous, assistantMessage], activeConversation);
+      setSending(true, activeConversation);
+      setStreamingId(assistantMessage.id, activeConversation);
+      resetReactEvents(activeConversation);
+      runConversation(
+        activeConversation,
+        '',
+        assistantMessage._tempId,
+        undefined,
+        undefined,
+        undefined,
+        actionId,
+      );
+    },
+    [
+      activeConversation,
+      resetReactEvents,
+      runConversation,
+      setMessages,
+      setSending,
+      setStreamingId,
+    ],
+  );
+
   const handleStop = useCallback(() => {
     if (!activeConversation) return;
     abort(activeConversation);
     activeRunsRef.current.get(activeConversation)?.finish();
   }, [abort, activeConversation]);
 
-  return { handleSend, handleRegenerate, handleStop, handleToolApproval };
+  return { handleSend, handleRegenerate, handleStop, handleToolApproval, handleRecoveryStream };
 }

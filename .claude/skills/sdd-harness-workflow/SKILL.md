@@ -31,6 +31,8 @@ writeback → traceability 完成
 
 本 Skill 是编排层，不重复定义 SDD 文档规则，也不修改 `.claude/skills/sdd-doc-generator/`。
 
+核心完成原则：Harness 负责证明规格声明，不只是运行命令。每条 AC 必须经过 `claim → probe → evidence → invariant → gate` 聚合；命令 exit code 通过不能直接将 AC 标记为 PASS。
+
 ## 工作模式
 
 - `start <主题>`：从需求开始，完成分流、SDD 产物和 Harness 交接。
@@ -62,6 +64,8 @@ docs/changes/<change-id>/
 4. UI/用户流程 AC 有对应浏览器场景；纯后端 AC 明确记录“不适用”。
 5. 场景的 `acceptanceCriteria` 只引用当前 Spec 中存在的 `AC-*`。
 6. `traceability.md` 已初始化 TP 状态和执行记录。
+
+同时确认每条 AC 已声明 risk、invariants、requiredEvidence 和 probes；缺少这些字段时只能进入文档修复，不得进入“已完成”交付状态。
 
 Harness 任务协议包含：
 
@@ -111,6 +115,8 @@ max iterations
    ```
 
 5. 如果验证失败，自动进入反馈回路：读取 artifact 和 structured failures，判断失败类型，在当前 TP 的允许范围内做最小修改，先重跑失败检查，再重跑完整 Harness。默认最多 3 轮，不等待用户逐轮确认。
+
+局部测试通过只更新 probe 证据，不自动更新 AC/TP 完成状态。跨模块、并发、资源关闭、信号、端口、Docker、Electron 等行为必须有 integration 或 process-smoke 证据；mock-only 结果必须标记为证据不足。
 
 UI 变更在浏览器验证前启动开发服务：
 
@@ -186,7 +192,20 @@ npm run harness:verify -- --change <change-id>
 - 所有 UI AC 的浏览器场景通过。
 - 无 scope/protected path 违规。
 - SDD 执行记录和 Harness 证据目录一致。
-- 没有 FAIL、blocked 或未解释的环境失败。
+- 没有 FAIL、UNVERIFIED、blocked 或未解释的环境失败；每条 AC 的最低证据等级和不变量均已满足；SDD 执行记录、证据目录和 traceability 一致。
+
+### Claim-level verification
+
+Harness 运行结束后生成 AC 聚合结果：
+
+```text
+PASS       = requiredEvidence 齐全且 invariants 全部有观察证据
+UNVERIFIED = 命令通过但证据等级不足、只有 mock 或缺少关键观察值
+FAIL       = 断言失败或观察值违反规格
+BLOCKED    = 必需探针因环境原因无法执行
+```
+
+对生命周期、并发、事务、连接池等高风险变更，默认检查 ownership、no_new_work、drain、ordering、bounded_timeout、rollback、no_resource_leak 等不变量；项目可在变更文档中声明适用集合。
 
 ## 失败诊断顺序
 
@@ -281,7 +300,8 @@ npm run harness:loop -- \
    - 记录证据目录、命令、结果和偏差。
 
 4. 检查工作区，区分本变更和用户已有的无关改动；不擅自提交或删除无关文件。
-5. 只有不存在 FAIL、blocked、未验证项且文档索引已同步时，才调用 `sdd-doc-generator archive`。
+5. 运行 `sdd-doc-generator verify` 或等价的一致性审计，输出逐 TP/AC 差异报告。
+6. 只有不存在 FAIL、UNVERIFIED、blocked、未验证项且文档索引已同步、关联债务已同步时，才调用 `sdd-doc-generator archive`。
 
 ## 归档前检查清单
 
@@ -291,6 +311,9 @@ npm run harness:loop -- \
 - [ ] unit、coverage、boundary、browser-ac 全部通过
 - [ ] Node/原生依赖环境已验证
 - [ ] Harness 证据已写回 SDD
+- [ ] 每条 AC 的 requiredEvidence 和 invariants 均已满足
+- [ ] 不存在仅凭 mock/exit code 标记完成的 AC
+- [ ] 逐 TP/AC 一致性审计已完成
 - [ ] traceability 状态和完成日期准确
 - [ ] 变更范围和用户已有改动已区分
 - [ ] 快捷索引已更新

@@ -2,7 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 function extractIds(text, prefix) {
-  return [...new Set([...text.matchAll(new RegExp(`\\b${prefix}-\\d+\\b`, 'g'))].map((match) => match[0]))];
+  return [
+    ...new Set(
+      [...text.matchAll(new RegExp(`\\b${prefix}-\\d+\\b`, 'g'))].map((match) => match[0]),
+    ),
+  ];
 }
 
 function extractTaskPlans(text) {
@@ -31,6 +35,15 @@ async function readIfExists(filePath) {
   }
 }
 
+async function readJsonIfExists(filePath) {
+  try {
+    return JSON.parse(await fs.readFile(filePath, 'utf8'));
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw new Error(`Invalid JSON in ${filePath}: ${error.message}`);
+  }
+}
+
 /**
  * 读取 SDD 产物，不依赖 sdd-doc-generator 的实现细节。
  * @param {string} rootDir
@@ -39,11 +52,12 @@ async function readIfExists(filePath) {
  */
 export async function readSddDocument(rootDir, changeId) {
   const changePath = path.join(rootDir, 'docs', 'changes', changeId);
-  const [productSpec, designDoc, execPlan, traceability] = await Promise.all([
+  const [productSpec, designDoc, execPlan, traceability, verificationPlan] = await Promise.all([
     readIfExists(path.join(changePath, 'product-spec.md')),
     readIfExists(path.join(changePath, 'design-doc.md')),
     readIfExists(path.join(changePath, 'exec-plan.md')),
     readIfExists(path.join(changePath, 'traceability.md')),
+    readJsonIfExists(path.join(changePath, 'verification-plan.json')),
   ]);
 
   if (!productSpec && !designDoc && !execPlan && !traceability) {
@@ -61,6 +75,7 @@ export async function readSddDocument(rootDir, changeId) {
     designDecisions: extractDesignDecisions(`${designDoc}\n${execPlan}\n${traceability}`),
     taskPlans: extractTaskPlans(`${execPlan}\n${traceability}`),
     currentTp: extractCurrentTp(execPlan),
+    verificationPlan,
   };
 }
 
@@ -76,4 +91,5 @@ export async function readSddDocument(rootDir, changeId) {
  * @property {string[]} designDecisions
  * @property {string[]} taskPlans
  * @property {string|null} currentTp
+ * @property {Object|null} verificationPlan
  */

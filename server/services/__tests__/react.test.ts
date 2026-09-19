@@ -19,7 +19,8 @@ describe('retryWrapper', () => {
 
   it('should retry on failure and eventually succeed', async () => {
     const { retry } = await import('../utils/retryWrapper.js');
-    const fn = vi.fn()
+    const fn = vi
+      .fn()
       .mockRejectedValueOnce(new Error('fail 1'))
       .mockRejectedValueOnce(new Error('fail 2'))
       .mockResolvedValue('success');
@@ -31,8 +32,9 @@ describe('retryWrapper', () => {
   it('should throw after all retries exhausted', async () => {
     const { retry } = await import('../utils/retryWrapper.js');
     const fn = vi.fn().mockRejectedValue(new Error('persistent error'));
-    await expect(retry(fn, { maxRetries: 2, baseDelay: 1, maxDelay: 10 }))
-      .rejects.toThrow('persistent error');
+    await expect(retry(fn, { maxRetries: 2, baseDelay: 1, maxDelay: 10 })).rejects.toThrow(
+      'persistent error',
+    );
     expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
   });
 
@@ -40,8 +42,9 @@ describe('retryWrapper', () => {
     const { retry } = await import('../utils/retryWrapper.js');
     const fn = vi.fn().mockRejectedValue(new Error('fail'));
     const onRetry = vi.fn();
-    await expect(retry(fn, { maxRetries: 2, baseDelay: 1, maxDelay: 10, onRetry }))
-      .rejects.toThrow('fail');
+    await expect(retry(fn, { maxRetries: 2, baseDelay: 1, maxDelay: 10, onRetry })).rejects.toThrow(
+      'fail',
+    );
     expect(onRetry).toHaveBeenCalledTimes(2);
     expect(onRetry).toHaveBeenCalledWith(1, expect.any(Error));
     expect(onRetry).toHaveBeenCalledWith(2, expect.any(Error));
@@ -52,16 +55,16 @@ describe('retryWrapper', () => {
     const abortController = new AbortController();
     abortController.abort();
     const fn = vi.fn().mockRejectedValue(new Error('fail'));
-    await expect(retry(fn, { maxRetries: 5, baseDelay: 1000, maxDelay: 5000, signal: abortController.signal }))
-      .rejects.toThrow('Retry aborted');
+    await expect(
+      retry(fn, { maxRetries: 5, baseDelay: 1000, maxDelay: 5000, signal: abortController.signal }),
+    ).rejects.toThrow('Retry aborted');
     expect(fn).toHaveBeenCalledTimes(0); // 预中止时不执行
   });
 
   it('should handle maxRetries = 0 (no retry)', async () => {
     const { retry } = await import('../utils/retryWrapper.js');
     const fn = vi.fn().mockRejectedValue(new Error('fail'));
-    await expect(retry(fn, { maxRetries: 0, baseDelay: 1, maxDelay: 10 }))
-      .rejects.toThrow('fail');
+    await expect(retry(fn, { maxRetries: 0, baseDelay: 1, maxDelay: 10 })).rejects.toThrow('fail');
     expect(fn).toHaveBeenCalledTimes(1);
   });
 });
@@ -73,9 +76,15 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     let ended = false;
     return {
       write: vi.fn(),
-      end: vi.fn(() => { ended = true; }),
-      get headersSent() { return true; },
-      get writableEnded() { return ended; },
+      end: vi.fn(() => {
+        ended = true;
+      }),
+      get headersSent() {
+        return true;
+      },
+      get writableEnded() {
+        return ended;
+      },
     };
   }
 
@@ -91,7 +100,9 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     }));
 
     // Mock aiProxy to track calls
-    const streamChatMock = vi.fn().mockResolvedValue({ content: 'stream-response', reasoning: '', toolCalls: null });
+    const streamChatMock = vi
+      .fn()
+      .mockResolvedValue({ content: 'stream-response', reasoning: '', toolCalls: null });
     const reactChatMock = vi.fn();
 
     vi.doMock('../aiProxy.js', () => ({
@@ -115,6 +126,17 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
         showReactSteps: true,
         apiType: 'openai-chat',
       }),
+      getJevSettings: vi.fn().mockReturnValue({
+        apiUrl: '',
+        apiKey: '',
+        model: '',
+        timeoutMs: 0,
+        routingEnabled: false,
+        routingMinConfidence: 0,
+        routingBypassOnKeyword: false,
+        memoryEnabled: false,
+        memoryGateThreshold: 0,
+      }),
     }));
 
     vi.doMock('../../repositories/conversationRepository.js', () => ({
@@ -142,6 +164,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       buildMemoryContext: vi.fn().mockReturnValue(''),
       isConversationValuable: vi.fn().mockReturnValue(false),
       performExtraction: vi.fn(),
+      recordMemoryGateOutcome: vi.fn(),
     }));
 
     vi.doMock('../api/agentService.js', () => ({
@@ -159,7 +182,10 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
   });
 
   it('should route to reactChat when agent has tools', async () => {
-    const mockToolDef = { type: 'function', function: { name: 'test_tool', description: 'Test', parameters: {} } };
+    const mockToolDef = {
+      type: 'function',
+      function: { name: 'test_tool', description: 'Test', parameters: {} },
+    };
 
     vi.doMock('../toolOrchestration.js', () => ({
       getAllToolDefinitions: vi.fn().mockResolvedValue([mockToolDef]),
@@ -167,7 +193,9 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     }));
 
     const streamChatMock = vi.fn();
-    const reactChatMock = vi.fn().mockResolvedValue({ content: 'react-response', reasoning: '', toolCalls: null });
+    const reactChatMock = vi
+      .fn()
+      .mockResolvedValue({ content: 'react-response', reasoning: '', toolCalls: null });
 
     vi.doMock('../aiProxy.js', () => ({
       streamChat: streamChatMock,
@@ -189,6 +217,17 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
         showReactSteps: true,
         apiType: 'openai-chat',
       }),
+      getJevSettings: vi.fn().mockReturnValue({
+        apiUrl: '',
+        apiKey: '',
+        model: '',
+        timeoutMs: 0,
+        routingEnabled: false,
+        routingMinConfidence: 0,
+        routingBypassOnKeyword: false,
+        memoryEnabled: false,
+        memoryGateThreshold: 0,
+      }),
     }));
 
     vi.doMock('../../repositories/conversationRepository.js', () => ({
@@ -208,7 +247,9 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
 
     vi.doMock('../api/routingService.js', () => ({
       routingService: {
-        route: vi.fn().mockResolvedValue({ agentId: 'custom-agent', confidence: 0.9, method: 'keyword' }),
+        route: vi
+          .fn()
+          .mockResolvedValue({ agentId: 'custom-agent', confidence: 0.9, method: 'keyword' }),
       },
     }));
 
@@ -216,6 +257,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       buildMemoryContext: vi.fn().mockReturnValue(''),
       isConversationValuable: vi.fn().mockReturnValue(false),
       performExtraction: vi.fn(),
+      recordMemoryGateOutcome: vi.fn(),
     }));
 
     // Mock agentRepo.findById to return an agent with type != 'orchestrator'
@@ -232,8 +274,20 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     }));
 
     vi.doMock('../api/agentService.js', () => ({
-        list: vi.fn().mockReturnValue([{ id: 'custom-agent', name: 'Custom', type: 'custom', available: true }]),
-	      findById: vi.fn().mockReturnValue({ id: 'custom-agent', name: 'Custom', type: 'custom', available: true, mcpServerIds: [], systemPrompt: null }),    }));
+      list: vi
+        .fn()
+        .mockReturnValue([{ id: 'custom-agent', name: 'Custom', type: 'custom', available: true }]),
+      findById: vi
+        .fn()
+        .mockReturnValue({
+          id: 'custom-agent',
+          name: 'Custom',
+          type: 'custom',
+          available: true,
+          mcpServerIds: [],
+          systemPrompt: null,
+        }),
+    }));
 
     vi.doMock('../../utils/logger.js', () => ({
       createLogger: vi.fn().mockReturnValue({ info: vi.fn(), debug: vi.fn(), error: vi.fn() }),
@@ -247,14 +301,19 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
   });
 
   it('should use streamChat when reactMaxIterations is 0', async () => {
-    const mockToolDef = { type: 'function', function: { name: 'test_tool', description: 'Test', parameters: {} } };
+    const mockToolDef = {
+      type: 'function',
+      function: { name: 'test_tool', description: 'Test', parameters: {} },
+    };
 
     vi.doMock('../toolOrchestration.js', () => ({
       getAllToolDefinitions: vi.fn().mockResolvedValue([mockToolDef]),
       executeTool: vi.fn(),
     }));
 
-    const streamChatMock = vi.fn().mockResolvedValue({ content: 'stream-response', reasoning: '', toolCalls: null });
+    const streamChatMock = vi
+      .fn()
+      .mockResolvedValue({ content: 'stream-response', reasoning: '', toolCalls: null });
     const reactChatMock = vi.fn();
 
     vi.doMock('../aiProxy.js', () => ({
@@ -272,10 +331,21 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
         systemPrompt: '',
         thinkingMode: false,
         memoryEnabled: false,
-        reactMaxIterations: 0,  // ReAct disabled
+        reactMaxIterations: 0, // ReAct disabled
         toolMaxRetries: 0,
         showReactSteps: true,
         apiType: 'openai-chat',
+      }),
+      getJevSettings: vi.fn().mockReturnValue({
+        apiUrl: '',
+        apiKey: '',
+        model: '',
+        timeoutMs: 0,
+        routingEnabled: false,
+        routingMinConfidence: 0,
+        routingBypassOnKeyword: false,
+        memoryEnabled: false,
+        memoryGateThreshold: 0,
       }),
     }));
 
@@ -304,11 +374,21 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       buildMemoryContext: vi.fn().mockReturnValue(''),
       isConversationValuable: vi.fn().mockReturnValue(false),
       performExtraction: vi.fn(),
+      recordMemoryGateOutcome: vi.fn(),
     }));
 
     vi.doMock('../api/agentService.js', () => ({
       list: vi.fn().mockReturnValue([]),
-      findById: vi.fn().mockReturnValue({ id: 'custom-agent', name: 'Custom', type: 'custom', available: true, mcpServerIds: [], systemPrompt: null }),
+      findById: vi
+        .fn()
+        .mockReturnValue({
+          id: 'custom-agent',
+          name: 'Custom',
+          type: 'custom',
+          available: true,
+          mcpServerIds: [],
+          systemPrompt: null,
+        }),
     }));
 
     vi.doMock('../../utils/logger.js', () => ({

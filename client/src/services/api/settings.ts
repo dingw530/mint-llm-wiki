@@ -29,3 +29,17 @@ export function testChromaConnection(data: {
 }): Promise<VectorConnectionTestResult> {
   return callEndpoint('settings:testChromaConnection', data);
 }
+
+export interface JevConnectionTestResult {
+  success: boolean;
+  message: string;
+}
+
+/** 用当前表单值探测 Jev 端点；留空的字段由服务端回退到已存值。 */
+export function testJevConnection(data: {
+  apiUrl?: string;
+  apiKey?: string;
+  model?: string;
+}): Promise<JevConnectionTestResult> {
+  return callEndpoint('settings:testJevConnection', data);
+}

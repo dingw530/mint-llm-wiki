@@ -53,7 +53,7 @@ TD-001～TD-015 为 2026-09-01 前登记；TD-016 起为 2026-09-02 技术架构
 
 | ID     | 类型             | 待办                                                                                                                                                                                                                                                                         | 完成标准                                                                                                                                     | 状态   |
 | ------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
-| TD-006 | 能力缺口         | 完成 AgentRun 中断后的用户恢复流程。当前可以持久化和恢复状态，但还缺少产品级的继续、重试、放弃、未知工具结果处理和副作用确认闭环。                                                                                                                                           | 用户能看到运行状态并选择继续/重试/放弃；工具副作用有明确确认语义；重启和重复操作有幂等策略。                                                 | 待开始 |
+| TD-006 | 能力缺口         | 完成 AgentRun 中断后的用户恢复流程。当前可以持久化和恢复状态，但还缺少产品级的继续、重试、放弃、未知工具结果处理和副作用确认闭环。                                                                                                                                           | 用户能看到运行状态并选择继续/重试/放弃；工具副作用有明确确认语义；重启和重复操作有幂等策略。对应 SDD：[AgentRun 可恢复持久化](changes/2026-09-18-agent-run-recoverable-persistence/traceability.md)。 | 已完成 |
 | TD-007 | 已验证观测缺口   | 补齐 token、成本、TTFT、模型、Provider、重试、失败原因和运行环境记录，并区分流式首字节时间与完整响应时间。                                                                                                                                                                   | 线上运行和评测均能产生非零、可校验的指标；指标口径、隐私边界和聚合方式有文档与测试。                                                         | 待开始 |
 | TD-008 | 覆盖率结构性缺口 | 对 MCP、sandbox、ToolRegistry、WikiSearchTool、错误恢复和跨 transport 路径增加定向测试。                                                                                                                                                                                     | 高风险模块有分支覆盖目标；HTTP、IPC、SSE 的关键契约均有回归测试；失败场景不只依赖集成测试。                                                  | 待开始 |
 | TD-009 | 测试隔离噪声     | 清理迁移初始化过程中反复出现的 `stderr`，区分测试隔离导致的预期噪声与真正的生产迁移失败。                                                                                                                                                                                    | 测试输出能明确标记“预期隔离噪声”；真实迁移失败会使测试失败并保留可诊断上下文。                                                               | 待开始 |
@@ -81,6 +81,7 @@ TD-001～TD-015 为 2026-09-01 前登记；TD-016 起为 2026-09-02 技术架构
 | TD-027 | 已验证漂移     | 类型版本与运行时错位：`@types/react` 19 ↔ `react` 18、`@types/express` 5 ↔ `express` 4，类型层比运行时新一大版，削弱类型守卫效果。                                                                                                                                         | 类型包 major 对齐运行时（升级运行时或降级类型）；纳入 TD-012 依赖治理的同一检查周期。                              | 待开始 |
 | TD-028 | 已验证漂移     | AGENTS/CLAUDE 与 ARCHITECTURE 关键指针失效：指向不存在的 `orchestratorService.ts`/`reactRoundEngine.ts`/`server/src`；架构文档写“三个包”而实际 5 个 npm workspace（外加无 workspace 的 `java-server` 残留）；`docs/test-plan.md` 被引用但从未创建。                        | 校对文档指向真实符号与目录、删除失效指针；架构文档同步真实包结构；补建或移除 test-plan.md 引用。                   | 待开始 |
 | TD-029 | 已验证治理问题 | `java-server/` 尸体目录：无任何源码提交（仅 `.gitignore` + `target/` 构建产物），对应 change doc 自评“核心实现完成，保留未验证风险”，无法回归、无人知晓其状态。                                                                                                            | 明确终止并清理目录与索引、登记为已终止实验；或补全源码纳入验证与构建。                                             | 待开始 |
+| TD-030 | 已验证架构风险 | 启动与关闭生命周期分散在 `app.ts`、`index.ts`、CLI、Docker 和 Electron 入口；`app.ts`/服务模块存在 import-time 启动副作用，CLI 存在重复启动风险，Memory、Wiki queue、MCP、SSE、Langfuse 和 SQLite 没有统一资源所有权与关闭顺序。 | 引入 `createApp` + `ServerRuntime`；消除 import 副作用；统一 Node/CLI/Docker/Electron 启动入口；为后台 worker、queue、timer、SSE、MCP、Langfuse、SQLite 建立幂等且有超时的 shutdown；完成信号、Docker 和 Electron smoke 验证。详见 [启动与关闭生命周期整改方案](architecture/server-lifecycle-remediation.md)。 | 待开始 |
 
 ## 二、产品功能规划债务
 
@@ -125,7 +126,7 @@ TD-001～TD-015 为 2026-09-01 前登记；TD-016 起为 2026-09-02 技术架构
 3. **评测可信度与观测**：TD-005、TD-007、TD-008、PP-003、PP-009，确保后续优化有可信反馈。
 4. **首次使用闭环**：PP-013～PP-017，先打通模型连接、首个成功任务和 Wiki 价值展示，再评价后续功能留存。
 5. **产品定位与核心闭环**：PP-001～PP-005，形成一份可验收的核心路线，再决定新增功能。
-6. **可靠性与体验**：TD-006、TD-009～TD-012、TD-020～TD-024、PP-006～PP-009。
+6. **可靠性与体验**：TD-006、TD-009～TD-012、TD-020～TD-024、TD-030、PP-006～PP-009。
 7. **扩展与治理**：TD-013～TD-015、TD-025～TD-029、PP-010～PP-012，在前述基础上处理版本、文档、工具链和能力取舍。
 
 ## 四、更新规则
@@ -143,7 +144,9 @@ TD-001～TD-015 为 2026-09-01 前登记；TD-016 起为 2026-09-02 技术架构
 - 迁移错误处理：[server/migrations/index.ts](../server/migrations/index.ts)
 - TD-002 Harness 证据：[migration-fail-closed](changes/2026-09-06-migration-fail-closed/traceability.md)
 - 最近一次评测快照：[agent-eval/viewer/report.json](../agent-eval/viewer/report.json)
+- 启动与关闭生命周期整改：[server-lifecycle-remediation.md](architecture/server-lifecycle-remediation.md)
 - 首次使用路径证据：[ChatPage.tsx](../client/src/features/chat/ChatPage.tsx)、[MessageList.tsx](../client/src/features/chat/components/MessageList.tsx)、[useChatRunActions.ts](../client/src/features/chat/hooks/useChatRunActions.ts)、[EndpointsPanel.tsx](../client/src/features/settings/components/EndpointsPanel.tsx)、[WikiSidebar.tsx](../client/src/features/wiki/WikiSidebar.tsx)
+- TD-006 AgentRun 恢复闭环：[RecoveryCards.tsx](../client/src/features/chat/components/RecoveryCards.tsx)（运行状态 + 重试/放弃）、[agentRunRecoveryService.ts](../server/services/agentRunRecoveryService.ts)（`never`/`requires_confirmation`/`safe_idempotent` 恢复等级，未知工具默认 `requires_confirmation`）、[agentRunEventRepository.ts](../server/repositories/agentRunEventRepository.ts)（按 `(origin_run_id, action, idempotency_key)` 去重）；Harness 证据：[2026-09-18-agent-run-recoverable-persistence](../.harness/runs/2026-09-18-agent-run-recoverable-persistence/2026-09-19T09-41-16-679Z-57548/claim-verification.json)，8 项检查全通过、7/7 AC PASS。
 - 产品规格/设计/执行计划索引：[docs/product-specs/README.md](product-specs/README.md)、[docs/design-docs/README.md](design-docs/README.md)、[docs/exec-plans/README.md](exec-plans/README.md)
 
 ### 2026-09-02 架构评审证据（支撑 TD-016～TD-029）

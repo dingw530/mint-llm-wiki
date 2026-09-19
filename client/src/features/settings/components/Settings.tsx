@@ -9,6 +9,8 @@ import SkillsPanel from './SkillsPanel';
 import WikiPanel from './WikiPanel';
 import BashSecurityPanel from './BashSecurityPanel';
 import ExperimentalPanel from './ExperimentalPanel';
+import { createEmptyJevFormState, createJevFormState, toJevSettingsInput } from './jevForm';
+import type { JevFormState } from './jevForm';
 import type { VisibleSettings } from '@/types';
 
 function Toast({ toast }: { toast: { type: string; message: string } | null }) {
@@ -41,6 +43,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
   const [chromaUrl, setChromaUrl] = useState('http://127.0.0.1:8000');
   const [chromaApiKey, setChromaApiKey] = useState('');
   const [chromaApiKeyMasked, setChromaApiKeyMasked] = useState('');
+  const [jev, setJev] = useState<JevFormState>(createEmptyJevFormState);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: string; message: string } | null>(null);
 
@@ -62,6 +65,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         setVectorStore(data.vectorStore || 'sqlite');
         setChromaUrl(data.chromaUrl || 'http://127.0.0.1:8000');
         setChromaApiKeyMasked(data.chromaApiKeyMasked || '');
+        setJev(createJevFormState(data));
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -135,6 +139,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         vectorStore,
         chromaUrl: chromaUrl.trim(),
         ...(chromaApiKey ? { chromaApiKey } : {}),
+        ...toJevSettingsInput(jev),
       });
       showToast('success', '设置已保存');
     } catch (err) {
@@ -291,6 +296,8 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
                 chromaApiKey={chromaApiKey}
                 setChromaApiKey={setChromaApiKey}
                 chromaApiKeyMasked={chromaApiKeyMasked}
+                jev={jev}
+                onJevChange={(patch) => setJev((prev) => ({ ...prev, ...patch }))}
               />
             )}
           </div>

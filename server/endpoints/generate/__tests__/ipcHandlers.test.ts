@@ -17,6 +17,18 @@ vi.mock('../../../services/api/agentService.js', () => ({
 vi.mock('../../../services/api/settingsService.js', () => ({
   get: vi.fn(() => ({ apiUrl: '', modelId: '' })),
   save: vi.fn(),
+  getJevSettings: vi.fn(() => ({
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    timeoutMs: 0,
+    routingEnabled: false,
+    routingMinConfidence: 0,
+    routingBypassOnKeyword: false,
+    memoryEnabled: false,
+    memoryGateThreshold: 0,
+  })),
+  getChromaApiKey: vi.fn(() => ''),
 }));
 
 const { settingsEndpoints } = await import('../../definitions/settings.js');
@@ -57,6 +69,7 @@ describe('standard IPC handlers', () => {
       'settings:save',
       'settings:testEmbeddingConnection',
       'settings:testChromaConnection',
+      'settings:testJevConnection',
     ]);
   });
 
@@ -146,7 +159,7 @@ describe('standard IPC handlers', () => {
     }
     registerIpcHandlers(conversationsIpcOnlyEndpoints, {}, ipcMain);
 
-    expect(handlers.size).toBe(54);
+    expect(handlers.size).toBe(57);
     expect(handlers.has('conversations:rename')).toBe(true);
     expect(handlers.has('conversations:lockAgent')).toBe(true);
     expect(handlers.has('conversations:resolveToolApproval')).toBe(true);
@@ -171,6 +184,7 @@ describe('standard IPC handlers', () => {
 
     expect([...channels]).toEqual([
       'chat:send',
+      'chat:stream-recovery-action',
       'chat:a2ui:subscribe',
       'conversations:generateTitle',
       'messages:list',
@@ -179,5 +193,33 @@ describe('standard IPC handlers', () => {
       'wiki:upload',
       'wiki:getJobStatus',
     ]);
+  });
+
+  it('streams a recovery action through the Electron chat sink', async () => {
+    const handlers = new Map<string, RegisteredHandler>();
+    const streamRecoveryAction = vi.fn().mockResolvedValue(undefined);
+    const IpcSink = vi.fn();
+    const ipcMain = {
+      handle(channel: string, handler: RegisteredHandler) {
+        handlers.set(channel, handler);
+      },
+    };
+
+    registerElectronIpcHandlers({
+      ipcMain,
+      services: { msgSvc: { streamRecoveryAction }, sinkMod: { IpcSink } },
+      dialog: {},
+      logger: { error: vi.fn() },
+      getMainWindow: () => null,
+    });
+    const event = { sender: { send: vi.fn() } };
+    await handlers.get('chat:stream-recovery-action')!(event, 'conversation-1', 'action-1');
+
+    expect(IpcSink).toHaveBeenCalledWith(event, 'conversation-1');
+    expect(streamRecoveryAction).toHaveBeenCalledWith(
+      'conversation-1',
+      'action-1',
+      expect.anything(),
+    );
   });
 });

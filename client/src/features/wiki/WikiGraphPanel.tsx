@@ -111,13 +111,23 @@ export function getFadedColor(bg: string): string {
 export function getGraphNodeLabel(label: string): string {
   return label.length > 16 ? `${label.slice(0, 16)}...` : label;
 }
+export function getGraphNodeSize(degree: number): number {
+  return Math.min(28, 8 + Math.sqrt(Math.max(0, degree)) * 2.5);
+}
 type GraphEdgeData = { relation?: string; properties?: GraphEdge['properties']; strength?: string };
+export function isReferenceGraphEdge(edge: GraphEdgeData): boolean {
+  return edge.relation === 'references';
+}
 export function isWeakGraphEdge(edge: GraphEdgeData): boolean {
   return (
-    edge.properties?.strength === 'weak' ||
-    edge.strength === 'weak' ||
-    edge.relation === 'references'
+    edge.properties?.strength === 'weak' || edge.strength === 'weak' || isReferenceGraphEdge(edge)
   );
+}
+export function getGraphEdgeStrokeStyle(edge: GraphEdgeData): string {
+  return isReferenceGraphEdge(edge) ? '#DDE3E8' : '#C3CBD3';
+}
+export function getGraphEdgeLabelOpacity(edge: GraphEdgeData): number {
+  return isReferenceGraphEdge(edge) ? 0 : 1;
 }
 export function getGraphEdgeWidth(edge: GraphEdgeData): number {
   if (isWeakGraphEdge(edge)) return 0.6;
@@ -266,8 +276,8 @@ export default function WikiGraphPanel({ onOpenFile }: WikiGraphPanelProps) {
           },
           setDefaultNode: (data) => ({
             type: 'circle',
-            width: 20,
-            height: 20,
+            width: getGraphNodeSize(Number(data.degree) || 0),
+            height: getGraphNodeSize(Number(data.degree) || 0),
             fillStyle: getNodeColor(data.category),
             strokeStyle: '#fff',
             lineWidth: 1,
@@ -290,7 +300,8 @@ export default function WikiGraphPanel({ onOpenFile }: WikiGraphPanelProps) {
             type: 'quadratic',
             styles: { curveOffset: -8, curvePosition: 0.5 },
             lineWidth: getGraphEdgeWidth(data),
-            strokeStyle: isWeakGraphEdge(data) ? '#C3CBD3' : '#ccc',
+            lineDash: isReferenceGraphEdge(data) ? [4, 4] : undefined,
+            strokeStyle: isWeakGraphEdge(data) ? getGraphEdgeStrokeStyle(data) : '#ccc',
             label: {
               text: data.relation,
               position: 0.3,
@@ -298,7 +309,7 @@ export default function WikiGraphPanel({ onOpenFile }: WikiGraphPanelProps) {
               textAlign: 'center',
               fillStyle: '#4c72b0',
               strokeStyle: '#fff',
-              opacity: 0,
+              opacity: getGraphEdgeLabelOpacity(data),
               autoRotate: true,
               originSize: 11,
             },
@@ -311,15 +322,19 @@ export default function WikiGraphPanel({ onOpenFile }: WikiGraphPanelProps) {
           ): Record<string, unknown> | undefined => {
             const label = edge.getLabel();
             if (state === 'show') {
-              label?.set('opacity', 1);
+              label?.set('opacity', getGraphEdgeLabelOpacity(data));
               return {
                 endArrow: { width: 6 / graph.getZoomRatio(), height: 10 / graph.getZoomRatio() },
                 lineWidth: (edge.get('lineWidth') * 1.5) / graph.getZoomRatio(),
               };
             }
             if (state === 'active') {
-              label?.set('opacity', 1);
-              return { endArrow: !isWeakGraphEdge(data), strokeStyle: '#64b5cd' };
+              label?.set('opacity', getGraphEdgeLabelOpacity(data));
+              return {
+                endArrow: !isWeakGraphEdge(data),
+                lineDash: isReferenceGraphEdge(data) ? [4, 4] : undefined,
+                strokeStyle: isReferenceGraphEdge(data) ? '#BFC9D1' : '#64b5cd',
+              };
             }
             return undefined;
           },
@@ -365,12 +380,18 @@ export default function WikiGraphPanel({ onOpenFile }: WikiGraphPanelProps) {
           setSelectedNode(null);
           setSelectedNodeEdges([]);
         });
+        const nodeDegrees = new Map<string, number>();
+        graphData.edges.forEach((edge) => {
+          nodeDegrees.set(edge.sourceId, (nodeDegrees.get(edge.sourceId) ?? 0) + 1);
+          nodeDegrees.set(edge.targetId, (nodeDegrees.get(edge.targetId) ?? 0) + 1);
+        });
         graph.data({
           nodes: graphData.nodes.map((node) => ({
             ...node,
             id: node.id,
             label: node.label,
             category: node.type,
+            degree: nodeDegrees.get(node.id) ?? 0,
           })),
           edges: graphData.edges.map((edge) => ({
             id: edge.id,

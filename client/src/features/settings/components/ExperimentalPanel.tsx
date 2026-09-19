@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { testChromaConnection } from '@/services/api';
+import JevSettingsCard from './JevSettingsCard';
+import type { JevFormState } from './jevForm';
 
 interface ExperimentalPanelProps {
   vectorStore: 'sqlite' | 'chroma';
@@ -9,6 +11,8 @@ interface ExperimentalPanelProps {
   chromaApiKey: string;
   setChromaApiKey: (value: string) => void;
   chromaApiKeyMasked: string;
+  jev: JevFormState;
+  onJevChange: (patch: Partial<JevFormState>) => void;
 }
 
 /** Renders opt-in settings for experimental integrations. */
@@ -20,6 +24,8 @@ export default function ExperimentalPanel({
   chromaApiKey,
   setChromaApiKey,
   chromaApiKeyMasked,
+  jev,
+  onJevChange,
 }: ExperimentalPanelProps) {
   const [chromaTest, setChromaTest] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [chromaTestMessage, setChromaTestMessage] = useState('');
@@ -113,6 +119,8 @@ export default function ExperimentalPanel({
           </p>
         </div>
       )}
+
+      <JevSettingsCard jev={jev} onChange={onJevChange} />
     </div>
   );
 }

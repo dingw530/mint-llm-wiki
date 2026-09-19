@@ -1,0 +1,109 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "设置「实验性功能」显示 Jev 配置区（Endpoint、API Key、模型、两个子开关及其阈值），且两个子开关首次打开均为关闭。",
+      "risk": "medium",
+      "invariants": [],
+      "requiredEvidence": ["browser"],
+      "probes": ["browser-ac"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "保存后重新打开设置，Jev 字段按已存值回显；API Key 只显示掩码，保存时留空不覆盖已存 Key。",
+      "risk": "medium",
+      "invariants": ["idempotence"],
+      "requiredEvidence": ["browser"],
+      "probes": ["browser-ac", "unit"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "「测试连接」用当前表单值发起一次真实 Jev 请求，界面呈现测试中与成功或可读失败提示，且不写入设置。",
+      "risk": "medium",
+      "invariants": [],
+      "requiredEvidence": ["browser"],
+      "probes": ["browser-ac", "unit"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "Jev 路由子开关关闭时，路由决策的 agentId / confidence / method 与接入前逐位一致。",
+      "risk": "high",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["integration"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "Jev 路由开关开启且返回达到阈值的 choice 时，采用 Jev 给出的 Agent，routing_logs.method 记为 jev。",
+      "risk": "high",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "Jev 返回低于阈值、弃权或答案不在候选表内时回退原有 keyword / LLM 路由，且 method 能区分回退来源。",
+      "risk": "high",
+      "invariants": ["regression_free", "bounded_timeout"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "Jev 记忆开关开启且 Jev 判定不值得记忆时，不入队提取任务，且不调用 legacy 正则启发式。",
+      "risk": "high",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "Jev 判定值得记忆时按原有路径入队提取，content / value 仍由原有 LLM 路径生成。",
+      "risk": "high",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "Jev 不可用时记忆门控回退 legacy 启发式，入队与否的结果与接入前一致。",
+      "risk": "high",
+      "invariants": ["regression_free", "idempotence"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-010",
+      "statement": "Jev 调用失败时路由静默回退、对话不中断，失败原因记录到 routing_logs.method。",
+      "risk": "high",
+      "invariants": ["bounded_timeout", "regression_free"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-011",
+      "statement": "每次记忆门控结果写入 memory_events，可区分命中、跳过、不可用三种结果并携带失败原因。",
+      "risk": "medium",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit", "boundary"]
+    },
+    {
+      "id": "AC-012",
+      "statement": "Jev 记忆门控在 SSE 响应 flush 之后异步执行，单条消息的响应结束时间不因门控而增加。",
+      "risk": "high",
+      "invariants": ["idempotence"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-013",
+      "statement": "不新增数据库迁移；新端点经 endpoints/ 声明式注册，并可通过 Electron IPC 与 HTTP 两条通道调用。",
+      "risk": "medium",
+      "invariants": ["no_import_side_effect", "regression_free"],
+      "requiredEvidence": ["integration"],
+      "probes": ["unit", "boundary"]
+    }
+  ]
+}

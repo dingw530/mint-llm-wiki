@@ -15,6 +15,8 @@ COPY package.json package-lock.json ./
 COPY server/package.json ./server/
 COPY client/package.json ./client/
 COPY electron/package.json ./electron/
+COPY agent-eval/package.json ./agent-eval/
+COPY website/package.json ./website/
 
 # 安装全部依赖（含 devDependencies，构建时需要）
 RUN npm ci
@@ -25,6 +27,8 @@ COPY server/tsconfig.json ./server/
 COPY server/ ./server/
 COPY client/ ./client/
 COPY electron/endpoints-manifest.json ./electron/
+COPY agent-eval/ ./agent-eval/
+COPY website/ ./website/
 
 # 构建
 RUN npm run build
@@ -48,6 +52,7 @@ COPY --from=builder /app/electron/package.json ./electron/
 
 # 生产依赖 node_modules（已 prune）
 COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/server/node_modules ./server/node_modules
 
 # 编译后的服务端和客户端
 COPY --from=builder /app/server/dist ./server/dist

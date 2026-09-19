@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── 流式对话 ──
   sendMessage: (convId, content, agent, regenerate, slashCommand) =>
     ipcRenderer.invoke('chat:send', convId, content, agent, regenerate, slashCommand),
+  streamRecoveryAction: (convId, actionId) =>
+    ipcRenderer.invoke('chat:stream-recovery-action', convId, actionId),
   onChunk: (conversationId, callback) => {
     const listener = (_event, eventConversationId, data) => {
       if (eventConversationId === conversationId) callback(data);
@@ -50,6 +52,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   generateTitle: (id) => ipcRenderer.invoke('conversations:generateTitle', id),
   resolveToolApproval: (conversationId, approvalId, data) =>
     ipcRenderer.invoke('conversations:resolveToolApproval', conversationId, approvalId, data),
+  getRecoverableAgentRuns: (conversationId) =>
+    ipcRenderer.invoke('conversations:listRecoverableRuns', conversationId),
+  resolveAgentRunRecovery: (conversationId, runId, data) =>
+    ipcRenderer.invoke('conversations:resolveRecoveryAction', conversationId, runId, data),
 
   // ── 消息 ──
   getMessages: (convId) => ipcRenderer.invoke('messages:list', convId),
@@ -59,6 +65,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveSettings: (data) => ipcRenderer.invoke('settings:save', data),
   testEmbeddingConnection: (data) => ipcRenderer.invoke('settings:testEmbeddingConnection', data),
   testChromaConnection: (data) => ipcRenderer.invoke('settings:testChromaConnection', data),
+  testJevConnection: (data) => ipcRenderer.invoke('settings:testJevConnection', data),
 
   // ── Agent ──
   getAgents: () => ipcRenderer.invoke('agents:list'),

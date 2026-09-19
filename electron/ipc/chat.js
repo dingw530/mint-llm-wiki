@@ -14,9 +14,32 @@ function registerChatHandlers({ ipcMain, services, logger }) {
 
     const sink = new services.sinkMod.IpcSink(event, convId);
     try {
-      await services.msgSvc.sendMessage(convId, content, sink, agent, regenerate, undefined, slashCommand);
+      await services.msgSvc.sendMessage(
+        convId,
+        content,
+        sink,
+        agent,
+        regenerate,
+        undefined,
+        slashCommand,
+      );
     } catch (err) {
       logger.error(`chat:send error: ${err.message}`);
+      if (!sink.writableEnded) event.sender.send('chat:error', convId, err.message);
+    }
+  });
+
+  ipcMain.handle('chat:stream-recovery-action', async (event, convId, actionId) => {
+    if (!services.msgSvc) {
+      event.sender.send('chat:error', convId, 'Services not loaded');
+      return;
+    }
+
+    const sink = new services.sinkMod.IpcSink(event, convId);
+    try {
+      await services.msgSvc.streamRecoveryAction(convId, actionId, sink);
+    } catch (err) {
+      logger.error(`chat:stream-recovery-action error: ${err.message}`);
       if (!sink.writableEnded) event.sender.send('chat:error', convId, err.message);
     }
   });
@@ -27,7 +50,9 @@ function registerChatHandlers({ ipcMain, services, logger }) {
     if (!service) throw new Error('Wiki ingestion service not loaded');
     const send = (payload) => event.sender.send('chat:a2ui', JSON.stringify(payload));
     const sentSurfaces = new Set();
-    const jobs = service.list({ limit: 100 }).filter((job) => job.sourceType === 'chat' && job.conversationId === conversationId);
+    const jobs = service
+      .list({ limit: 100 })
+      .filter((job) => job.sourceType === 'chat' && job.conversationId === conversationId);
     for (const job of jobs) {
       send(a2ui.createSurface(job));
       send(a2ui.updateComponents(job));

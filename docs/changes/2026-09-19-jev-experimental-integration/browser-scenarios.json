@@ -1,0 +1,362 @@
+{
+  "scenarios": [
+    {
+      "id": "jev-experimental-settings-defaults",
+      "name": "实验性功能显示 Jev 配置区且两个子开关默认关闭",
+      "acceptanceCriteria": ["AC-001"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": {
+              "agents": []
+            }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": []
+            }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": []
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "systemPrompt": "",
+              "wikiPath": "",
+              "wikiSearchMode": "keyword",
+              "vectorStore": "sqlite",
+              "chromaUrl": "http://127.0.0.1:8000",
+              "chromaApiKeyMasked": "",
+              "jevApiUrl": "https://api.typesafe.ai/v1/systemone",
+              "jevModel": "jev-latest",
+              "jevApiKeyMasked": "",
+              "jevRoutingEnabled": false,
+              "jevRoutingMinConfidence": 0.5,
+              "jevMemoryEnabled": false,
+              "jevMemoryGateThreshold": 0.4
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": {
+            "css": ".sidebar-header-settings"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "dialog",
+            "name": "设置"
+          }
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "实验性功能"
+          }
+        },
+        {
+          "action": "assertText",
+          "text": "Jev（TypeSafe System One）"
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "textbox",
+            "name": "Jev Endpoint"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "textbox",
+            "name": "Jev API Key"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "textbox",
+            "name": "Jev 模型"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "button",
+            "name": "启用 Jev 路由"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "button",
+            "name": "启用 Jev 记忆门控"
+          }
+        },
+        {
+          "action": "assertNotText",
+          "text": "Jev 路由置信度"
+        },
+        {
+          "action": "assertNotText",
+          "text": "Jev 记忆置信度"
+        },
+        {
+          "action": "assertRequests"
+        }
+      ],
+      "assertRequests": [
+        {
+          "method": "GET",
+          "contains": "/api/settings",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "id": "jev-connection-test",
+      "name": "测试连接用当前表单值发起 Jev 请求并反馈结果",
+      "acceptanceCriteria": ["AC-003"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": {
+              "agents": []
+            }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": []
+            }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": []
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "systemPrompt": "",
+              "wikiPath": "",
+              "wikiSearchMode": "keyword",
+              "vectorStore": "sqlite",
+              "chromaUrl": "http://127.0.0.1:8000",
+              "chromaApiKeyMasked": "",
+              "jevApiUrl": "https://api.typesafe.ai/v1/systemone",
+              "jevModel": "jev-latest",
+              "jevApiKeyMasked": "",
+              "jevRoutingEnabled": false,
+              "jevRoutingMinConfidence": 0.5,
+              "jevMemoryEnabled": false,
+              "jevMemoryGateThreshold": 0.4
+            }
+          },
+          {
+            "pattern": "**/api/settings/test-jev-connection",
+            "method": "POST",
+            "body": {
+              "success": true,
+              "message": "Jev 连接成功"
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": {
+            "css": ".sidebar-header-settings"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "dialog",
+            "name": "设置"
+          }
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "实验性功能"
+          }
+        },
+        {
+          "action": "fill",
+          "target": {
+            "label": "Jev API Key"
+          },
+          "value": "sk-scenario-test-key"
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "测试 Jev 连接"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "Jev 连接成功"
+        },
+        {
+          "action": "assertRequests"
+        }
+      ],
+      "assertRequests": [
+        {
+          "method": "POST",
+          "contains": "/api/settings/test-jev-connection",
+          "status": 200,
+          "countExactly": 1
+        }
+      ]
+    },
+    {
+      "id": "jev-settings-persisted",
+      "name": "已保存的 Jev 配置回显且 API Key 只显示掩码",
+      "acceptanceCriteria": ["AC-002"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": {
+              "agents": []
+            }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": []
+            }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": []
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "systemPrompt": "",
+              "wikiPath": "",
+              "wikiSearchMode": "keyword",
+              "vectorStore": "sqlite",
+              "chromaUrl": "http://127.0.0.1:8000",
+              "chromaApiKeyMasked": "",
+              "jevApiUrl": "https://api.typesafe.ai/v1/systemone",
+              "jevModel": "jev-latest",
+              "jevApiKeyMasked": "sk-****y",
+              "jevRoutingEnabled": true,
+              "jevRoutingMinConfidence": 0.6,
+              "jevMemoryEnabled": true,
+              "jevMemoryGateThreshold": 0.4
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "PUT",
+            "body": {
+              "success": true
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": {
+            "css": ".sidebar-header-settings"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "role": "dialog",
+            "name": "设置"
+          }
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "实验性功能"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "Jev 路由置信度"
+        },
+        {
+          "action": "waitFor",
+          "text": "Jev 记忆置信度"
+        },
+        {
+          "action": "assertText",
+          "text": "已配置：sk-****y"
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "保存"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "设置已保存"
+        },
+        {
+          "action": "assertRequests"
+        }
+      ],
+      "assertRequests": [
+        {
+          "method": "GET",
+          "contains": "/api/settings",
+          "status": 200
+        },
+        {
+          "method": "PUT",
+          "contains": "/api/settings",
+          "status": 200
+        }
+      ]
+    }
+  ]
+}

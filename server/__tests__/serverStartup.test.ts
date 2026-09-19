@@ -7,7 +7,7 @@ import { ARTIFACT_HARD_TTL_MS } from '../services/utils/toolResultArtifact.js';
 const mockApp = vi.hoisted(() => ({ listen: vi.fn() }));
 const mockSkills = vi.hoisted(() => ({ listSkills: vi.fn().mockResolvedValue([]) }));
 
-vi.mock('../app.js', () => ({ default: mockApp }));
+vi.mock('../app.js', () => ({ default: mockApp, createApp: vi.fn(() => mockApp) }));
 vi.mock('../services/api/skillService.js', () => mockSkills);
 
 process.env.AI_CHAT_CLIENT_DIST = 'test-client-dist';

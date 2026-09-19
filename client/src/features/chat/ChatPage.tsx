@@ -140,19 +140,26 @@ export default function ChatPage() {
     setInitialMessage(null);
   }, []);
 
+  const handleCreateChat = useCallback(() => {
+    void create();
+  }, [create]);
+
   return (
     <>
       <aside
         className="sidebar sidebar--chat"
         style={{ width: sidebarWidth, minWidth: sidebarWidth }}
       >
-        <SidebarHeader onOpenSettings={onOpenSettings} />
+        <SidebarHeader
+          onOpenSettings={onOpenSettings}
+          onCreateChat={handleCreateChat}
+          chatLoading={loading}
+        />
         <ChatSidebar
           conversations={conversations}
           loading={loading}
           activeId={activeId}
           onSelect={setActiveId}
-          onCreate={() => create()}
           onRename={rename}
           onDelete={deleteConv}
         />
