@@ -149,6 +149,29 @@ describe('callJev', () => {
     );
   });
 
+  it('writes normalized, sanitized lifecycle logs', async () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ answers: { worth: { type: 'noul', noul: 0.82 } } }), {
+            status: 200,
+          }),
+      ),
+    );
+
+    await callJev(CONFIG, REQUEST, { operation: 'memory_gate' });
+
+    const output = writeSpy.mock.calls.map(([chunk]) => String(chunk)).join('');
+    expect(output).toContain('"message":"jev_call_started"');
+    expect(output).toContain('"message":"jev_call_succeeded"');
+    expect(output).toContain('"operation":"memory_gate"');
+    expect(output).toContain('"endpointOrigin":"https://api.typesafe.ai"');
+    expect(output).not.toContain('test-key');
+    expect(output).not.toContain('hello');
+  });
+
   it('reports malformed_response when the payload has no usable answers', async () => {
     vi.stubGlobal(
       'fetch',

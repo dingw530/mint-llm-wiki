@@ -124,6 +124,7 @@ export interface SettingsInput {
   jevRoutingBypassOnKeyword?: boolean;
   jevMemoryEnabled?: boolean;
   jevMemoryGateThreshold?: number;
+  jevRerankEnabled?: boolean;
 }
 
 // AI 代理内部使用的设置（apiKey 已解密）
@@ -162,6 +163,7 @@ export interface JevSettings {
   routingBypassOnKeyword: boolean;
   memoryEnabled: boolean;
   memoryGateThreshold: number;
+  rerankEnabled?: boolean;
 }
 
 // 返回给前端的设置（apiKey 脱敏显示）
@@ -195,6 +197,7 @@ export interface VisibleSettings {
   jevRoutingMinConfidence: number;
   jevMemoryEnabled: boolean;
   jevMemoryGateThreshold: number;
+  jevRerankEnabled: boolean;
 }
 
 // ── Tool call 类型（兼容 OpenAI function calling 格式） ──

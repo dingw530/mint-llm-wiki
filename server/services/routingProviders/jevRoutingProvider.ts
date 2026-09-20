@@ -22,11 +22,15 @@ export function createJevRoutingProvider(): AgentRoutingProvider {
       if (candidates.length === 0) return { kind: 'abstain', reason: 'no_candidates' };
 
       const { questions, agentIdByOption } = buildAgentRoutingQuestions(candidates);
-      const result = await callJev(toJevConfig(config.jev), {
-        state: buildAgentRoutingState(message, candidates),
-        model: config.jev.model,
-        questions,
-      });
+      const result = await callJev(
+        toJevConfig(config.jev),
+        {
+          state: buildAgentRoutingState(message, candidates),
+          model: config.jev.model,
+          questions,
+        },
+        { operation: 'agent_routing' },
+      );
 
       if (!result.ok) {
         return { kind: 'unavailable', reason: result.reason, message: result.message };

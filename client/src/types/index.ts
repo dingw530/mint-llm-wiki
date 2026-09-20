@@ -144,6 +144,7 @@ export interface VisibleSettings {
   jevRoutingMinConfidence: number;
   jevMemoryEnabled: boolean;
   jevMemoryGateThreshold: number;
+  jevRerankEnabled: boolean;
 }
 
 export interface SettingsInput {
@@ -174,6 +175,7 @@ export interface SettingsInput {
   jevRoutingBypassOnKeyword?: boolean;
   jevMemoryEnabled?: boolean;
   jevMemoryGateThreshold?: number;
+  jevRerankEnabled?: boolean;
 }
 
 // ── SSE 流类型 ──

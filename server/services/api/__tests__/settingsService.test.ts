@@ -230,6 +230,7 @@ describe('settingsService Jev settings', () => {
       routingBypassOnKeyword: true,
       memoryEnabled: false,
       memoryGateThreshold: 0.4,
+      rerankEnabled: false,
     });
   });
 

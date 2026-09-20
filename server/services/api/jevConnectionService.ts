@@ -56,6 +56,7 @@ export async function testJevConnection(
         reachable: { type: 'noul', instructions: 'Is this a connection test?' },
       },
     },
+    { operation: 'connection_test' },
   );
 
   if (result.ok) return { success: true, message: 'Jev 连接成功' };

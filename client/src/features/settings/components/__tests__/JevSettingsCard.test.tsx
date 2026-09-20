@@ -9,12 +9,12 @@ const testJevConnection = vi.hoisted(() => vi.fn());
 vi.mock('@/services/api', () => ({ testJevConnection }));
 
 /** 渲染卡片并返回容器与点击"测试连接"的辅助函数。 */
-function renderCard(onChange = vi.fn()) {
+function renderCard(jev = createEmptyJevFormState(), onChange = vi.fn()) {
   const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
   act(() => {
-    root.render(<JevSettingsCard jev={createEmptyJevFormState()} onChange={onChange} />);
+    root.render(<JevSettingsCard jev={jev} onChange={onChange} />);
   });
   const testButton = (): HTMLButtonElement | undefined =>
     Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
@@ -107,7 +107,7 @@ describe('JevSettingsCard', () => {
 
   it('expands the threshold block when the switch is turned on', async () => {
     const onChange = vi.fn();
-    const { container, root } = renderCard(onChange);
+    const { container, root } = renderCard(createEmptyJevFormState(), onChange);
 
     const enableRouting = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
       (button) => button.getAttribute('aria-label') === '启用 Jev 路由',
@@ -115,6 +115,22 @@ describe('JevSettingsCard', () => {
     await act(async () => enableRouting?.click());
 
     expect(onChange).toHaveBeenCalledWith({ routingEnabled: true });
+    cleanup(container, root);
+  });
+
+  it('keeps the Wiki rerank switch off by default and emits its independent setting', async () => {
+    const onChange = vi.fn();
+    const { container, root } = renderCard(createEmptyJevFormState(), onChange);
+    expect(container.textContent).toContain('Wiki 语义 Rerank');
+
+    const enableRerank = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.getAttribute('aria-label') === '启用 Jev Wiki rerank',
+    );
+    expect(enableRerank?.className).not.toContain('active');
+
+    await act(async () => enableRerank?.click());
+
+    expect(onChange).toHaveBeenCalledWith({ rerankEnabled: true });
     cleanup(container, root);
   });
 });

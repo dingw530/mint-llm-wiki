@@ -15,6 +15,7 @@ export const DISABLED_JEV_SETTINGS: JevSettings = {
   routingBypassOnKeyword: false,
   memoryEnabled: false,
   memoryGateThreshold: 0,
+  rerankEnabled: false,
 };
 
 /**

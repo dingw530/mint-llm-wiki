@@ -49,6 +49,8 @@ function toSettingsInput(data: Record<string, unknown>): SettingsInput {
       typeof data.jevMemoryEnabled === 'boolean' ? data.jevMemoryEnabled : undefined,
     jevMemoryGateThreshold:
       typeof data.jevMemoryGateThreshold === 'number' ? data.jevMemoryGateThreshold : undefined,
+    jevRerankEnabled:
+      typeof data.jevRerankEnabled === 'boolean' ? data.jevRerankEnabled : undefined,
   };
 }
 
