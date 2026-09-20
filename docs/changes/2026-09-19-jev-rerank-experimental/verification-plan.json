@@ -1,0 +1,114 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "Wiki rerank 通过抽象 RerankProvider 暴露，legacy 与 Jev 均为该接口实现。",
+      "risk": "medium",
+      "invariants": ["no_import_side_effect"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "Jev 开关关闭或不可用时，Wiki 搜索保持 legacy RRF 排序和既有结果行为。",
+      "risk": "high",
+      "invariants": [],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "Jev 开启时只对配置数量的 Top-K 候选逐项执行相关性判断，并按判断结果重排。",
+      "risk": "medium",
+      "invariants": ["bounded_timeout"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "Jev 响应异常、网络失败、超时、限流或缺少答案时，整次 rerank 回退 legacy。",
+      "risk": "high",
+      "invariants": ["bounded_timeout"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "设置页面提供独立 Wiki 语义 Rerank 开关，首次默认关闭，保存后可正确回显。",
+      "risk": "low",
+      "invariants": ["idempotence"],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "rerank 候选数量、失败原因和最终 provider 可观测，且日志不包含 API Key。",
+      "risk": "medium",
+      "invariants": [],
+      "requiredEvidence": ["unit"],
+      "probes": ["unit"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "本变更不新增数据库 migration，服务端边界、类型、格式和差异检查通过。",
+      "risk": "medium",
+      "invariants": ["regression_free"],
+      "requiredEvidence": ["integration", "static"],
+      "probes": ["boundary", "coverage"]
+    }
+  ],
+  "changeId": "2026-09-19-jev-rerank-experimental",
+  "checks": [
+    {
+      "id": "rerank-unit",
+      "name": "rerank provider and fallback tests",
+      "evidenceLevel": "unit",
+      "command": "npm",
+      "args": [
+        "run",
+        "--workspace=server",
+        "test",
+        "--",
+        "services/rerank",
+        "services/api/__tests__/wikiSearchService.test.ts",
+        "services/api/__tests__/wikiHybridSearchService.test.ts",
+        "--poolOptions.threads.singleThread"
+      ],
+      "requiredFor": ["AC-001", "AC-003", "AC-004", "AC-006"]
+    },
+    {
+      "id": "settings-integration",
+      "name": "settings and endpoint regression tests",
+      "evidenceLevel": "integration",
+      "command": "npm",
+      "args": [
+        "run",
+        "--workspace=server",
+        "test",
+        "--",
+        "services/api/__tests__/settingsService.test.ts",
+        "endpoints/__tests__/endpoints.test.ts",
+        "--poolOptions.threads.singleThread"
+      ],
+      "requiredFor": ["AC-005"]
+    },
+    {
+      "id": "boundary",
+      "name": "architecture boundary",
+      "evidenceLevel": "integration",
+      "command": "npm",
+      "args": ["run", "--workspace=server", "test:boundary"],
+      "requiredFor": ["AC-007"]
+    },
+    {
+      "id": "format",
+      "name": "format and diff checks",
+      "evidenceLevel": "static",
+      "command": "git",
+      "args": ["diff", "--check"],
+      "requiredFor": ["AC-007"]
+    }
+  ],
+  "browserScenarios": "not_applicable: backend rerank behavior; settings field regression is covered by component and endpoint tests"
+}
