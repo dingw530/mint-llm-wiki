@@ -14,9 +14,16 @@ const log = createLogger('wiki-search');
 
 const WikiSearchInputSchema = z.object({
   question: z.string().optional().describe('搜索问题或关键词（二选一：question 或 paths）'),
-  paths: z.array(z.string()).optional().describe('直接读取指定文件路径（相对 Wiki 根目录），跳过搜索（二选一：question 或 paths）'),
+  paths: z
+    .array(z.string())
+    .optional()
+    .describe('直接读取指定文件路径（相对 Wiki 根目录），跳过搜索（二选一：question 或 paths）'),
   maxResults: z.coerce.number().optional().default(5).describe('搜索时返回 top N 结果，默认 5'),
-  includeContent: z.coerce.boolean().optional().default(true).describe('是否返回当前证据粒度的完整内容，默认 true'),
+  includeContent: z.coerce
+    .boolean()
+    .optional()
+    .default(true)
+    .describe('是否返回当前证据粒度的完整内容，默认 true'),
 });
 
 type WikiSearchInput = z.infer<typeof WikiSearchInputSchema>;
@@ -48,11 +55,16 @@ interface WikiSearchOutput {
  */
 export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> {
   readonly name = 'wiki_search';
-  readonly description = '搜索并读取 Wiki 知识库。question 模式返回与 chunkId 对齐的章节证据，paths 模式返回 page 粒度的完整文件。原始结果提供 chunkId 和 granularity；聊天编排层会在返回给模型的工具结果中追加本轮 refId（如 C1），回答引用时只能使用实际返回的 refId。所有 Wiki 文件访问必须通过此工具，禁止使用 bash。当你需要多个文件时，把所有路径放入 paths 一次读完，不要分多次调用；先完成一次搜索并检查证据是否足够，再决定是否补充搜索。';
+  readonly description =
+    '搜索并读取 Wiki 知识库。question 模式返回与 chunkId 对齐的章节证据，paths 模式返回 page 粒度的完整文件。原始结果提供 chunkId 和 granularity；聊天编排层会在返回给模型的工具结果中追加本轮 refId（如 C1），回答引用时只能使用实际返回的 refId。所有 Wiki 文件访问必须通过此工具，禁止使用 bash。当你需要多个文件时，把所有路径放入 paths 一次读完，不要分多次调用；先完成一次搜索并检查证据是否足够，再决定是否补充搜索。';
   readonly inputSchema = WikiSearchInputSchema;
 
-  isReadOnly(): boolean { return true; }
-  isConcurrencySafe(): boolean { return true; }
+  isReadOnly(): boolean {
+    return true;
+  }
+  isConcurrencySafe(): boolean {
+    return true;
+  }
 
   /**
    * 返回 Wiki 搜索或批量读取开始时展示给用户的摘要。
@@ -71,11 +83,12 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
    */
   getResultSummary(result: WikiSearchOutput): string {
     if (result.message.startsWith('已读取')) return `已读取 ${result.total} 个文件`;
-    if (result.total > 0) return `找到 ${result.total} 个相关页面，返回前 ${result.results.length} 个`;
+    if (result.total > 0)
+      return `找到 ${result.total} 个相关页面，返回前 ${result.results.length} 个`;
     return '未找到相关内容';
   }
 
-  async execute(input: WikiSearchInput, _context: ToolContext): Promise<WikiSearchOutput> {
+  async execute(input: WikiSearchInput, context: ToolContext): Promise<WikiSearchOutput> {
     const normalizedInput = this.inputSchema.parse(input);
     const wikiPath = getWikiPath();
     if (!wikiPath) {
@@ -84,9 +97,15 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
 
     // 路径模式：直接读取指定文件
     if (normalizedInput.paths && normalizedInput.paths.length > 0) {
-      log.info('[wiki_search] mode=paths', { pathCount: normalizedInput.paths.length, paths: normalizedInput.paths.slice(0, 10) });
+      log.info('[wiki_search] mode=paths', {
+        pathCount: normalizedInput.paths.length,
+        paths: normalizedInput.paths.slice(0, 10),
+      });
       const result = this.readFiles(wikiPath, normalizedInput.paths);
-      log.info('[wiki_search] paths result', { totalResults: result.total, message: result.message });
+      log.info('[wiki_search] paths result', {
+        totalResults: result.total,
+        message: result.message,
+      });
       return result;
     }
 
@@ -105,8 +124,12 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
       normalizedInput.question,
       normalizedInput.maxResults,
       normalizedInput.includeContent,
+      context.runtimeContext,
     );
-    log.info('[wiki_search] search result', { totalResults: result.total, topFiles: result.results.slice(0, 5).map(r => r.file) });
+    log.info('[wiki_search] search result', {
+      totalResults: result.total,
+      topFiles: result.results.slice(0, 5).map((r) => r.file),
+    });
     return result;
   }
 
@@ -115,13 +138,29 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
 
     for (const filePath of paths) {
       if (!isPathSafe(wikiPath, filePath)) {
-        results.push({ chunkId: `${filePath}#file`, file: filePath, content: `[路径不安全: ${filePath}]`, granularity: 'page', score: 0, title: filePath, snippet: '' });
+        results.push({
+          chunkId: `${filePath}#file`,
+          file: filePath,
+          content: `[路径不安全: ${filePath}]`,
+          granularity: 'page',
+          score: 0,
+          title: filePath,
+          snippet: '',
+        });
         continue;
       }
 
       const resolvedPath = path.resolve(wikiPath, filePath);
       if (!fs.existsSync(resolvedPath)) {
-        results.push({ chunkId: `${filePath}#file`, file: filePath, content: `[文件不存在: ${filePath}]`, granularity: 'page', score: 0, title: filePath, snippet: '' });
+        results.push({
+          chunkId: `${filePath}#file`,
+          file: filePath,
+          content: `[文件不存在: ${filePath}]`,
+          granularity: 'page',
+          score: 0,
+          title: filePath,
+          snippet: '',
+        });
         continue;
       }
 
@@ -129,16 +168,34 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
       if (stat.isDirectory()) {
         // 目录 → 列出内容
         const entries = fs.readdirSync(resolvedPath);
-        const listing = entries.map(e => {
-          const full = path.join(resolvedPath, e);
-          const isDir = fs.statSync(full).isDirectory();
-          return `${isDir ? '[DIR]' : '[FILE]'} ${e}`;
-        }).join('\n');
-        results.push({ chunkId: `${filePath}#listing`, file: filePath, content: listing, granularity: 'page', score: 1, title: filePath, snippet: '' });
+        const listing = entries
+          .map((e) => {
+            const full = path.join(resolvedPath, e);
+            const isDir = fs.statSync(full).isDirectory();
+            return `${isDir ? '[DIR]' : '[FILE]'} ${e}`;
+          })
+          .join('\n');
+        results.push({
+          chunkId: `${filePath}#listing`,
+          file: filePath,
+          content: listing,
+          granularity: 'page',
+          score: 1,
+          title: filePath,
+          snippet: '',
+        });
       } else {
         const content = fs.readFileSync(resolvedPath, 'utf-8');
         const parsed = parseWikiPage(filePath, content);
-        results.push({ chunkId: `${filePath}#file`, file: filePath, content: content.substring(0, 100000), granularity: 'page', score: 1, title: parsed.title, snippet: '' });
+        results.push({
+          chunkId: `${filePath}#file`,
+          file: filePath,
+          content: content.substring(0, 100000),
+          granularity: 'page',
+          score: 1,
+          title: parsed.title,
+          snippet: '',
+        });
       }
     }
 
@@ -149,7 +206,12 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
     };
   }
 
-  private searchAndRead(wikiPath: string, question: string, maxResults: number, includeContent: boolean): WikiSearchOutput {
+  private searchAndRead(
+    wikiPath: string,
+    question: string,
+    maxResults: number,
+    includeContent: boolean,
+  ): WikiSearchOutput {
     maxResults = Math.max(1, maxResults);
     const keywords = this.extractKeywords(question);
     if (keywords.length === 0) {
@@ -175,9 +237,7 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
           // 生命周期索引不可用时保留原有文件搜索能力。
         }
         if (lifecycle && ['superseded', 'archived', 'deleted'].includes(lifecycle.status)) continue;
-        const retention = lifecycle
-          ? calculateWikiRetentionScore(lifecycle)
-          : 1;
+        const retention = lifecycle ? calculateWikiRetentionScore(lifecycle) : 1;
         const score = baseScore * (1 + retention);
         if (baseScore > 0) {
           scored.push({
@@ -205,28 +265,39 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
       if (lifecycle) {
         try {
           lifecycleRepo.touchPage(lifecycle.id);
-          lifecycleRepo.recordEvent('page', lifecycle.id, 'accessed', null, lifecycle.sourceId, item.file, 'wiki_search result selected');
+          lifecycleRepo.recordEvent(
+            'page',
+            lifecycle.id,
+            'accessed',
+            null,
+            lifecycle.sourceId,
+            item.file,
+            'wiki_search result selected',
+          );
         } catch {
           // 搜索结果已经确定，访问统计失败不影响响应。
         }
       }
     }
 
-    const results: WikiSearchResult[] = top.map(item => ({
+    const results: WikiSearchResult[] = top.map((item) => ({
       file: item.file,
       content: includeContent
-        ? (item.content.length <= 100000 ? item.content : item.content.substring(0, 100000) + '...')
+        ? item.content.length <= 100000
+          ? item.content
+          : item.content.substring(0, 100000) + '...'
         : item.snippet,
       score: item.score,
     }));
 
-    const filesList = results.map(r => r.file).join('\n');
+    const filesList = results.map((r) => r.file).join('\n');
     return {
       results,
       total: scored.length,
-      message: scored.length > 0
-        ? `找到 ${scored.length} 个相关页面，已返回前 ${results.length} 个。可用 paths 直接读取以下文件：\n${filesList}`
-        : '未找到相关内容',
+      message:
+        scored.length > 0
+          ? `找到 ${scored.length} 个相关页面，已返回前 ${results.length} 个。可用 paths 直接读取以下文件：\n${filesList}`
+          : '未找到相关内容',
     };
   }
 
@@ -234,12 +305,96 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
 
   private extractKeywords(text: string): string[] {
     const stopWords = new Set([
-      '的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这', '他', '她', '它', '们', '什么', '怎么', '如何', '为什么', '哪些', '哪个', '请', '吗', '吧', '呢', '啊',
-      'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'shall', 'to', 'of', 'in', 'for', 'on', 'with', 'at', 'by', 'from', 'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'between', 'about',
+      '的',
+      '了',
+      '在',
+      '是',
+      '我',
+      '有',
+      '和',
+      '就',
+      '不',
+      '人',
+      '都',
+      '一',
+      '一个',
+      '上',
+      '也',
+      '很',
+      '到',
+      '说',
+      '要',
+      '去',
+      '你',
+      '会',
+      '着',
+      '没有',
+      '看',
+      '好',
+      '自己',
+      '这',
+      '他',
+      '她',
+      '它',
+      '们',
+      '什么',
+      '怎么',
+      '如何',
+      '为什么',
+      '哪些',
+      '哪个',
+      '请',
+      '吗',
+      '吧',
+      '呢',
+      '啊',
+      'the',
+      'a',
+      'an',
+      'is',
+      'are',
+      'was',
+      'were',
+      'be',
+      'been',
+      'being',
+      'have',
+      'has',
+      'had',
+      'do',
+      'does',
+      'did',
+      'will',
+      'would',
+      'could',
+      'should',
+      'may',
+      'might',
+      'can',
+      'shall',
+      'to',
+      'of',
+      'in',
+      'for',
+      'on',
+      'with',
+      'at',
+      'by',
+      'from',
+      'as',
+      'into',
+      'through',
+      'during',
+      'before',
+      'after',
+      'above',
+      'below',
+      'between',
+      'about',
     ]);
     return text
       .split(/[\]\s,，。.！？、；：""''（）()【】[{}]+/)
-      .filter(w => w.length >= 2 && !stopWords.has(w.toLowerCase()));
+      .filter((w) => w.length >= 2 && !stopWords.has(w.toLowerCase()));
   }
 
   private countMatches(content: string, keywords: string[]): number {
@@ -267,8 +422,8 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
   }
 
   private extractSnippet(content: string, keywords: string[], headings: string[]): string {
-    const headingContext = headings.find(heading =>
-      keywords.some(kw => heading.toLowerCase().includes(kw.toLowerCase())),
+    const headingContext = headings.find((heading) =>
+      keywords.some((kw) => heading.toLowerCase().includes(kw.toLowerCase())),
     );
     if (headingContext) {
       const headingIndex = content.toLowerCase().indexOf(headingContext.toLowerCase());
@@ -285,7 +440,10 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
     let bestIdx = -1;
     for (const kw of keywords) {
       const idx = lowerContent.indexOf(kw.toLowerCase());
-      if (idx >= 0) { bestIdx = idx; break; }
+      if (idx >= 0) {
+        bestIdx = idx;
+        break;
+      }
     }
     if (bestIdx < 0) return content.length <= 500 ? content : content.substring(0, 500) + '...';
 

@@ -1,0 +1,15 @@
+{
+  "features": {
+    "jev": {
+      "enabled": true,
+      "options": {
+        "apiUrl": "https://api.typesafe.ai/v1/systemone",
+        "apiKey": "<JEV_API_KEY>",
+        "model": "jev-latest",
+        "routingEnabled": true,
+        "memoryEnabled": true,
+        "rerankEnabled": true
+      }
+    }
+  }
+}

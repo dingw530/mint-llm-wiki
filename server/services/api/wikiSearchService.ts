@@ -15,6 +15,7 @@ import type { RerankCandidate, RerankedCandidate } from '../rerank/types.js';
 import { isSystemWikiPath, parseWikiPage } from '../utils/wikiShared.js';
 import { createLogger } from '../../utils/logger.js';
 import { ExternalServiceError } from '../resilience/index.js';
+import type { RuntimeContext } from '../runtime/runtimeContext.js';
 
 const log = createLogger('wiki-search');
 
@@ -491,6 +492,7 @@ export async function searchWiki(
   question: string,
   maxResults: number,
   includeContent: boolean,
+  runtimeContext?: RuntimeContext,
 ): Promise<WikiSearchOutput> {
   const startedAt = performance.now();
   const terms = extractTerms(question);
@@ -563,7 +565,7 @@ export async function searchWiki(
   const fusedCandidateCount = retrievedCandidates.length;
   const rerankResult = await rerankCandidates(
     { query: question, candidates: retrievedCandidates },
-    { jev: getJevSettings() },
+    { jev: runtimeContext?.getJevSettings() ?? getJevSettings() },
   );
   const ranked = rerankResult.kind === 'ranked' ? rerankResult.candidates : [];
   log.info('wiki rerank completed', {

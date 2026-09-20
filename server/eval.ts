@@ -12,6 +12,14 @@ import { agentRunRegistry } from './services/agentRun.js';
 import { createDurableAgentRun } from './services/agentRunFactory.js';
 import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
 import { getWikiVectorHealth } from './services/api/wikiSearchService.js';
+import * as agentService from './services/api/agentService.js';
+import { routingService } from './services/api/routingService.js';
+import { evaluateMemoryGate } from './services/memoryGateProviders/index.js';
+import {
+  createRuntimeContext,
+  type FeatureConfigInput,
+  type RuntimeContext,
+} from './services/runtime/runtimeContext.js';
 export type {
   WikiIngestionRequest,
   WikiIngestionResult,
@@ -44,6 +52,7 @@ export interface EvalSettingsInput {
   embeddingApiUrl?: string;
   embeddingModel?: string;
   embeddingDimensions?: number;
+  features?: FeatureConfigInput;
 }
 
 const EVAL_WIKI_QUERY_PROTOCOL = [
@@ -190,6 +199,14 @@ export function createEvalRunId(caseId: string): string {
 
 /** 为隔离评测数据库写入 AI 与 Wiki 配置，避免评测工具读取生产 Wiki。 */
 export function configureEvalSettings(input: EvalSettingsInput): AiSettings {
+  return configureEvalRuntime(input).settings;
+}
+
+/** 为一次评测同时创建 AI 设置和隔离的能力运行时。 */
+export function configureEvalRuntime(input: EvalSettingsInput): {
+  settings: AiSettings;
+  runtimeContext: RuntimeContext;
+} {
   settingsService.save({
     apiUrl: input.apiUrl,
     apiKey: input.apiKey,
@@ -200,7 +217,22 @@ export function configureEvalSettings(input: EvalSettingsInput): AiSettings {
     embeddingModel: input.embeddingModel,
     embeddingDimensions: input.embeddingDimensions,
   });
-  return settingsService.getAiSettings();
+  const settings = settingsService.getAiSettings();
+  return {
+    settings,
+    runtimeContext: createRuntimeContext({
+      features: input.features,
+      fallbackJev: settingsService.getJevSettings(),
+    }),
+  };
+}
+
+/** 创建不改写数据库的评测运行时；适用于已准备好的隔离评测库。 */
+export function createEvalRuntimeContext(features?: FeatureConfigInput): RuntimeContext {
+  return createRuntimeContext({
+    features,
+    fallbackJev: settingsService.getJevSettings(),
+  });
 }
 
 /** 返回隔离评测库当前向量索引的覆盖率和失败统计。 */
@@ -213,15 +245,35 @@ export function getEvalVectorHealth(settings: AiSettings): ReturnType<typeof get
 }
 
 /** 创建供 agent-eval 使用的 Mint ReAct executor。 */
-export function createReactExecutor(settings: AiSettings) {
+export function createReactExecutor(
+  settings: AiSettings,
+  runtimeContext: RuntimeContext = createEvalRuntimeContext(),
+) {
   return async (evalCase: EvalCaseInput) => {
     const conversationId = `eval:${evalCase.id}`;
+    const resolvedAgent =
+      evalCase.agent ||
+      (
+        await routingService.route(evalCase.input, {
+          agents: agentService.list(),
+          routingMode: 'auto',
+          conversationId,
+          runtimeContext,
+        })
+      ).agentId;
+    const selectedAgent =
+      resolvedAgent && resolvedAgent !== 'general'
+        ? agentService.findById(resolvedAgent)
+        : undefined;
     const run = createDurableAgentRun({ runId: createEvalRunId(evalCase.id), conversationId });
     agentRunRegistry.register(run);
     const events: ReactEvent[] = [];
     run.subscribe((event) => events.push(event));
     const sink = new AccumulatingSink();
-    const systemPrompt = [settings.systemPrompt, EVAL_WIKI_QUERY_PROTOCOL]
+    const systemPrompt = [
+      selectedAgent?.systemPrompt || settings.systemPrompt,
+      EVAL_WIKI_QUERY_PROTOCOL,
+    ]
       .filter(Boolean)
       .join('\n\n');
     const messages: HistoryMessage[] = [
@@ -232,11 +284,16 @@ export function createReactExecutor(settings: AiSettings) {
       messages,
       settings,
       sink,
-      evalCase.agent,
+      resolvedAgent,
       undefined,
       conversationId,
       buildExecutionPolicy(evalCase),
       run,
+      runtimeContext,
+    );
+    const memoryGate = await evaluateMemoryGate(
+      { userContent: evalCase.input, conversationId },
+      { jev: runtimeContext.getJevSettings() },
     );
     const blockCitations = (result.uiBlocks ?? []).map((block) =>
       citationFromBlock(settings.wikiPath, block),
@@ -250,6 +307,14 @@ export function createReactExecutor(settings: AiSettings) {
     return {
       content: result.content,
       events,
+      state: {
+        routingAgent: resolvedAgent,
+        memoryGate: {
+          providerId: memoryGate.providerId,
+          memorize: memoryGate.memorize,
+          attempts: memoryGate.attempts,
+        },
+      },
       inputTokens: result.usage?.inputTokens,
       outputTokens: result.usage?.outputTokens,
       citations: dedupeCitations([
@@ -266,3 +331,4 @@ export function createReactExecutor(settings: AiSettings) {
 
 /** 读取当前激活的 Mint AI 配置。 */
 export { getAiSettings } from './services/api/settingsService.js';
+export { getJevSettings } from './services/api/settingsService.js';

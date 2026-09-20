@@ -6,11 +6,14 @@
 import type { z } from 'zod';
 import type { ToolCall, ToolDefinition } from '../../types.js';
 import type { ToolMetadata } from './toolMetadata.js';
+import type { RuntimeContext } from '../runtime/runtimeContext.js';
 
 // ── 类型定义 ──
 
 export interface ToolContext {
   conversationId: string;
+  /** 本次执行的能力配置；未注入时由服务端使用持久化设置。 */
+  runtimeContext?: RuntimeContext;
   userId?: string;
   signal?: AbortSignal;
   /** 高风险工具的显式审批结果；未设置时不得自动执行。 */
@@ -25,7 +28,15 @@ export interface ToolContext {
 }
 
 export interface ToolAuditEvent {
-  event: 'started' | 'policy_denied' | 'approval_required' | 'executing' | 'completed' | 'failed' | 'cancelled' | 'timed_out';
+  event:
+    | 'started'
+    | 'policy_denied'
+    | 'approval_required'
+    | 'executing'
+    | 'completed'
+    | 'failed'
+    | 'cancelled'
+    | 'timed_out';
   toolName: string;
   source: ToolMetadata['source'];
   riskLevel: ToolMetadata['riskLevel'];

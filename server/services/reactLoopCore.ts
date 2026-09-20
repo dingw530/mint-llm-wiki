@@ -29,6 +29,7 @@ import {
 } from './agentStatusBar.js';
 import { A2UIComposer } from './a2ui/composer.js';
 import { withLangfuseAgentContext, withLangfuseRoundContext } from './observability/langfuse.js';
+import type { RuntimeContext } from './runtime/runtimeContext.js';
 
 // ── 编辑距离相似度（用于循环检测） ──
 function levenshteinSimilarity(a: string, b: string): number {
@@ -250,6 +251,7 @@ async function executeToolCalls(
     maxRounds: number;
     runStartedAt: number;
     executionPolicy?: ReactExecutionPolicy;
+    runtimeContext?: RuntimeContext;
   },
 ): Promise<ToolExecutionResult[]> {
   const { state, events } = context;
@@ -353,6 +355,7 @@ async function executeToolCalls(
             agent: context.agent,
             reasoning: result.reasoning,
           },
+          runtimeContext: context.runtimeContext,
         },
       );
       // 工具可能并发完成；事件按完成时间发送，但消息稍后按 index 排序回填上下文。
@@ -470,6 +473,7 @@ export async function executeReactRun(
   signal?: AbortSignal,
   conversationId?: string,
   executionPolicy?: ReactExecutionPolicy,
+  runtimeContext?: RuntimeContext,
 ): Promise<StreamResult> {
   const runId = run.runId;
   const events = new ReactEventEmitter(run);
@@ -572,6 +576,7 @@ export async function executeReactRun(
             tools: isLast ? undefined : tools,
             adapter,
             signal,
+            runtimeContext,
             label,
             emitEvent: (event: ReactEventPayload) => {
               if (event.type === 'answer' && event.content) {
@@ -646,6 +651,7 @@ export async function executeReactRun(
       maxRounds: maxIterations,
       runStartedAt,
       executionPolicy,
+      runtimeContext,
     });
 
     if (toolResults.some((result) => result.approvalRequired)) {
@@ -773,6 +779,7 @@ export async function reactChat(
   conversationId?: string,
   executionPolicy?: ReactExecutionPolicy,
   existingRun?: AgentRun,
+  runtimeContext?: RuntimeContext,
 ): Promise<StreamResult> {
   const run = existingRun || createDurableAgentRun({ runId: uuidv4(), conversationId });
   if (!existingRun) agentRunRegistry.register(run);
@@ -781,7 +788,16 @@ export async function reactChat(
     new ReactEventEmitter(run).emit({ type: 'run_started', state: 'running' });
   try {
     return await withLangfuseAgentContext(run, () =>
-      executeReactRun(messages, settings, run, agent, signal, conversationId, executionPolicy),
+      executeReactRun(
+        messages,
+        settings,
+        run,
+        agent,
+        signal,
+        conversationId,
+        executionPolicy,
+        runtimeContext,
+      ),
     );
   } finally {
     detachSink();

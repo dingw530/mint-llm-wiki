@@ -37,6 +37,7 @@ import {
 import { createOpenAiJudge, createOpenAiPairwiseJudge } from './judge.js';
 import { calculateElo, runPairwiseComparison, type PairwiseReport } from './pairwise.js';
 import { readEvalReport, uploadEvalReport } from './langfuseUpload.js';
+import { resolveFeatureConfig } from './featureConfig.js';
 
 const [, , command = 'list', ...args] = process.argv;
 const evalDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -478,6 +479,7 @@ async function main(): Promise<void> {
       modelId,
       wikiPath: path.resolve(outputDir),
       ...searchConfig,
+      features: await resolveFeatureConfig(args, evalDirectory),
     });
     const report = await ingestWikiRagCorpus(rawDir, outputDir, settings, server.ingestWikiSource, {
       clean: args.includes('--clean'),
@@ -588,15 +590,18 @@ async function main(): Promise<void> {
         '--wiki requires --db or MINT_EVAL_DB_PATH so the Wiki path remains isolated from production settings',
       );
     const existing = server.getAiSettings();
-    const settings = wikiPath
-      ? server.configureEvalSettings({
+    const features = await resolveFeatureConfig(args, evalDirectory);
+    const runtime = wikiPath
+      ? server.configureEvalRuntime({
           apiUrl: existing.apiUrl,
           apiKey: existing.apiKey,
           modelId: existing.modelId,
           wikiPath: path.resolve(wikiPath),
           ...resolveEvalSearchConfig(args, existing),
+          features,
         })
-      : existing;
+      : { settings: existing, runtimeContext: server.createEvalRuntimeContext(features) };
+    const settings = runtime.settings;
     if (!settings.wikiPath)
       throw new Error(
         'Live Wiki-RAG evaluation requires --wiki <isolated-wiki-path> or a configured wikiPath',
@@ -605,7 +610,7 @@ async function main(): Promise<void> {
       const vectorHealth = await server.getEvalVectorHealth(settings);
       assertHybridVectorHealth(vectorHealth, 'live evaluation');
     }
-    executor = server.createReactExecutor(settings);
+    executor = server.createReactExecutor(settings, runtime.runtimeContext);
   }
   const judge =
     needsExecution && args.includes('--judge') ? createOpenAiJudge(judgeConfig(args)) : undefined;

@@ -13,6 +13,7 @@ import type { ReactEventPayload } from './reactEvents.js';
 import { serializeToolResultForContext } from './utils/toolResultArtifact.js';
 import type { ApprovalResumeContext } from './tools/approvalStore.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
+import type { RuntimeContext } from './runtime/runtimeContext.js';
 
 // 导入 Adapter 实现
 import './adapters/openaiChatAdapter.js';
@@ -32,6 +33,7 @@ export interface ToolRoundInput {
   conversationId?: string;
   label?: string; // 日志标签
   emitEvent?: (event: ReactEventPayload) => void;
+  runtimeContext?: RuntimeContext;
 }
 
 export interface ToolRoundResult {
@@ -224,7 +226,11 @@ export class ToolLoopEngine {
     maxRetries: number,
     onRetry?: (attempt: number, error: Error) => void,
     conversationId = '',
-    options: { approvalGranted?: boolean; approvalContext?: ApprovalResumeContext } = {},
+    options: {
+      approvalGranted?: boolean;
+      approvalContext?: ApprovalResumeContext;
+      runtimeContext?: RuntimeContext;
+    } = {},
   ): Promise<ToolExecutionResult> {
     let toolResult: unknown;
     let succeeded = true;
