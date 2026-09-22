@@ -96,6 +96,17 @@
       "answerPassAt1": 0.88,
       "langfuseUploadedAt": "2026-09-10T08:20:35.267Z",
       "langfuseScoreCount": 29
+    },
+    {
+      "id": "wiki-rag-judge-20260922123305-1d5e3d22",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.0",
+      "generatedAt": "2026-09-22T11:56:05.044Z",
+      "reportFile": "wiki-rag-judge-20260922123305-1d5e3d22.json",
+      "totalRuns": 75,
+      "passAt1": 0.88,
+      "queryPassAt1": 0.88,
+      "answerPassAt1": 0.92
     }
   ]
 }

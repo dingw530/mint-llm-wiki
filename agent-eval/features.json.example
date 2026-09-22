@@ -10,6 +10,12 @@
         "memoryEnabled": true,
         "rerankEnabled": true
       }
+    },
+    "judge": {
+      "enabled": true,
+      "options": {
+        "provider": "jev"
+      }
     }
   }
 }

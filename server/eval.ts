@@ -332,3 +332,13 @@ export function createReactExecutor(
 /** 读取当前激活的 Mint AI 配置。 */
 export { getAiSettings } from './services/api/settingsService.js';
 export { getJevSettings } from './services/api/settingsService.js';
+export { callJev } from './services/jev/jevClient.js';
+export type {
+  JevAnswer,
+  JevChoiceQuestion,
+  JevConfig,
+  JevNoulQuestion,
+  JevQuestion,
+  JevScoreQuestion,
+  JevState,
+} from './services/jev/types.js';

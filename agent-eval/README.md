@@ -41,6 +41,7 @@ npm run eval:wiki-rag:dry
 | `MINT_EVAL_JUDGE_API_URL`        | Judge 的 OpenAI 兼容 API 根地址                          | 使用 `--judge` 必需    |
 | `MINT_EVAL_JUDGE_API_KEY`        | Judge API Key                                            | 使用 `--judge` 必需    |
 | `MINT_EVAL_JUDGE_MODEL_ID`       | Judge 模型 ID                                            | 使用 `--judge` 必需    |
+| `MINT_EVAL_JUDGE_PROVIDER`       | Judge provider：`llm`（默认）或 `jev`                    | 可选                   |
 | `MINT_EVAL_RAW_DIR`              | 原始语料目录                                             | 可选                   |
 | `MINT_EVAL_FIXTURE_PATH`         | `prepare` 输出目录                                       | 可选                   |
 | `MINT_EVAL_WIKI_PATH`            | 正式摄入后的隔离 Wiki 目录                               | `live` 必需            |
@@ -52,6 +53,8 @@ OpenAI 兼容适配器会自动补充 `/v1/chat/completions`，因此 `MINT_EVAL
 Wiki hybrid 检索会额外调用 `${MINT_EVAL_EMBEDDING_API_URL}/embeddings`，并使用 FTS 关键词结果与向量结果做 RRF 融合。当前 Embedding 客户端不发送认证 Header，因此默认配置适用于本机 Ollama 等无认证服务；远程需要认证的服务暂不能直接用于该命令。`ingest` 完成后会强制校验向量覆盖率为 100%，向量化失败不会静默降级为关键词评测。
 
 Judge 与被测 Agent 配置分离。`--judge` 未显式开启时，评测不会发起 Judge 网络请求；建议使用与被测 Agent 不同模型家族的 Judge，并定期通过人工金标校准。
+
+Judge 入口通过 provider 抽象选择实现。默认 `llm` 保持 OpenAI 兼容 Judge；设置 `MINT_EVAL_JUDGE_PROVIDER=jev` 或传入 `--judge-provider jev` 后，使用 `features.jev.options` 的 Jev 配置。Jev 负责 rubric 维度评分和 Veto 判定，`evidenceIds`、`reason`、`shortReason` 和 gate 结果由评测代码根据 Jev 结果及确定性证据生成。
 
 评测能力建议通过 `agent-eval/features.json` 或 `agent-eval/config.js` 配置，不需要为每个新能力增加新的 CLI 参数。两个文件会自动探测，也可以通过 `MINT_EVAL_FEATURES_FILE` 或 `--features-file` 指定其他路径。
 
@@ -317,6 +320,9 @@ npm run eval:langfuse:upload -w agent-eval -- \
 
 ```bash
 npm run eval:wiki-rag:judge -w agent-eval
+
+# 使用 Jev 作为 Judge
+npm run eval:wiki-rag:judge -w agent-eval -- --judge-provider jev --features-file features.json
 
 # 或使用临时配置，不写入 .env
 node scripts/with-node-version.cjs tsx agent-eval/src/cli.ts \

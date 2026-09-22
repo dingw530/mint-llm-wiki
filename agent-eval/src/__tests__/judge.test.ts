@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+vi.mock('mint-server/eval', () => ({ callJev: vi.fn() }));
+import { callJev } from 'mint-server/eval';
 import { buildCalibrationTemplate, compareCalibration } from '../calibration.js';
 import {
   assessJudgeResult,
@@ -7,7 +9,12 @@ import {
   type EvalCase,
   type EvalJudgeResult,
 } from '../index.js';
-import { buildJudgePrompt, createOpenAiJudge, parseJudgeResponse } from '../judge.js';
+import {
+  buildJudgePrompt,
+  createJevJudge,
+  createOpenAiJudge,
+  parseJudgeResponse,
+} from '../judge.js';
 
 const judgeCase: EvalCase = {
   id: 'judge-001',
@@ -68,6 +75,38 @@ const approvedJudge: EvalJudgeResult = {
 };
 
 describe('LLM Judge evaluation', () => {
+  it('maps Jev typed answers into the existing Judge result contract', async () => {
+    vi.mocked(callJev).mockResolvedValue({
+      ok: true,
+      latencyMs: 1,
+      answers: {
+        correctness: { type: 'score', score: 4, legend: [], confidence: 0.9 },
+        completeness: { type: 'score', score: 3, legend: [], confidence: 0.8 },
+        style: { type: 'score', score: 4, legend: [], confidence: 0.8 },
+        hallucination: { type: 'noul', noul: 0.1 },
+      },
+    });
+    const report = await runEvaluation(
+      { name: 'judge', version: '1', cases: [judgeCase] },
+      async () => ({
+        content: 'RAG 先检索资料，再用检索结果生成回答。',
+        events: [{ type: 'run_completed' }],
+        citations: [{ file: 'rag.md', refId: 'C1' }],
+      }),
+      1,
+      createJevJudge({
+        apiUrl: 'https://jev.example',
+        apiKey: 'key',
+        modelId: 'jev-model',
+        timeoutMs: 1000,
+      }),
+    );
+    expect(report.results[0]?.judgePassed).toBe(true);
+    expect(report.results[0]?.judge?.dimensions).toHaveLength(4);
+    expect(report.results[0]?.judge?.dimensions[0]?.evidenceIds).toContain('C1');
+    expect(report.results[0]?.judge?.shortReason).toContain('全部维度通过');
+  });
+
   it('validates a self-contained judge rubric and rejects incomplete scoring levels', () => {
     expect(() => validateCase(judgeCase)).not.toThrow();
     const invalid = {

@@ -11,7 +11,7 @@ import {
   runJudgeOnly,
   writeReport,
 } from './index.js';
-import type { AgentEvalExecutor, EvalProgressUpdate, EvalReport } from './index.js';
+import type { AgentEvalExecutor, EvalProgressUpdate, EvalReport, JudgeExecutor } from './index.js';
 import {
   createAutomaticVersionId,
   listResultVersions,
@@ -34,10 +34,15 @@ import {
   compareCalibration,
   type CalibrationLabel,
 } from './calibration.js';
-import { createOpenAiJudge, createOpenAiPairwiseJudge } from './judge.js';
+import {
+  createJevJudge,
+  createOpenAiJudge,
+  createOpenAiPairwiseJudge,
+  type JudgeProvider,
+} from './judge.js';
 import { calculateElo, runPairwiseComparison, type PairwiseReport } from './pairwise.js';
 import { readEvalReport, uploadEvalReport } from './langfuseUpload.js';
-import { resolveFeatureConfig } from './featureConfig.js';
+import { resolveFeatureConfig, type EvalFeatureConfig } from './featureConfig.js';
 
 const [, , command = 'list', ...args] = process.argv;
 const evalDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -163,6 +168,64 @@ function judgeConfig(args: string[]): { apiUrl: string; apiKey: string; modelId:
       '--judge requires MINT_EVAL_JUDGE_API_URL, MINT_EVAL_JUDGE_API_KEY and MINT_EVAL_JUDGE_MODEL_ID (or matching --judge-* options)',
     );
   return { apiUrl, apiKey, modelId };
+}
+
+function judgeProvider(args: string[], features?: EvalFeatureConfig): JudgeProvider {
+  const configured =
+    optionValue(args, '--judge-provider') ||
+    process.env.MINT_EVAL_JUDGE_PROVIDER ||
+    (typeof features?.judge?.options?.provider === 'string'
+      ? features.judge.options.provider
+      : undefined) ||
+    'llm';
+  if (configured !== 'llm' && configured !== 'jev')
+    throw new Error(`Unsupported judge provider: ${configured}; expected llm or jev`);
+  return configured;
+}
+
+function featureOption(features: EvalFeatureConfig | undefined, key: string): string | undefined {
+  const value = features?.jev?.options?.[key];
+  return typeof value === 'string' ? value : undefined;
+}
+
+function featureNumber(
+  features: EvalFeatureConfig | undefined,
+  key: string,
+  fallback: number,
+): number {
+  const value = features?.jev?.options?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function jevJudgeConfig(args: string[], features?: EvalFeatureConfig) {
+  const apiUrl =
+    optionValue(args, '--judge-api-url') ||
+    process.env.MINT_EVAL_JUDGE_API_URL ||
+    featureOption(features, 'apiUrl');
+  const apiKey =
+    optionValue(args, '--judge-api-key') ||
+    process.env.MINT_EVAL_JUDGE_API_KEY ||
+    featureOption(features, 'apiKey');
+  const modelId =
+    optionValue(args, '--judge-model') ||
+    process.env.MINT_EVAL_JUDGE_MODEL_ID ||
+    featureOption(features, 'model');
+  if (!apiUrl || !apiKey || !modelId)
+    throw new Error(
+      '--judge-provider jev requires Jev apiUrl, apiKey and model; configure features.jev.options or --judge-* options',
+    );
+  return {
+    apiUrl,
+    apiKey,
+    modelId,
+    timeoutMs: featureNumber(features, 'timeoutMs', 3000),
+  };
+}
+
+function createConfiguredJudge(args: string[], features?: EvalFeatureConfig): JudgeExecutor {
+  return judgeProvider(args, features) === 'jev'
+    ? createJevJudge(jevJudgeConfig(args, features))
+    : createOpenAiJudge(judgeConfig(args));
 }
 
 function applyDatabaseOverride(args: string[]): string | undefined {
@@ -513,6 +576,7 @@ async function main(): Promise<void> {
   if (command === 'judge-only') {
     const datasetName = optionValue(args, '--dataset') || 'wiki-rag';
     const dataset = await loadDataset(datasetPath(datasetsDirectory, datasetName));
+    const features = await resolveFeatureConfig(args, evalDirectory);
     const resumeValue = requiredOption(args, '--resume');
     const runLocation = resolveRunDirectory(
       [
@@ -540,7 +604,7 @@ async function main(): Promise<void> {
     const report = await runJudgeOnly(
       dataset,
       checkpoint.results,
-      createOpenAiJudge(judgeConfig(args)),
+      createConfiguredJudge(args, features),
       args.includes('--quiet') ? undefined : logEvaluationProgress,
       runs,
     );
@@ -564,6 +628,7 @@ async function main(): Promise<void> {
   const runs = resolveRuns(runsValue, live);
   const output = outputPath || path.join(evalDirectory, 'viewer/report.json');
   const dbPath = applyDatabaseOverride(args);
+  const features = await resolveFeatureConfig(args, evalDirectory);
   const dataset = await loadDataset(datasetPath(datasetsDirectory, name));
   await repairResultVersionIndex(versionDirectory(args));
   await assertOutputWritable(output);
@@ -590,7 +655,6 @@ async function main(): Promise<void> {
         '--wiki requires --db or MINT_EVAL_DB_PATH so the Wiki path remains isolated from production settings',
       );
     const existing = server.getAiSettings();
-    const features = await resolveFeatureConfig(args, evalDirectory);
     const runtime = wikiPath
       ? server.configureEvalRuntime({
           apiUrl: existing.apiUrl,
@@ -613,7 +677,7 @@ async function main(): Promise<void> {
     executor = server.createReactExecutor(settings, runtime.runtimeContext);
   }
   const judge =
-    needsExecution && args.includes('--judge') ? createOpenAiJudge(judgeConfig(args)) : undefined;
+    needsExecution && args.includes('--judge') ? createConfiguredJudge(args, features) : undefined;
   const report = await runEvaluation(
     dataset,
     executor,
