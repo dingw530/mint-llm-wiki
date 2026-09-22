@@ -15,6 +15,7 @@ export interface JevFormState {
   routingMinConfidence: number;
   memoryEnabled: boolean;
   memoryGateThreshold: number;
+  rerankEnabled: boolean;
 }
 
 export const DEFAULT_JEV_API_URL = 'https://api.typesafe.ai/v1/systemone';
@@ -33,6 +34,7 @@ export function createEmptyJevFormState(): JevFormState {
     routingMinConfidence: DEFAULT_JEV_ROUTING_MIN_CONFIDENCE,
     memoryEnabled: false,
     memoryGateThreshold: DEFAULT_JEV_MEMORY_GATE_THRESHOLD,
+    rerankEnabled: false,
   };
 }
 
@@ -59,6 +61,7 @@ export function createJevFormState(visible: Partial<VisibleSettings>): JevFormSt
       typeof visible.jevMemoryGateThreshold === 'number'
         ? visible.jevMemoryGateThreshold
         : defaults.memoryGateThreshold,
+    rerankEnabled: visible.jevRerankEnabled === true,
   };
 }
 
@@ -79,6 +82,7 @@ export function toJevSettingsInput(
   | 'jevRoutingMinConfidence'
   | 'jevMemoryEnabled'
   | 'jevMemoryGateThreshold'
+  | 'jevRerankEnabled'
 > {
   return {
     jevApiUrl: form.apiUrl.trim(),
@@ -87,6 +91,7 @@ export function toJevSettingsInput(
     jevRoutingMinConfidence: form.routingMinConfidence,
     jevMemoryEnabled: form.memoryEnabled,
     jevMemoryGateThreshold: form.memoryGateThreshold,
+    jevRerankEnabled: form.rerankEnabled,
     ...(form.apiKey ? { jevApiKey: form.apiKey } : {}),
   };
 }

@@ -53,6 +53,10 @@
   box-shadow: 0 2px 8px var(--accent-glow);
 }
 
+.sidebar-brand .app-icon {
+  margin-left: 5px;
+}
+
 .sidebar-brand-name {
   font-family: var(--font-display);
   font-size: 17px;
@@ -101,6 +105,17 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  border-radius: 10px;
+  transition: all 0.18s ease;
+}
+
+.module-chat-row:hover {
+  background: color-mix(in srgb, var(--bg-primary) 55%, transparent);
+}
+
+.module-chat-row:has(> .module-btn.active) {
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-primary));
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 8%, transparent);
 }
 
 .module-btn {
@@ -150,7 +165,18 @@
   max-height: 34px;
   margin: 0;
   padding: 0;
-  border-radius: 10px;
+  border-radius: 0 10px 10px 0;
+  background: transparent;
+  color: var(--accent);
+  border: none;
+  transition: all 0.18s ease;
+}
+
+.module-chat-row > .sidebar-header-new-chat:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  border-color: transparent;
+  box-shadow: none;
 }
 
 .module-chat-row > .sidebar-header-new-chat svg {
@@ -161,6 +187,15 @@
 .module-chat-row > .module-btn {
   flex: 1;
   width: auto;
+  border-radius: 10px 0 0 10px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.module-chat-row > .module-btn:hover,
+.module-chat-row > .module-btn.active {
+  background: transparent;
+  box-shadow: none;
 }
 
 .module-btn.active svg {
@@ -323,7 +358,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 550;
   color: var(--text-secondary);
 }

@@ -142,6 +142,7 @@ type JevSettingsInput = Pick<
   | 'jevRoutingBypassOnKeyword'
   | 'jevMemoryEnabled'
   | 'jevMemoryGateThreshold'
+  | 'jevRerankEnabled'
 >;
 
 /**
@@ -168,6 +169,7 @@ function applyJevSettings(target: Record<string, string>, input: JevSettingsInpu
   target.jevMemoryGateThreshold = String(
     clampScore(input.jevMemoryGateThreshold, DEFAULT_JEV_MEMORY_GATE_THRESHOLD),
   );
+  target.jevRerankEnabled = input.jevRerankEnabled ? 'true' : 'false';
   if (input.jevApiKey) target.jevApiKey = encrypt(input.jevApiKey);
 }
 
@@ -288,6 +290,7 @@ export function getJevSettings(): JevSettings {
     routingBypassOnKeyword: raw.jevRoutingBypassOnKeyword !== 'false',
     memoryEnabled: raw.jevMemoryEnabled === 'true',
     memoryGateThreshold: clampScore(raw.jevMemoryGateThreshold, DEFAULT_JEV_MEMORY_GATE_THRESHOLD),
+    rerankEnabled: raw.jevRerankEnabled === 'true',
   };
 }
 
@@ -304,6 +307,7 @@ export function getVisibleJevSettings(): Pick<
   | 'jevRoutingMinConfidence'
   | 'jevMemoryEnabled'
   | 'jevMemoryGateThreshold'
+  | 'jevRerankEnabled'
 > {
   const raw: RawSettings = settingsRepo.getAll();
   return {
@@ -320,6 +324,7 @@ export function getVisibleJevSettings(): Pick<
       raw.jevMemoryGateThreshold,
       DEFAULT_JEV_MEMORY_GATE_THRESHOLD,
     ),
+    jevRerankEnabled: raw.jevRerankEnabled === 'true',
   };
 }
 
@@ -417,6 +422,7 @@ export function save({
   jevRoutingBypassOnKeyword,
   jevMemoryEnabled,
   jevMemoryGateThreshold,
+  jevRerankEnabled,
 }: SettingsInput): void {
   const settings: Record<string, string> = {
     systemPrompt: systemPrompt || '',
@@ -445,6 +451,7 @@ export function save({
     jevRoutingBypassOnKeyword,
     jevMemoryEnabled,
     jevMemoryGateThreshold,
+    jevRerankEnabled,
   });
   if (apiUrl !== undefined) settings.apiUrl = apiUrl;
   if (modelId !== undefined) settings.modelId = modelId;

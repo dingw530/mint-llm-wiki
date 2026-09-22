@@ -1,6 +1,5 @@
 const { registerChatHandlers } = require('./chat');
 const { registerConversationHandlers } = require('./conversations');
-const { registerDownloadHandlers } = require('./download');
 const { registerWikiHandlers } = require('./wiki');
 
 /**
@@ -11,7 +10,6 @@ const { registerWikiHandlers } = require('./wiki');
 function registerElectronIpcHandlers(dependencies) {
   registerChatHandlers(dependencies);
   registerConversationHandlers(dependencies);
-  registerDownloadHandlers(dependencies);
   registerWikiHandlers(dependencies);
 }
 

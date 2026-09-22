@@ -2,14 +2,7 @@ import * as endpointService from '../../services/api/endpointService.js';
 import * as settingsRepo from '../../repositories/settingsRepository.js';
 import type { EndpointDescriptor } from '../types.js';
 import type { EndpointInput } from '../../types.js';
-import { httpError } from '../helpers.js';
 import * as modelConnectionService from '../../services/api/modelConnectionService.js';
-
-function readEndpointCategory(value: unknown): 'text' | 'image' | undefined {
-  if (value === undefined) return undefined;
-  if (value === 'text' || value === 'image') return value;
-  throw httpError(400, '分类值无效，仅支持 text 或 image');
-}
 
 function toEndpointInput(data: Record<string, unknown>): EndpointInput {
   return {
@@ -18,7 +11,6 @@ function toEndpointInput(data: Record<string, unknown>): EndpointInput {
     apiKey: typeof data.apiKey === 'string' ? data.apiKey : undefined,
     modelId: typeof data.modelId === 'string' ? data.modelId : '',
     apiType: typeof data.apiType === 'string' ? data.apiType : undefined,
-    category: readEndpointCategory(data.category),
   };
 }
 

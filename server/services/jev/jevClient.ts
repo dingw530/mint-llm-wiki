@@ -8,7 +8,11 @@ import type {
   JevNoulAnswer,
   JevRequest,
   JevScoreAnswer,
+  JevState,
 } from './types.js';
+import { createLogger } from '../../utils/logger.js';
+
+const log = createLogger('jev');
 
 /** 单次 Jev 调用的默认总墙钟预算（毫秒）。超时后由调用方静默回退。 */
 export const JEV_TIMEOUT_MS = 3_000;
@@ -21,6 +25,52 @@ const RETRY_BASE_DELAY_MS = 300;
 
 /** 低于该剩余预算就不再发起新尝试，避免请求刚发出就被总预算掐断。 */
 const MIN_ATTEMPT_BUDGET_MS = 250;
+
+export interface JevCallOptions {
+  /** 可选的外部取消信号。 */
+  signal?: AbortSignal;
+  /** 用于结构化日志的业务调用名称。 */
+  operation?: string;
+}
+
+function safeLogValue(value: string): string {
+  return value.replace(/[^\w:./-]/g, '').slice(0, 120);
+}
+
+function endpointOrigin(apiUrl: string): string {
+  try {
+    return new URL(apiUrl).origin;
+  } catch {
+    return 'invalid';
+  }
+}
+
+function stateSummary(state: JevState): Record<string, unknown> {
+  if (typeof state === 'string') return { stateShape: 'string', stateChars: state.length };
+  if (Array.isArray(state)) {
+    return {
+      stateShape: 'array',
+      stateItems: state.length,
+      stateChars: state.reduce((total, item) => total + item.length, 0),
+    };
+  }
+  return {
+    stateShape: 'object',
+    stateFields: Object.keys(state).length,
+    stateChars: Object.values(state).reduce((total, item) => total + item.length, 0),
+  };
+}
+
+function requestLogData(config: JevConfig, request: JevRequest, operation: string) {
+  return {
+    operation: safeLogValue(operation),
+    endpointOrigin: endpointOrigin(config.apiUrl),
+    model: safeLogValue(config.model),
+    timeoutMs: config.timeoutMs,
+    questionCount: Object.keys(request.questions).length,
+    ...stateSummary(request.state),
+  };
+}
 
 /**
  * 把数值夹到 [0, 1]。用于 confidence 与 noul，二者定义域都是概率。
@@ -203,9 +253,21 @@ function notConfigured(): JevCallResult {
 export async function callJev(
   config: JevConfig,
   request: JevRequest,
-  options: { signal?: AbortSignal } = {},
+  options: JevCallOptions = {},
 ): Promise<JevCallResult> {
-  if (!config.apiKey.trim() || !config.apiUrl.trim()) return notConfigured();
+  const operation = options.operation ?? 'system_one';
+  const logData = requestLogData(config, request, operation);
+  log.info('jev_call_started', logData);
+  if (!config.apiKey.trim() || !config.apiUrl.trim()) {
+    const result = notConfigured();
+    log.warn('jev_call_failed', {
+      ...logData,
+      failureReason: 'not_configured',
+      attempts: 0,
+      latencyMs: 0,
+    });
+    return result;
+  }
 
   const deadline = Date.now() + config.timeoutMs;
   let lastResult: JevCallResult | null = null;
@@ -215,22 +277,60 @@ export async function callJev(
     if (remaining < MIN_ATTEMPT_BUDGET_MS) break;
 
     const result = await attemptJev(config, request, remaining, options.signal);
-    if (result.ok) return result;
+    if (result.ok) {
+      log.info('jev_call_succeeded', {
+        ...logData,
+        attempts: attempt,
+        latencyMs: result.latencyMs,
+        answerCount: Object.keys(result.answers).length,
+      });
+      return result;
+    }
 
     lastResult = result;
-    if (!isRetryable(result.reason) || attempt === MAX_ATTEMPTS) return result;
+    if (!isRetryable(result.reason) || attempt === MAX_ATTEMPTS) {
+      log.warn('jev_call_failed', {
+        ...logData,
+        attempts: attempt,
+        latencyMs: result.latencyMs,
+        failureReason: result.reason,
+        ...(result.status === undefined ? {} : { status: result.status }),
+      });
+      return result;
+    }
 
     const backoff = RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
-    if (Date.now() + backoff >= deadline) return result;
+    if (Date.now() + backoff >= deadline) {
+      log.warn('jev_call_failed', {
+        ...logData,
+        attempts: attempt,
+        latencyMs: result.latencyMs,
+        failureReason: result.reason,
+        retrySkipped: 'budget_exhausted',
+      });
+      return result;
+    }
+    log.warn('jev_retry_scheduled', {
+      ...logData,
+      attempt,
+      nextAttempt: attempt + 1,
+      retryDelayMs: backoff,
+      failureReason: result.reason,
+    });
     await sleep(backoff);
   }
 
-  return (
-    lastResult ?? {
-      ok: false,
-      reason: 'timeout',
-      message: 'Jev 调用未获得可用预算',
-      latencyMs: config.timeoutMs,
-    }
-  );
+  const result = lastResult ?? {
+    ok: false,
+    reason: 'timeout',
+    message: 'Jev 调用未获得可用预算',
+    latencyMs: config.timeoutMs,
+  };
+  log.warn('jev_call_failed', {
+    ...logData,
+    attempts: MAX_ATTEMPTS,
+    latencyMs: result.latencyMs,
+    failureReason: result.reason,
+  });
+  return result;
 }

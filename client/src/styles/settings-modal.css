@@ -156,6 +156,12 @@
   margin-bottom: 20px;
 }
 
+.experimental-panel {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 6px;
+}
+
 .settings-section-intro h3 {
   margin: 0 0 6px;
   color: var(--text-primary);
@@ -163,11 +169,386 @@
   font-size: 17px;
 }
 
-.experimental-settings-card {
-  padding: 16px;
+.experimental-feature-card {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  background: var(--bg-secondary);
+  background:
+    radial-gradient(
+      circle at 92% 0%,
+      color-mix(in srgb, var(--accent) 9%, transparent),
+      transparent 28%
+    ),
+    var(--bg-secondary);
+}
+
+.experimental-feature-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--bg-primary) 68%, transparent);
+}
+
+.experimental-feature-eyebrow {
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.experimental-feature-header h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: -0.03em;
+}
+
+.experimental-feature-header p,
+.jev-section-heading p,
+.jev-capability-copy > p,
+.jev-settings-footer p {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.experimental-feature-badge {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px;
+  color: var(--accent);
+  background: var(--accent-subtle);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.experimental-feature-content {
+  padding: 14px 20px;
+}
+
+.experimental-config-row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.experimental-config-row > label {
+  display: block;
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.experimental-config-row .select-field-trigger {
+  min-height: 42px;
+  border-color: var(--border-strong);
+  background: var(--bg-primary);
+}
+
+.experimental-feature-card input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 2px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  outline: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.experimental-feature-card input::placeholder {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
+.experimental-feature-card input:focus {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent-border),
+    0 0 0 4px var(--accent-glow);
+  background: var(--bg-primary);
+}
+
+.experimental-config-row .form-help {
+  grid-column: 2;
+  margin: 0;
+}
+
+.experimental-config-row .connection-test-row,
+.experimental-config-row .form-warning {
+  min-width: 0;
+}
+
+.experimental-feature-details {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+
+.chroma-feature-card .form-warning {
+  grid-column: 2;
+  margin: 10px 0 0;
+}
+
+/* Jev keeps its internal sections, while using the same outer card as Chroma. */
+.jev-feature-card {
+  border-color: var(--border-default);
+}
+
+.jev-feature-card > .experimental-feature-content {
+  padding: 0;
+}
+
+.jev-config-section,
+.jev-capabilities-section {
+  padding: 16px 20px;
+}
+
+.jev-capabilities-section {
+  border-top: 1px solid var(--border-default);
+}
+
+.jev-subsection-bar {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 7px 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg-tertiary) 74%, transparent);
+}
+
+.jev-subsection-bar h4 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.jev-subsection-bar p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.jev-config-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.jev-config-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.jev-config-row > label {
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+.jev-config-row .connection-test-row {
+  min-width: 0;
+}
+
+.jev-config-pair {
+  grid-template-columns: 48px minmax(110px, 0.7fr) 70px minmax(220px, 1.3fr);
+  align-items: start;
+}
+
+.jev-config-pair > label {
+  padding-top: 12px;
+}
+
+.jev-config-field {
+  min-width: 0;
+}
+
+.jev-config-field .form-help {
+  margin: 5px 0 0;
+}
+
+.jev-config-note {
+  margin: 10px 0 0;
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.jev-capability-list {
+  display: grid;
+  gap: 0;
+}
+
+.jev-capability {
+  border-bottom: 1px solid var(--border-default);
+}
+
+.jev-capability:last-child {
+  border-bottom: 0;
+}
+
+.jev-capability-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(145px, 0.5fr) minmax(205px, 0.6fr);
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.jev-capability-copy h5 {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.jev-capability-copy > p {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.jev-mode-toggle {
+  width: 100%;
+}
+
+.jev-capability-threshold {
+  min-width: 0;
+}
+
+.jev-threshold-row {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) minmax(56px, 0.65fr);
+  gap: 5px 8px;
+  align-items: center;
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--border-default);
+}
+
+.jev-threshold-row label {
+  margin: 0;
+}
+
+.jev-threshold-row input {
+  width: 100%;
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.jev-threshold-row .form-help {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 10px;
+}
+
+.jev-settings-footer {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin: 0 20px 16px;
+  padding: 9px 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--warning-bg, #fff6df) 56%, transparent);
+}
+
+.jev-footer-mark {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: var(--warning-text, #9a6a00);
+  background: color-mix(in srgb, var(--warning-text, #9a6a00) 13%, transparent);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.jev-settings-footer p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .experimental-feature-header,
+  .jev-config-section,
+  .jev-capabilities-section {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .experimental-feature-header {
+    gap: 12px;
+  }
+
+  .experimental-config-row,
+  .jev-config-row,
+  .jev-config-pair,
+  .jev-capability-row {
+    display: block;
+  }
+
+  .experimental-config-row > label,
+  .jev-config-row > label {
+    margin-bottom: 7px;
+  }
+
+  .jev-config-pair > label {
+    padding-top: 0;
+  }
+
+  .jev-config-pair > label:not(:first-child),
+  .jev-config-pair > .jev-config-field,
+  .jev-config-pair > input {
+    margin-top: 12px;
+  }
+
+  .jev-mode-toggle,
+  .jev-capability-threshold,
+  .jev-threshold-row input {
+    margin-top: 8px;
+  }
+
+  .jev-capability-threshold {
+    margin-left: 0;
+  }
+
+  .jev-settings-footer {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
 }
 
 .connection-test-row {
@@ -320,10 +701,10 @@
    Settings Tabs
    -------------------------------------------- */
 .modal-wide {
-  width: 960px;
-  max-width: 92vw;
-  height: 720px;
-  max-height: 85vh;
+  width: 1000px;
+  max-width: 94vw;
+  height: 760px;
+  max-height: 88vh;
 }
 
 /* --------------------------------------------

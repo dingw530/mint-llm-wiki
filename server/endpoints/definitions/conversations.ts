@@ -162,8 +162,8 @@ export const conversationsEndpoints: EndpointDescriptor[] = [
       if (title !== undefined && typeof title !== 'string') {
         throw httpError(400, 'Title must be a string');
       }
-      if (type !== undefined && type !== 'text' && type !== 'image') {
-        throw httpError(400, 'Type must be "text" or "image"');
+      if (type !== undefined && type !== 'text') {
+        throw httpError(400, 'Type must be "text"');
       }
       return { conversation: conversationService.create({ title, type }) };
     },

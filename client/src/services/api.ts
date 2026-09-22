@@ -40,7 +40,6 @@ export {
 } from './api/settings';
 export { sendMessageStream } from './api/streaming';
 export { resolveToolApproval } from './api/toolApprovals';
-export { generateImage, sendImageMessage } from './api/images';
 export { getSkills } from './api/skills';
 export {
   listWiki,

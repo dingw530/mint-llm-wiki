@@ -97,6 +97,15 @@ export default function SidebarHeader({
         </button>
       </div>
       <div className="module-switcher">
+        <NavLink
+          to="/wiki"
+          className={({ isActive }) => `module-btn${isActive ? ' active' : ''}`}
+          title="知识库"
+          aria-label="知识库"
+        >
+          <WikiIcon />
+          <span>知识库</span>
+        </NavLink>
         <div className="module-chat-row">
           <NavLink
             to="/chat"
@@ -127,15 +136,6 @@ export default function SidebarHeader({
         >
           <AssistantIcon />
           <span>助手</span>
-        </NavLink>
-        <NavLink
-          to="/wiki"
-          className={({ isActive }) => `module-btn${isActive ? ' active' : ''}`}
-          title="知识库"
-          aria-label="知识库"
-        >
-          <WikiIcon />
-          <span>知识库</span>
         </NavLink>
       </div>
     </div>

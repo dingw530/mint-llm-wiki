@@ -1,0 +1,250 @@
+{
+  "changeId": "2026-09-22-knowledge-workbench-home",
+  "scenarios": [
+    {
+      "id": "browser-root-route",
+      "acceptanceCriteria": ["AC-001"],
+      "route": "/",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/wiki/list",
+            "method": "GET",
+            "body": {
+              "tree": [
+                {
+                  "type": "directory",
+                  "name": "sources",
+                  "path": "sources",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                {
+                  "type": "directory",
+                  "name": "pages",
+                  "path": "pages",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                { "type": "file", "name": "_index.md", "path": "_index.md", "modifiedAt": 1 }
+              ],
+              "total": 3
+            }
+          },
+          { "pattern": "**/api/wiki/jobs?*", "method": "GET", "body": { "jobs": [], "total": 0 } },
+          {
+            "pattern": "**/api/wiki/vector-health",
+            "method": "GET",
+            "body": {
+              "documentCount": 0,
+              "vectorizedCount": 0,
+              "pendingCount": 0,
+              "failedCount": 0,
+              "orphanCount": 0,
+              "coverage": 1,
+              "model": "test",
+              "dimensions": 1,
+              "lastIndexedAt": null
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "waitFor",
+          "target": { "role": "heading", "name": "知识库" },
+          "timeoutMs": 10000
+        },
+        {
+          "action": "waitFor",
+          "target": { "role": "textbox", "name": "基于知识库提问..." },
+          "timeoutMs": 10000
+        }
+      ]
+    },
+    {
+      "id": "browser-module-navigation",
+      "acceptanceCriteria": ["AC-002"],
+      "route": "/wiki",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/wiki/list",
+            "method": "GET",
+            "body": {
+              "tree": [
+                {
+                  "type": "directory",
+                  "name": "sources",
+                  "path": "sources",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                {
+                  "type": "directory",
+                  "name": "pages",
+                  "path": "pages",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                { "type": "file", "name": "_index.md", "path": "_index.md", "modifiedAt": 1 }
+              ],
+              "total": 3
+            }
+          },
+          { "pattern": "**/api/wiki/jobs?*", "method": "GET", "body": { "jobs": [], "total": 0 } },
+          {
+            "pattern": "**/api/wiki/vector-health",
+            "method": "GET",
+            "body": {
+              "documentCount": 0,
+              "vectorizedCount": 0,
+              "pendingCount": 0,
+              "failedCount": 0,
+              "orphanCount": 0,
+              "coverage": 1,
+              "model": "test",
+              "dimensions": 1,
+              "lastIndexedAt": null
+            }
+          }
+        ]
+      },
+      "steps": [
+        { "action": "assertText", "text": "知识库" },
+        { "action": "assertText", "text": "对话" },
+        { "action": "assertText", "text": "助手" }
+      ]
+    },
+    {
+      "id": "browser-knowledge-home",
+      "acceptanceCriteria": ["AC-003"],
+      "route": "/wiki",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/wiki/list",
+            "method": "GET",
+            "body": {
+              "tree": [
+                {
+                  "type": "directory",
+                  "name": "sources",
+                  "path": "sources",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                {
+                  "type": "directory",
+                  "name": "pages",
+                  "path": "pages",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                { "type": "file", "name": "_index.md", "path": "_index.md", "modifiedAt": 1 }
+              ],
+              "total": 3
+            }
+          },
+          { "pattern": "**/api/wiki/jobs?*", "method": "GET", "body": { "jobs": [], "total": 0 } },
+          {
+            "pattern": "**/api/wiki/vector-health",
+            "method": "GET",
+            "body": {
+              "documentCount": 0,
+              "vectorizedCount": 0,
+              "pendingCount": 0,
+              "failedCount": 0,
+              "orphanCount": 0,
+              "coverage": 1,
+              "model": "test",
+              "dimensions": 1,
+              "lastIndexedAt": null
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "waitFor",
+          "target": { "role": "heading", "name": "知识库" },
+          "timeoutMs": 10000
+        },
+        {
+          "action": "waitFor",
+          "target": { "role": "textbox", "name": "基于知识库提问..." },
+          "timeoutMs": 10000
+        },
+        { "action": "assertText", "text": "知识状态" },
+        { "action": "assertNotText", "text": "知识热度" },
+        { "action": "assertNotText", "text": "页面排名" }
+      ]
+    },
+    {
+      "id": "browser-wiki-capabilities",
+      "acceptanceCriteria": ["AC-004"],
+      "route": "/wiki",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/wiki/list",
+            "method": "GET",
+            "body": {
+              "tree": [
+                {
+                  "type": "directory",
+                  "name": "sources",
+                  "path": "sources",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                {
+                  "type": "directory",
+                  "name": "pages",
+                  "path": "pages",
+                  "modifiedAt": 1,
+                  "children": []
+                },
+                { "type": "file", "name": "_index.md", "path": "_index.md", "modifiedAt": 1 }
+              ],
+              "total": 3
+            }
+          },
+          { "pattern": "**/api/wiki/jobs?*", "method": "GET", "body": { "jobs": [], "total": 0 } },
+          {
+            "pattern": "**/api/wiki/vector-health",
+            "method": "GET",
+            "body": {
+              "documentCount": 0,
+              "vectorizedCount": 0,
+              "pendingCount": 0,
+              "failedCount": 0,
+              "orphanCount": 0,
+              "coverage": 1,
+              "model": "test",
+              "dimensions": 1,
+              "lastIndexedAt": null
+            }
+          }
+        ]
+      },
+      "steps": [
+        { "action": "assertText", "text": "文档" },
+        { "action": "assertText", "text": "图谱" },
+        { "action": "assertText", "text": "热度" },
+        { "action": "assertText", "text": "文件" },
+        { "action": "assertText", "text": "摄入任务" },
+        { "action": "assertText", "text": "sources" },
+        { "action": "assertText", "text": "pages" },
+        { "action": "assertNotText", "text": "_schema.json" },
+        { "action": "assertNotText", "text": "_manifest.json" },
+        { "action": "assertNotText", "text": "ingestion-pending" },
+        { "action": "assertNotText", "text": ".obsidian" }
+      ]
+    }
+  ]
+}

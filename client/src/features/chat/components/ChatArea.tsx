@@ -21,6 +21,7 @@ export interface ChatAreaProps {
   onUpdateConversation?: (convId: string, updates: Partial<Conversation>) => void;
   activeEndpoint: EndpointOutput | null;
   endpoints: EndpointOutput[];
+  endpointsLoading: boolean;
   onEndpointChange: () => Promise<void>;
   chatEnabled: boolean;
   connectionMode: 'onboarding' | 'repair' | null;
@@ -43,6 +44,7 @@ export default function ChatArea({
   onUpdateConversation,
   activeEndpoint,
   endpoints,
+  endpointsLoading,
   onEndpointChange,
   chatEnabled,
   connectionMode,
@@ -160,6 +162,7 @@ export default function ChatArea({
       activeConversation={activeConversation}
       activeEndpoint={activeEndpoint}
       endpoints={endpoints}
+      endpointsLoading={endpointsLoading}
       title={title}
       loading={loading}
       messages={messages}

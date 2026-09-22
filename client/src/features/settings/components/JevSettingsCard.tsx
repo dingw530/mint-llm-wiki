@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { testJevConnection } from '@/services/api';
+import ExperimentalFeatureCard from './ExperimentalFeatureCard';
 import type { JevFormState } from './jevForm';
 
 interface JevSettingsCardProps {
@@ -11,42 +12,34 @@ type TestState = 'idle' | 'testing' | 'success' | 'error';
 
 /** 一个带唯一可访问名的开关按钮组。 */
 function ToggleRow({
-  label,
-  help,
   enabled,
   enableLabel,
   disableLabel,
   onToggle,
 }: {
-  label: string;
-  help: string;
   enabled: boolean;
   enableLabel: string;
   disableLabel: string;
   onToggle: (next: boolean) => void;
 }) {
   return (
-    <div className="form-group">
-      <label>{label}</label>
-      <div className="mode-toggle">
-        <button
-          type="button"
-          className={enabled ? 'active' : ''}
-          aria-label={enableLabel}
-          onClick={() => onToggle(true)}
-        >
-          启用
-        </button>
-        <button
-          type="button"
-          className={!enabled ? 'active' : ''}
-          aria-label={disableLabel}
-          onClick={() => onToggle(false)}
-        >
-          关闭
-        </button>
-      </div>
-      <p className="form-help">{help}</p>
+    <div className="mode-toggle jev-mode-toggle">
+      <button
+        type="button"
+        className={enabled ? 'active' : ''}
+        aria-label={enableLabel}
+        onClick={() => onToggle(true)}
+      >
+        启用
+      </button>
+      <button
+        type="button"
+        className={!enabled ? 'active' : ''}
+        aria-label={disableLabel}
+        onClick={() => onToggle(false)}
+      >
+        关闭
+      </button>
     </div>
   );
 }
@@ -66,7 +59,7 @@ function ThresholdRow({
   onChange: (next: number) => void;
 }) {
   return (
-    <div className="form-group">
+    <div className="jev-threshold-row">
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
@@ -108,113 +101,154 @@ export default function JevSettingsCard({ jev, onChange }: JevSettingsCardProps)
   };
 
   return (
-    <div className="experimental-settings-card">
-      <div className="settings-section-intro">
-        <h3>Jev（TypeSafe System One）</h3>
-        <p className="form-help">
-          实验性：把 Agent 路由与记忆门控交给 Jev。默认关闭；Jev 不可用时自动回退原有实现。
-        </p>
-      </div>
-
-      <div className="form-group">
-        <label htmlFor="jevApiUrl">Jev Endpoint</label>
-        <div className="connection-test-row">
-          <input
-            id="jevApiUrl"
-            type="url"
-            value={jev.apiUrl}
-            onChange={(event) => {
-              onChange({ apiUrl: event.target.value });
-              setTest('idle');
-            }}
-            placeholder="https://api.typesafe.ai/v1/systemone"
-          />
-          <button
-            type="button"
-            className="btn-secondary connection-test-button"
-            aria-label="测试 Jev 连接"
-            onClick={handleTest}
-            disabled={test === 'testing'}
-          >
-            {test === 'testing' ? '测试中...' : '测试连接'}
-          </button>
+    <ExperimentalFeatureCard
+      index="02"
+      title="Jev 实验能力"
+      description="为 Mint 增加可回退的语义能力。每项能力独立启用，Jev 不可用时自动回退原有实现。"
+      className="jev-feature-card"
+    >
+      <section className="jev-config-section" aria-labelledby="jev-connection-title">
+        <div className="jev-subsection-bar">
+          <h4 id="jev-connection-title">连接配置</h4>
+          <p>先配置 Jev 服务，下面的能力开关共用这组连接。</p>
         </div>
-        {test !== 'idle' && (
-          <p className={`connection-test-result ${test}`} role="status">
-            {testMessage}
-          </p>
-        )}
-      </div>
 
-      <div className="form-group">
-        <label htmlFor="jevApiKey">Jev API Key</label>
-        <input
-          id="jevApiKey"
-          type="password"
-          value={jev.apiKey}
-          onChange={(event) => onChange({ apiKey: event.target.value })}
-          placeholder={jev.apiKeyMasked ? '留空则继续使用已保存的 Key' : '必填'}
-          autoComplete="new-password"
-        />
-        {jev.apiKeyMasked && <p className="form-help">已配置：{jev.apiKeyMasked}</p>}
-        <p className="form-help">API Key 会加密保存。留空表示继续使用已保存的 Key。</p>
-      </div>
+        <div className="jev-config-rows">
+          <div className="jev-config-row">
+            <label htmlFor="jevApiUrl">JEV ENDPOINT</label>
+            <div className="connection-test-row">
+              <input
+                id="jevApiUrl"
+                type="url"
+                value={jev.apiUrl}
+                onChange={(event) => {
+                  onChange({ apiUrl: event.target.value });
+                  setTest('idle');
+                }}
+                placeholder="https://api.typesafe.ai/v1/systemone"
+              />
+              <button
+                type="button"
+                className="btn-secondary connection-test-button"
+                aria-label="测试 Jev 连接"
+                onClick={handleTest}
+                disabled={test === 'testing'}
+              >
+                {test === 'testing' ? '测试中...' : '测试连接'}
+              </button>
+            </div>
+            {test !== 'idle' && (
+              <p className={`connection-test-result ${test}`} role="status">
+                {testMessage}
+              </p>
+            )}
+          </div>
 
-      <div className="form-group">
-        <label htmlFor="jevModel">Jev 模型</label>
-        <input
-          id="jevModel"
-          value={jev.model}
-          onChange={(event) => onChange({ model: event.target.value })}
-          placeholder="jev-latest"
-        />
-      </div>
-
-      <ToggleRow
-        label="Agent 路由"
-        help="开启后由 Jev 按语义选择 Agent；低于阈值或调用失败时回退关键词与 LLM 分类。"
-        enabled={jev.routingEnabled}
-        enableLabel="启用 Jev 路由"
-        disableLabel="关闭 Jev 路由"
-        onToggle={(next) => onChange({ routingEnabled: next })}
-      />
-
-      {jev.routingEnabled && (
-        <div className="experimental-settings-card">
-          <ThresholdRow
-            id="jevRoutingMinConfidence"
-            label="Jev 路由置信度"
-            help="Jev 的置信度低于该值时不采信，回退到原有路由实现。"
-            value={jev.routingMinConfidence}
-            onChange={(next) => onChange({ routingMinConfidence: next })}
-          />
+          <div className="jev-config-row jev-config-pair">
+            <label htmlFor="jevModel">模型</label>
+            <input
+              id="jevModel"
+              value={jev.model}
+              onChange={(event) => onChange({ model: event.target.value })}
+              placeholder="jev-latest"
+            />
+            <label htmlFor="jevApiKey">API KEY</label>
+            <div className="jev-config-field">
+              <input
+                id="jevApiKey"
+                type="password"
+                value={jev.apiKey}
+                onChange={(event) => onChange({ apiKey: event.target.value })}
+                placeholder={jev.apiKeyMasked ? '留空则继续使用已保存的 Key' : '必填'}
+                autoComplete="new-password"
+              />
+              {jev.apiKeyMasked && <p className="form-help">已配置：{jev.apiKeyMasked}</p>}
+            </div>
+          </div>
         </div>
-      )}
+        <p className="jev-config-note">API Key 会加密保存。留空表示继续使用已保存的 Key。</p>
+      </section>
 
-      <ToggleRow
-        label="记忆门控"
-        help="开启后由 Jev 判断对话是否值得记忆；Jev 判定跳过时不入队提取，且不会被正则推翻。"
-        enabled={jev.memoryEnabled}
-        enableLabel="启用 Jev 记忆门控"
-        disableLabel="关闭 Jev 记忆门控"
-        onToggle={(next) => onChange({ memoryEnabled: next })}
-      />
-
-      {jev.memoryEnabled && (
-        <div className="experimental-settings-card">
-          <ThresholdRow
-            id="jevMemoryGateThreshold"
-            label="Jev 记忆置信度"
-            help="Jev 的 noul 判定低于该值视为不值得记忆。默认偏低，因为漏记的代价高于多记。"
-            value={jev.memoryGateThreshold}
-            onChange={(next) => onChange({ memoryGateThreshold: next })}
-          />
+      <section className="jev-capabilities-section" aria-labelledby="jev-capabilities-title">
+        <div className="jev-subsection-bar">
+          <h4 id="jev-capabilities-title">语义能力</h4>
+          <p>按需打开单项实验能力；关闭后完全沿用 Mint 原有逻辑。</p>
         </div>
-      )}
 
-      <p className="form-warning">
-        实验性：Jev 以英文为主要训练语言，中文场景的准确率可能下降。调用失败时会静默回退原有实现。
-      </p>
-    </div>
+        <div className="jev-capability-list">
+          <article className={`jev-capability ${jev.routingEnabled ? 'is-enabled' : ''}`}>
+            <div className="jev-capability-row">
+              <div className="jev-capability-copy">
+                <h5>Agent 路由</h5>
+                <p>让 Jev 按语义选择最合适的 Agent。</p>
+              </div>
+              <ToggleRow
+                enabled={jev.routingEnabled}
+                enableLabel="启用 Jev 路由"
+                disableLabel="关闭 Jev 路由"
+                onToggle={(next) => onChange({ routingEnabled: next })}
+              />
+              {jev.routingEnabled && (
+                <div className="jev-capability-threshold">
+                  <ThresholdRow
+                    id="jevRoutingMinConfidence"
+                    label="路由置信度阈值"
+                    help="低于该值时不采信 Jev 结果。"
+                    value={jev.routingMinConfidence}
+                    onChange={(next) => onChange({ routingMinConfidence: next })}
+                  />
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article className={`jev-capability ${jev.memoryEnabled ? 'is-enabled' : ''}`}>
+            <div className="jev-capability-row">
+              <div className="jev-capability-copy">
+                <h5>记忆门控</h5>
+                <p>让 Jev 判断当前对话是否值得写入长期记忆。</p>
+              </div>
+              <ToggleRow
+                enabled={jev.memoryEnabled}
+                enableLabel="启用 Jev 记忆门控"
+                disableLabel="关闭 Jev 记忆门控"
+                onToggle={(next) => onChange({ memoryEnabled: next })}
+              />
+              {jev.memoryEnabled && (
+                <div className="jev-capability-threshold">
+                  <ThresholdRow
+                    id="jevMemoryGateThreshold"
+                    label="记忆置信度阈值"
+                    help="低于该值视为不值得记忆。"
+                    value={jev.memoryGateThreshold}
+                    onChange={(next) => onChange({ memoryGateThreshold: next })}
+                  />
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article className={`jev-capability ${jev.rerankEnabled ? 'is-enabled' : ''}`}>
+            <div className="jev-capability-row">
+              <div className="jev-capability-copy">
+                <h5>Wiki 语义 Rerank</h5>
+                <p>对召回的 Wiki 候选执行 Jev 语义重排。</p>
+              </div>
+              <ToggleRow
+                enabled={jev.rerankEnabled}
+                enableLabel="启用 Jev Wiki rerank"
+                disableLabel="关闭 Jev Wiki rerank"
+                onToggle={(next) => onChange({ rerankEnabled: next })}
+              />
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer className="jev-settings-footer">
+        <span className="jev-footer-mark">!</span>
+        <p>Jev 以英文为主要训练语言，中文场景的准确率可能下降。实验失败时会静默回退原有实现。</p>
+      </footer>
+    </ExperimentalFeatureCard>
   );
 }

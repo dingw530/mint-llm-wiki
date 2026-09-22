@@ -2,16 +2,20 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
 import * as searchRepo from '../../repositories/wikiSearchRepository.js';
-import { getAiSettings } from './settingsService.js';
+import { getAiSettings, getJevSettings } from './settingsService.js';
 import { createWikiVectorService, pruneWikiVectorOrphans } from '../vector/index.js';
+import { baseRrfScore } from '../rerank/legacyRerankProvider.js';
+import { rerankCandidates } from '../rerank/index.js';
 import type {
   OpenAICompatibleEmbeddingConfig,
   VectorHealth,
   VectorSearchHit,
 } from '../vector/types.js';
+import type { RerankCandidate, RerankedCandidate } from '../rerank/types.js';
 import { isSystemWikiPath, parseWikiPage } from '../utils/wikiShared.js';
 import { createLogger } from '../../utils/logger.js';
 import { ExternalServiceError } from '../resilience/index.js';
+import type { RuntimeContext } from '../runtime/runtimeContext.js';
 
 const log = createLogger('wiki-search');
 
@@ -44,11 +48,7 @@ interface Chunk {
   body: string;
 }
 
-interface RankedDocument {
-  document: searchRepo.WikiSearchDocumentInput;
-  lexicalRank: number | null;
-  vectorRank: number | null;
-  vectorDistance: number | null;
+interface RankedDocument extends RerankedCandidate {
   aggregateMatchTypes?: string[];
 }
 
@@ -239,8 +239,8 @@ function buildSnippet(body: string, terms: string[]): string {
 function mergeCandidates(
   lexical: searchRepo.WikiSearchDocumentInput[],
   vector: VectorSearchHit<searchRepo.WikiSearchDocumentInput>[],
-): RankedDocument[] {
-  const candidates = new Map<string, RankedDocument>();
+): RerankCandidate[] {
+  const candidates = new Map<string, RerankCandidate>();
   lexical.forEach((document, index) => {
     candidates.set(document.id, {
       document,
@@ -278,8 +278,15 @@ function evidenceBoost(document: searchRepo.WikiSearchDocumentInput, terms: stri
   );
 }
 
+function effectiveRankScore(candidate: RerankedCandidate): number {
+  return candidate.semanticScore === undefined ? baseRrfScore(candidate) : candidate.rankScore;
+}
+
 /** 将 chunk 级融合候选聚合为页面级结果，并保留最佳证据片段。 */
-function aggregatePageCandidates(candidates: RankedDocument[], terms: string[]): RankedDocument[] {
+function aggregatePageCandidates(
+  candidates: RerankedCandidate[],
+  terms: string[],
+): RankedDocument[] {
   const pages = new Map<string, RankedDocument>();
   for (const candidate of candidates) {
     const existing = pages.get(candidate.document.sourcePath);
@@ -306,20 +313,19 @@ function aggregatePageCandidates(candidates: RankedDocument[], terms: string[]):
         ...resultMatchTypes(candidate.document, terms, candidate, false),
       ]),
     ];
-    const existingRank = rrfScore(existing) + evidenceBoost(existing.document, terms);
-    const candidateRank = rrfScore(candidate) + evidenceBoost(candidate.document, terms);
+    const existingRank = effectiveRankScore(existing) + evidenceBoost(existing.document, terms);
+    const candidateRank = effectiveRankScore(candidate) + evidenceBoost(candidate.document, terms);
     if (candidateRank > existingRank) {
       existing.document = candidate.document;
       existing.vectorDistance = candidate.vectorDistance;
+      existing.rankScore = candidate.rankScore;
+      existing.semanticScore = candidate.semanticScore;
     }
   }
-  return [...pages.values()];
-}
-
-function rrfScore(candidate: RankedDocument): number {
-  const lexicalScore = candidate.lexicalRank ? 0.6 / (60 + candidate.lexicalRank) : 0;
-  const vectorScore = candidate.vectorRank ? 0.4 / (60 + candidate.vectorRank) : 0;
-  return (lexicalScore + vectorScore) * 1000;
+  return [...pages.values()].map((page) => ({
+    ...page,
+    rankScore: effectiveRankScore(page),
+  }));
 }
 
 function extractTerms(question: string): string[] {
@@ -371,7 +377,7 @@ function toSearchResult(
     ]),
   ];
   const score =
-    rrfScore(candidate) +
+    candidate.rankScore +
     (matchTypes.includes('title') ? 8 : 0) +
     (matchTypes.includes('heading') ? 5 : 0) +
     (matchTypes.includes('tag') ? 5 : 0) +
@@ -486,6 +492,7 @@ export async function searchWiki(
   question: string,
   maxResults: number,
   includeContent: boolean,
+  runtimeContext?: RuntimeContext,
 ): Promise<WikiSearchOutput> {
   const startedAt = performance.now();
   const terms = extractTerms(question);
@@ -554,11 +561,22 @@ export async function searchWiki(
     }
   }
 
-  const ranked = mergeCandidates(lexical, vector);
-  const fusedCandidateCount = ranked.length;
-  ranked.sort((left, right) => rrfScore(right) - rrfScore(left));
+  const retrievedCandidates = mergeCandidates(lexical, vector);
+  const fusedCandidateCount = retrievedCandidates.length;
+  const rerankResult = await rerankCandidates(
+    { query: question, candidates: retrievedCandidates },
+    { jev: runtimeContext?.getJevSettings() ?? getJevSettings() },
+  );
+  const ranked = rerankResult.kind === 'ranked' ? rerankResult.candidates : [];
+  log.info('wiki rerank completed', {
+    provider: rerankResult.kind === 'ranked' ? rerankResult.providerId : 'unavailable',
+    candidateCount: retrievedCandidates.length,
+    semanticCandidates: ranked.filter((candidate) => candidate.semanticScore !== undefined).length,
+    fallback: rerankResult.kind === 'unavailable' || rerankResult.providerId.includes(':fallback:'),
+    fallbackReason: rerankResult.kind === 'unavailable' ? rerankResult.reason : undefined,
+  });
   const pageCandidates = aggregatePageCandidates(ranked, terms);
-  pageCandidates.sort((left, right) => rrfScore(right) - rrfScore(left));
+  pageCandidates.sort((left, right) => right.rankScore - left.rankScore);
   const results: WikiSearchResult[] = [];
   for (const candidate of pageCandidates) {
     if (results.length >= maxResults) break;

@@ -2,13 +2,13 @@
 
 ## Stack
 
-| Layer    | Tech                                    |
-| -------- | --------------------------------------- |
-| Language | TypeScript (全栈)                       |
-| Frontend | React 18, Vite 5, CSS Custom Properties |
-| Backend  | Express 4, better-sqlite3 (SQLite)      |
-| Desktop  | Electron + electron-builder             |
-| Testing  | Vitest 1.x                              |
+| Layer    | Tech                               |
+| -------- |------------------------------------|
+| Language | TypeScript (全栈)                  |
+| Frontend | React 18, Vite 5, @radix-ui        |
+| Backend  | Express 4, better-sqlite3 (SQLite) |
+| Desktop  | Electron + electron-builder        |
+| Testing  | Vitest 1.x                         |
 
 ## Architecture Layers
 

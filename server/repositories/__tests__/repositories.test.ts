@@ -6,7 +6,6 @@ import * as graphRepo from '../graphRepository.js';
 import * as candidateRepo from '../graphCandidateRepository.js';
 import * as routingLogRepo from '../routingLogRepository.js';
 import * as endpointService from '../../services/api/endpointService.js';
-import * as imageService from '../../services/api/imageService.js';
 import { encrypt } from '../../services/utils/encryption.js';
 
 function cleanEndpoints() {
@@ -90,14 +89,6 @@ describe('endpointService', () => {
     ).toThrow();
     expect(() =>
       endpointService.create({ name: 'a'.repeat(51), apiUrl: 'https://v.com', modelId: 'm' }),
-    ).toThrow();
-    expect(() =>
-      endpointService.create({
-        name: 'x',
-        apiUrl: 'https://v.com',
-        modelId: 'm',
-        category: 'bad' as any,
-      }),
     ).toThrow();
   });
 
@@ -355,67 +346,5 @@ describe('routingLogRepository', () => {
       });
     expect(routingLogRepo.findAll({ conversationId: pgid, page: 1, pageSize: 3 })).toHaveLength(3);
     expect(routingLogRepo.findAll({ conversationId: pgid, page: 2, pageSize: 3 })).toHaveLength(2);
-  });
-});
-
-// ── imageService ──
-
-describe('imageService', () => {
-  afterAll(() => {
-    ['img-te1', 'img-te2'].forEach((id) => {
-      try {
-        endpointRepo.del(id);
-      } catch {}
-    });
-  });
-
-  it('empty prompt', async () => {
-    await expect(imageService.generateImage({ prompt: '', endpointId: 'e' })).rejects.toThrow(
-      'prompt',
-    );
-    await expect(imageService.generateImage({ prompt: '   ', endpointId: 'e' })).rejects.toThrow(
-      'prompt',
-    );
-  });
-
-  it('nonexistent endpoint', async () => {
-    await expect(imageService.generateImage({ prompt: 'cat', endpointId: 'nope' })).rejects.toThrow(
-      /不存在/,
-    );
-  });
-
-  it('text endpoint', async () => {
-    endpointRepo.insert({
-      id: 'img-te1',
-      name: 'TextM',
-      apiUrl: 'https://a.com',
-      apiKey: '',
-      modelId: 'gpt-4o',
-      isActive: true,
-      sortOrder: 30,
-    });
-    await expect(
-      imageService.generateImage({ prompt: 'cat', endpointId: 'img-te1' }),
-    ).rejects.toThrow(/不是图片/);
-  });
-
-  it('fetch error', async () => {
-    const encKey = encrypt('sk-real-key');
-    endpointRepo.insert({
-      id: 'img-te2',
-      name: 'ImgM',
-      apiUrl: 'https://img.com',
-      apiKey: encKey,
-      modelId: 'dall-e-3',
-      category: 'image',
-      isActive: true,
-      sortOrder: 31,
-    });
-    const orig = globalThis.fetch;
-    globalThis.fetch = vi.fn().mockRejectedValue(new Error('network'));
-    await expect(
-      imageService.generateImage({ prompt: 'cat', endpointId: 'img-te2' }),
-    ).rejects.toThrow('network');
-    globalThis.fetch = orig;
   });
 });

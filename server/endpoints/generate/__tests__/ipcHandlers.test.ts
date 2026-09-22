@@ -188,7 +188,6 @@ describe('standard IPC handlers', () => {
       'chat:a2ui:subscribe',
       'conversations:generateTitle',
       'messages:list',
-      'download-file',
       'wiki:openInObsidian',
       'wiki:upload',
       'wiki:getJobStatus',

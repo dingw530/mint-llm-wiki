@@ -15,7 +15,6 @@ export interface MessageRow {
   role: string;
   content: string;
   reasoning: string | null;
-  image_data: string | null;
   created_at: string;
 }
 
@@ -60,7 +59,6 @@ export interface Message {
   role: string;
   content: string;
   reasoning?: string | null;
-  imageData?: string | null;
   createdAt: string;
   uiBlocks?: PersistedUiBlock[];
 }
@@ -124,6 +122,7 @@ export interface SettingsInput {
   jevRoutingBypassOnKeyword?: boolean;
   jevMemoryEnabled?: boolean;
   jevMemoryGateThreshold?: number;
+  jevRerankEnabled?: boolean;
 }
 
 // AI 代理内部使用的设置（apiKey 已解密）
@@ -162,6 +161,7 @@ export interface JevSettings {
   routingBypassOnKeyword: boolean;
   memoryEnabled: boolean;
   memoryGateThreshold: number;
+  rerankEnabled?: boolean;
 }
 
 // 返回给前端的设置（apiKey 脱敏显示）
@@ -195,6 +195,7 @@ export interface VisibleSettings {
   jevRoutingMinConfidence: number;
   jevMemoryEnabled: boolean;
   jevMemoryGateThreshold: number;
+  jevRerankEnabled: boolean;
 }
 
 // ── Tool call 类型（兼容 OpenAI function calling 格式） ──
@@ -412,7 +413,6 @@ export interface EndpointRow {
   api_key: string;
   model_id: string;
   api_type: string;
-  category: string;
   verified_at?: string | null;
   is_active: number;
   sort_order: number;
@@ -427,7 +427,6 @@ export interface Endpoint {
   apiKey: string;
   modelId: string;
   apiType: string;
-  category: 'text' | 'image';
   verifiedAt?: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -441,7 +440,6 @@ export interface EndpointInput {
   apiKey?: string;
   modelId: string;
   apiType?: string;
-  category?: 'text' | 'image';
 }
 
 export interface EndpointOutput {
@@ -451,7 +449,6 @@ export interface EndpointOutput {
   apiKeyMasked: string;
   modelId: string;
   apiType: string;
-  category: 'text' | 'image';
   verifiedAt?: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -470,6 +467,5 @@ export interface CreateMessageParams {
   role: string;
   content: string;
   reasoning?: string | null;
-  imageData?: string | null;
   createdAt: string;
 }

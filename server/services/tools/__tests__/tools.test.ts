@@ -30,6 +30,18 @@ vi.mock('../../api/settingsService.js', () => ({
     wikiPath: mockWikiPath,
     wikiMaxFileSize: 0,
   }),
+  getJevSettings: () => ({
+    apiUrl: '',
+    apiKey: '',
+    model: '',
+    timeoutMs: 5000,
+    routingEnabled: false,
+    routingMinConfidence: 0.5,
+    routingBypassOnKeyword: true,
+    memoryEnabled: false,
+    memoryGateThreshold: 0.4,
+    rerankEnabled: false,
+  }),
 }));
 
 // ── Mock bashSecurityService ──

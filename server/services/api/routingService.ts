@@ -20,6 +20,7 @@ import type {
 } from '../routingProviders/types.js';
 import { DISABLED_JEV_SETTINGS } from '../jev/config.js';
 import type { Agent, JevSettings } from '../../types.js';
+import type { RuntimeContext } from '../runtime/runtimeContext.js';
 
 // ── 类型定义 ──
 
@@ -56,6 +57,7 @@ export interface RoutingContext {
   conversationId?: string;
   messageId?: string;
   messagePreview?: string | null;
+  runtimeContext?: RuntimeContext;
 }
 
 /** 组装本次路由 provider 步的工厂；默认交给 `createDefaultRoutingSteps`。 */
@@ -187,7 +189,7 @@ export class RoutingService {
   ): Promise<RoutingResolution> {
     const input = { message, agents: context.agents };
     try {
-      const jev = settingsService.getJevSettings();
+      const jev = context.runtimeContext?.getJevSettings() ?? settingsService.getJevSettings();
       const steps = this.stepFactory(jev, message, context);
       return await resolveRoute(input, steps, { jev });
     } catch (error) {

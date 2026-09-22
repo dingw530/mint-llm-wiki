@@ -7,30 +7,51 @@ import { useSidebarResize } from '../useSidebarResize';
 import type { Conversation, SendCallbacks } from '@/types';
 
 const api = vi.hoisted(() => ({
-  getConversations: vi.fn(), createConversation: vi.fn(), deleteConversation: vi.fn(),
-  clearAllConversations: vi.fn(), renameConversation: vi.fn(), sendMessageStream: vi.fn(),
+  getConversations: vi.fn(),
+  createConversation: vi.fn(),
+  deleteConversation: vi.fn(),
+  clearAllConversations: vi.fn(),
+  renameConversation: vi.fn(),
+  sendMessageStream: vi.fn(),
 }));
 
 vi.mock('@/services/api', () => api);
 
-interface HookHarness<T> { result: { current: T }; unmount: () => void }
+interface HookHarness<T> {
+  result: { current: T };
+  unmount: () => void;
+}
 
 function renderHook<T>(hook: () => T): HookHarness<T> {
   const result = { current: undefined as T };
   let root: Root;
   const container = document.createElement('div');
   document.body.appendChild(container);
-  function Harness() { result.current = hook(); return null; }
-  act(() => { root = createRoot(container); root.render(<Harness />); });
+  function Harness() {
+    result.current = hook();
+    return null;
+  }
+  act(() => {
+    root = createRoot(container);
+    root.render(<Harness />);
+  });
   return {
     result,
-    unmount: () => { act(() => root.unmount()); container.remove(); },
+    unmount: () => {
+      act(() => root.unmount());
+      container.remove();
+    },
   };
 }
 
 const conversation = (id: string, title = id): Conversation => ({
-  id, title, createdAt: '2026-01-01', updatedAt: '2026-01-01', type: 'chat',
-  lockedAgent: null, routingMode: 'auto',
+  id,
+  title,
+  createdAt: '2026-01-01',
+  updatedAt: '2026-01-01',
+  type: 'chat',
+  lockedAgent: null,
+  routingMode: 'auto',
 });
 
 describe('useConversations', () => {
@@ -60,14 +81,17 @@ describe('useConversations', () => {
       await hook.result.current.create();
       await hook.result.current.rename('one', 'renamed');
       hook.result.current.updateTitle('two', 'updated');
-      hook.result.current.updateConversation('two', { type: 'image' });
+      hook.result.current.updateConversation('two', { type: 'text' });
     });
     expect(api.createConversation).toHaveBeenCalledWith('New Conversation', undefined);
     expect(hook.result.current.conversations).toEqual([
-      expect.objectContaining({ id: 'two', title: 'updated', type: 'image' }),
+      expect.objectContaining({ id: 'two', title: 'updated', type: 'text' }),
       expect.objectContaining({ id: 'one', title: 'renamed' }),
     ]);
-    await act(async () => { await hook.result.current.delete('two'); await hook.result.current.clearAll(); });
+    await act(async () => {
+      await hook.result.current.delete('two');
+      await hook.result.current.clearAll();
+    });
     expect(api.deleteConversation).toHaveBeenCalledWith('two');
     expect(api.clearAllConversations).toHaveBeenCalledOnce();
     expect(hook.result.current.conversations).toEqual([]);
@@ -90,15 +114,25 @@ describe('useConversations', () => {
 
 describe('useSSE', () => {
   it('aborts the previous stream before sending a new one and exposes abort', () => {
-    const firstAbort = vi.fn(); const secondAbort = vi.fn();
-    api.sendMessageStream.mockReturnValueOnce({ abort: firstAbort }).mockReturnValueOnce({ abort: secondAbort });
+    const firstAbort = vi.fn();
+    const secondAbort = vi.fn();
+    api.sendMessageStream
+      .mockReturnValueOnce({ abort: firstAbort })
+      .mockReturnValueOnce({ abort: secondAbort });
     const hook = renderHook(() => useSSE());
     const callbacks: SendCallbacks = {};
-    act(() => hook.result.current.send('conversation', 'hello', callbacks, 'general', { regenerate: true }));
+    act(() =>
+      hook.result.current.send('conversation', 'hello', callbacks, 'general', { regenerate: true }),
+    );
     act(() => hook.result.current.send('conversation', 'again', callbacks));
     expect(firstAbort).toHaveBeenCalledOnce();
     expect(api.sendMessageStream).toHaveBeenNthCalledWith(
-      2, 'conversation', 'again', callbacks, undefined, {},
+      2,
+      'conversation',
+      'again',
+      callbacks,
+      undefined,
+      {},
     );
     act(() => hook.result.current.abort());
     expect(secondAbort).toHaveBeenCalledOnce();
@@ -106,8 +140,11 @@ describe('useSSE', () => {
   });
 
   it('keeps streams for different conversations independent', () => {
-    const firstAbort = vi.fn(); const secondAbort = vi.fn();
-    api.sendMessageStream.mockReturnValueOnce({ abort: firstAbort }).mockReturnValueOnce({ abort: secondAbort });
+    const firstAbort = vi.fn();
+    const secondAbort = vi.fn();
+    api.sendMessageStream
+      .mockReturnValueOnce({ abort: firstAbort })
+      .mockReturnValueOnce({ abort: secondAbort });
     const hook = renderHook(() => useSSE());
     const callbacks: SendCallbacks = {};
     act(() => hook.result.current.send('conversation-a', 'hello', callbacks));
@@ -128,7 +165,12 @@ describe('useSidebarResize', () => {
     localStorage.setItem('mint-sidebar-width', '300');
     const hook = renderHook(() => useSidebarResize());
     expect(hook.result.current.width).toBe(300);
-    act(() => hook.result.current.onMouseDown({ preventDefault: vi.fn(), clientX: 100 } as unknown as React.MouseEvent));
+    act(() =>
+      hook.result.current.onMouseDown({
+        preventDefault: vi.fn(),
+        clientX: 100,
+      } as unknown as React.MouseEvent),
+    );
     act(() => document.dispatchEvent(new MouseEvent('mousemove', { clientX: 500 })));
     expect(hook.result.current.width).toBe(480);
     act(() => document.dispatchEvent(new MouseEvent('mouseup')));

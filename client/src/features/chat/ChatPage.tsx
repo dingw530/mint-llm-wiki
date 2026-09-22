@@ -77,8 +77,8 @@ export default function ChatPage() {
       const list = data.endpoints || [];
       setEndpoints(list);
       const active =
-        list.find((ep: EndpointOutput) => ep.isActive && ep.category === 'text' && ep.verifiedAt) ||
-        list.find((ep: EndpointOutput) => ep.isActive && ep.category === 'text') ||
+        list.find((ep: EndpointOutput) => ep.isActive && ep.verifiedAt) ||
+        list.find((ep: EndpointOutput) => ep.isActive) ||
         null;
       setActiveEndpoint(active);
     } catch (err) {
@@ -174,12 +174,11 @@ export default function ChatPage() {
         onUpdateConversation={updateConversation}
         activeEndpoint={activeEndpoint}
         endpoints={endpoints}
+        endpointsLoading={endpointsLoading}
         onEndpointChange={fetchEndpoints}
         chatEnabled={chatEnabled}
         connectionMode={onboardingRequired ? 'onboarding' : connectionMode}
-        repairEndpoint={
-          activeEndpoint || endpoints.find((endpoint) => endpoint.category === 'text') || null
-        }
+        repairEndpoint={activeEndpoint || endpoints[0] || null}
         onConnectModel={openConnection}
         onSkipOnboarding={skipOnboarding}
         onCloseConnection={() => setConnectionMode(null)}

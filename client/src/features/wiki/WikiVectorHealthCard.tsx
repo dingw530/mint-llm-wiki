@@ -66,6 +66,11 @@ export default function WikiVectorHealthCard() {
     }
   };
 
+  const coverage =
+    vectorHealth && Number.isFinite(vectorHealth.coverage)
+      ? `${Math.round(vectorHealth.coverage * 100)}%`
+      : '—';
+
   return (
     <section className="wiki-vector-health wiki-vector-health--welcome" aria-label="向量索引健康度">
       <div className="wiki-vector-health-label">
@@ -74,28 +79,44 @@ export default function WikiVectorHealthCard() {
       </div>
       <span className="wiki-vector-health-coverage">
         <small>覆盖率</small>
-        {vectorHealth ? `${Math.round(vectorHealth.coverage * 100)}%` : '—'}
+        {coverage}
       </span>
       <div className="wiki-vector-health-stats">
-        <span>已覆盖 {vectorHealth?.vectorizedCount ?? '—'} / {vectorHealth?.documentCount ?? '—'} 片段</span>
+        <span>
+          已覆盖 {vectorHealth?.vectorizedCount ?? '—'} / {vectorHealth?.documentCount ?? '—'} 片段
+        </span>
         <span>待处理 {vectorHealth?.pendingCount ?? '—'}</span>
-        {(vectorHealth?.failedCount || 0) > 0 && <span className="wiki-vector-health-alert">失败 {vectorHealth?.failedCount}</span>}
-        {(vectorHealth?.orphanCount || 0) > 0 && <span className="wiki-vector-health-alert">孤儿 {vectorHealth?.orphanCount}</span>}
+        {(vectorHealth?.failedCount || 0) > 0 && (
+          <span className="wiki-vector-health-alert">失败 {vectorHealth?.failedCount}</span>
+        )}
+        {(vectorHealth?.orphanCount || 0) > 0 && (
+          <span className="wiki-vector-health-alert">孤儿 {vectorHealth?.orphanCount}</span>
+        )}
       </div>
       {vectorJob && (vectorJob.status === 'queued' || vectorJob.status === 'running') && (
         <div className="wiki-vector-health-progress" aria-live="polite">
-          <span>{vectorJob.status === 'queued' ? '等待回填' : `正在处理 ${vectorJob.currentPath || '页面'}`}</span>
-          <span>{vectorJob.processed} / {vectorJob.total || '—'}</span>
+          <span>
+            {vectorJob.status === 'queued'
+              ? '等待回填'
+              : `正在处理 ${vectorJob.currentPath || '页面'}`}
+          </span>
+          <span>
+            {vectorJob.processed} / {vectorJob.total || '—'}
+          </span>
         </div>
       )}
       {vectorJob?.status === 'partial_failed' || vectorJob?.status === 'failed' ? (
-        <button type="button" className="wiki-vector-health-action" onClick={retryVectorBackfill}>重试失败项</button>
+        <button type="button" className="wiki-vector-health-action" onClick={retryVectorBackfill}>
+          重试失败项
+        </button>
       ) : (
         <button
           type="button"
           className="wiki-vector-health-action"
           onClick={startVectorBackfill}
-          disabled={vectorLoading || vectorJob?.status === 'queued' || vectorJob?.status === 'running'}
+          disabled={
+            vectorLoading || vectorJob?.status === 'queued' || vectorJob?.status === 'running'
+          }
         >
           {vectorLoading ? '正在启动…' : '回填历史向量'}
         </button>

@@ -24,7 +24,6 @@ const endpoint = {
   apiKeyMasked: 'sk-***',
   modelId: 'gpt-4o-mini',
   apiType: 'openai-chat',
-  category: 'text' as const,
   isActive: true,
   sortOrder: 0,
   createdAt: '',
@@ -52,8 +51,9 @@ describe('EndpointsPanel', () => {
     await act(async () => overlay?.click());
     expect(container.querySelector('.tool-modal')).not.toBeNull();
 
-    const cancelButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button'))
-      .find((button) => button.textContent === '取消');
+    const cancelButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent === '取消',
+    );
     expect(cancelButton).not.toBeUndefined();
     await act(async () => cancelButton?.click());
     expect(container.querySelector('.tool-modal')).toBeNull();

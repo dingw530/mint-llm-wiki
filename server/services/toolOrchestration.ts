@@ -1,9 +1,15 @@
 import type { ToolCall, ToolDefinition } from '../types.js';
 import { mcpService } from './api/mcpService.js';
 import * as agentRepo from '../repositories/agentRepository.js';
-import { McpToolAdapter, toolRegistry as runtimeRegistry, toolExecutor, toolApprovalStore } from './tools/index.js';
+import {
+  McpToolAdapter,
+  toolRegistry as runtimeRegistry,
+  toolExecutor,
+  toolApprovalStore,
+} from './tools/index.js';
 import { getApprovalScopePath } from './tools/approvalStore.js';
 import type { ApprovalResumeContext } from './tools/approvalStore.js';
+import type { RuntimeContext } from './runtime/runtimeContext.js';
 
 // 获取 Agent 可用的工具定义列表
 export async function getAllToolDefinitions(agentId?: string): Promise<ToolDefinition[]> {
@@ -12,7 +18,20 @@ export async function getAllToolDefinitions(agentId?: string): Promise<ToolDefin
   // 全局工具，所有 Agent 可用
   if (isLegacyMcpEnabled()) syncMcpTools();
   else syncLoadedMcpTools();
-  const globalToolNames = ['http_fetch', 'invoke_skill', 'bash', 'invoke_agent', 'read_artifact', 'write_file', 'wiki_ingest', 'wiki_lint', 'wiki_search', 'knowledge_graph', 'discover_tools', 'load_tool'];
+  const globalToolNames = [
+    'http_fetch',
+    'invoke_skill',
+    'bash',
+    'invoke_agent',
+    'read_artifact',
+    'write_file',
+    'wiki_ingest',
+    'wiki_lint',
+    'wiki_search',
+    'knowledge_graph',
+    'discover_tools',
+    'load_tool',
+  ];
   for (const name of globalToolNames) {
     const def = getToolDefinitionSafe(name);
     if (def) tools.push(def);
@@ -44,37 +63,51 @@ function isLegacyMcpEnabled(): boolean {
  * @returns The extended tool definitions.
  */
 function syncLoadedMcpTools(): void {
-  const getLoadedToolNames = (mcpService as typeof mcpService & {
-    getLoadedToolNames?: () => string[];
-  }).getLoadedToolNames;
-  const getToolRecord = (mcpService as typeof mcpService & {
-    getToolRecord?: (name: string) => unknown;
-  }).getToolRecord;
+  const getLoadedToolNames = (
+    mcpService as typeof mcpService & {
+      getLoadedToolNames?: () => string[];
+    }
+  ).getLoadedToolNames;
+  const getToolRecord = (
+    mcpService as typeof mcpService & {
+      getToolRecord?: (name: string) => unknown;
+    }
+  ).getToolRecord;
   if (!getLoadedToolNames || !getToolRecord) return;
   for (const fullName of getLoadedToolNames.call(mcpService)) {
-    const record = getToolRecord.call(mcpService, fullName) as ConstructorParameters<typeof McpToolAdapter>[0] | undefined;
-    if (record && !runtimeRegistry.has(fullName)) runtimeRegistry.register(new McpToolAdapter(record));
+    const record = getToolRecord.call(mcpService, fullName) as
+      ConstructorParameters<typeof McpToolAdapter>[0] | undefined;
+    if (record && !runtimeRegistry.has(fullName))
+      runtimeRegistry.register(new McpToolAdapter(record));
   }
 }
 
 function syncMcpTools(serverIds?: string[]): void {
-  const getAllToolNames = (mcpService as typeof mcpService & {
-    getAllToolNames?: (servers?: string[]) => string[];
-  }).getAllToolNames;
-  const getToolRecord = (mcpService as typeof mcpService & {
-    getToolRecord?: (name: string) => unknown;
-  }).getToolRecord;
+  const getAllToolNames = (
+    mcpService as typeof mcpService & {
+      getAllToolNames?: (servers?: string[]) => string[];
+    }
+  ).getAllToolNames;
+  const getToolRecord = (
+    mcpService as typeof mcpService & {
+      getToolRecord?: (name: string) => unknown;
+    }
+  ).getToolRecord;
   if (!getAllToolNames || !getToolRecord) return;
   for (const fullName of getAllToolNames.call(mcpService, serverIds)) {
-    const record = getToolRecord.call(mcpService, fullName) as ConstructorParameters<typeof McpToolAdapter>[0] | undefined;
-    if (record && !runtimeRegistry.has(fullName)) runtimeRegistry.register(new McpToolAdapter(record));
+    const record = getToolRecord.call(mcpService, fullName) as
+      ConstructorParameters<typeof McpToolAdapter>[0] | undefined;
+    if (record && !runtimeRegistry.has(fullName))
+      runtimeRegistry.register(new McpToolAdapter(record));
   }
 }
 
 function appendMcpTools(tools: ToolDefinition[], serverIds?: string[]): ToolDefinition[] {
-  const getAllToolNames = (mcpService as typeof mcpService & {
-    getAllToolNames?: (servers?: string[]) => string[];
-  }).getAllToolNames;
+  const getAllToolNames = (
+    mcpService as typeof mcpService & {
+      getAllToolNames?: (servers?: string[]) => string[];
+    }
+  ).getAllToolNames;
   if (!getAllToolNames) return tools;
   for (const fullName of getAllToolNames.call(mcpService, serverIds)) {
     const definition = getToolDefinitionSafe(fullName);
@@ -84,9 +117,11 @@ function appendMcpTools(tools: ToolDefinition[], serverIds?: string[]): ToolDefi
 }
 
 function appendLoadedMcpTools(tools: ToolDefinition[], serverIds?: string[]): ToolDefinition[] {
-  const getLoadedToolNames = (mcpService as typeof mcpService & {
-    getLoadedToolNames?: () => string[];
-  }).getLoadedToolNames;
+  const getLoadedToolNames = (
+    mcpService as typeof mcpService & {
+      getLoadedToolNames?: () => string[];
+    }
+  ).getLoadedToolNames;
   if (!getLoadedToolNames) return tools;
   for (const fullName of getLoadedToolNames.call(mcpService)) {
     const serverName = fullName.split('__')[0];
@@ -101,6 +136,7 @@ function appendLoadedMcpTools(tools: ToolDefinition[], serverIds?: string[]): To
 export interface ExecuteToolOptions {
   approvalGranted?: boolean;
   approvalContext?: ApprovalResumeContext;
+  runtimeContext?: RuntimeContext;
 }
 
 /**
@@ -124,16 +160,19 @@ export async function executeToolDetailed(
   if (runtimeRegistry.has(name)) {
     const context = {
       conversationId,
-      approvalGranted: options.approvalGranted === undefined
-        ? toolApprovalStore.isGranted(conversationId, toolCall)
-        : options.approvalGranted,
-      requestApproval: ({ reason }: { reason: string }) => toolApprovalStore.create({
-        conversationId,
-        toolCall,
-        reason,
-        resume: options.approvalContext,
-        scopePath: getApprovalScopePath(toolCall),
-      }),
+      runtimeContext: options.runtimeContext,
+      approvalGranted:
+        options.approvalGranted === undefined
+          ? toolApprovalStore.isGranted(conversationId, toolCall)
+          : options.approvalGranted,
+      requestApproval: ({ reason }: { reason: string }) =>
+        toolApprovalStore.create({
+          conversationId,
+          toolCall,
+          reason,
+          resume: options.approvalContext,
+          scopePath: getApprovalScopePath(toolCall),
+        }),
     };
     return toolExecutor.executeFromToolCall(toolCall, context);
   }

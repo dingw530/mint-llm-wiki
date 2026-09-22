@@ -26,30 +26,85 @@ npm run eval:wiki-rag:dry
 
 ## 环境变量
 
-| 变量 | 用途 | 是否必需 |
-| --- | --- | --- |
-| `AI_CHAT_ENCRYPTION_KEY` | 隔离评测数据库加密设置 | `ingest` / `live` 必需 |
-| `MINT_EVAL_API_URL` | AI API 根地址，例如 `https://api.example.com` | `ingest` 必需 |
-| `MINT_EVAL_API_KEY` | AI API Key | `ingest` 必需 |
-| `MINT_EVAL_MODEL_ID` | 模型 ID | `ingest` 必需 |
-| `MINT_EVAL_WIKI_SEARCH_MODE` | Wiki 检索模式：`keyword` 或 `hybrid`，live 默认 `hybrid` | 可选 |
-| `MINT_EVAL_EMBEDDING_API_URL` | OpenAI 兼容 Embedding API 根地址 | hybrid 必需 |
-| `MINT_EVAL_EMBEDDING_MODEL` | Embedding 模型，默认 `bge-m3` | hybrid 必需 |
-| `MINT_EVAL_EMBEDDING_DIMENSIONS` | 向量维度，当前必须为 `1024` | hybrid 必需 |
-| `MINT_EVAL_JUDGE_API_URL` | Judge 的 OpenAI 兼容 API 根地址 | 使用 `--judge` 必需 |
-| `MINT_EVAL_JUDGE_API_KEY` | Judge API Key | 使用 `--judge` 必需 |
-| `MINT_EVAL_JUDGE_MODEL_ID` | Judge 模型 ID | 使用 `--judge` 必需 |
-| `MINT_EVAL_RAW_DIR` | 原始语料目录 | 可选 |
-| `MINT_EVAL_FIXTURE_PATH` | `prepare` 输出目录 | 可选 |
-| `MINT_EVAL_WIKI_PATH` | 正式摄入后的隔离 Wiki 目录 | `live` 必需 |
-| `MINT_EVAL_DB_PATH` | 隔离评测 SQLite 数据库 | `live` 必需 |
-| `EVAL_VIEWER_PORT` | 报告查看器端口，默认 `4174` | 可选 |
+| 变量                             | 用途                                                     | 是否必需               |
+| -------------------------------- | -------------------------------------------------------- | ---------------------- |
+| `AI_CHAT_ENCRYPTION_KEY`         | 隔离评测数据库加密设置                                   | `ingest` / `live` 必需 |
+| `MINT_EVAL_API_URL`              | AI API 根地址，例如 `https://api.example.com`            | `ingest` 必需          |
+| `MINT_EVAL_API_KEY`              | AI API Key                                               | `ingest` 必需          |
+| `MINT_EVAL_MODEL_ID`             | 模型 ID                                                  | `ingest` 必需          |
+| `MINT_EVAL_WIKI_SEARCH_MODE`     | Wiki 检索模式：`keyword` 或 `hybrid`，live 默认 `hybrid` | 可选                   |
+| `MINT_EVAL_EMBEDDING_API_URL`    | OpenAI 兼容 Embedding API 根地址                         | hybrid 必需            |
+| `MINT_EVAL_EMBEDDING_MODEL`      | Embedding 模型，默认 `bge-m3`                            | hybrid 必需            |
+| `MINT_EVAL_EMBEDDING_DIMENSIONS` | 向量维度，当前必须为 `1024`                              | hybrid 必需            |
+| `MINT_EVAL_FEATURES_FILE`        | 通用 Feature 配置文件，支持 `.json` / `.js` / `.mjs`     | 可选                   |
+| `MINT_EVAL_FEATURES_JSON`        | 通用 Feature 配置 JSON（兼容方式）                       | 可选                   |
+| `MINT_EVAL_JUDGE_API_URL`        | Judge 的 OpenAI 兼容 API 根地址                          | 使用 `--judge` 必需    |
+| `MINT_EVAL_JUDGE_API_KEY`        | Judge API Key                                            | 使用 `--judge` 必需    |
+| `MINT_EVAL_JUDGE_MODEL_ID`       | Judge 模型 ID                                            | 使用 `--judge` 必需    |
+| `MINT_EVAL_JUDGE_PROVIDER`       | Judge provider：`llm`（默认）或 `jev`                    | 可选                   |
+| `MINT_EVAL_RAW_DIR`              | 原始语料目录                                             | 可选                   |
+| `MINT_EVAL_FIXTURE_PATH`         | `prepare` 输出目录                                       | 可选                   |
+| `MINT_EVAL_WIKI_PATH`            | 正式摄入后的隔离 Wiki 目录                               | `live` 必需            |
+| `MINT_EVAL_DB_PATH`              | 隔离评测 SQLite 数据库                                   | `live` 必需            |
+| `EVAL_VIEWER_PORT`               | 报告查看器端口，默认 `4174`                              | 可选                   |
 
 OpenAI 兼容适配器会自动补充 `/v1/chat/completions`，因此 `MINT_EVAL_API_URL` 通常不要再写 `/v1`。
 
 Wiki hybrid 检索会额外调用 `${MINT_EVAL_EMBEDDING_API_URL}/embeddings`，并使用 FTS 关键词结果与向量结果做 RRF 融合。当前 Embedding 客户端不发送认证 Header，因此默认配置适用于本机 Ollama 等无认证服务；远程需要认证的服务暂不能直接用于该命令。`ingest` 完成后会强制校验向量覆盖率为 100%，向量化失败不会静默降级为关键词评测。
 
 Judge 与被测 Agent 配置分离。`--judge` 未显式开启时，评测不会发起 Judge 网络请求；建议使用与被测 Agent 不同模型家族的 Judge，并定期通过人工金标校准。
+
+Judge 入口通过 provider 抽象选择实现。默认 `llm` 保持 OpenAI 兼容 Judge；设置 `MINT_EVAL_JUDGE_PROVIDER=jev` 或传入 `--judge-provider jev` 后，使用 `features.jev.options` 的 Jev 配置。Jev 负责 rubric 维度评分和 Veto 判定，`evidenceIds`、`reason`、`shortReason` 和 gate 结果由评测代码根据 Jev 结果及确定性证据生成。
+
+评测能力建议通过 `agent-eval/features.json` 或 `agent-eval/config.js` 配置，不需要为每个新能力增加新的 CLI 参数。两个文件会自动探测，也可以通过 `MINT_EVAL_FEATURES_FILE` 或 `--features-file` 指定其他路径。
+
+`features.json` 示例：
+
+```json
+{
+  "features": {
+    "jev": {
+      "enabled": true,
+      "options": {
+        "apiUrl": "https://api.typesafe.ai/v1/systemone",
+        "apiKey": "<JEV_API_KEY>",
+        "model": "jev-latest",
+        "routingEnabled": true,
+        "memoryEnabled": true,
+        "rerankEnabled": true
+      }
+    }
+  }
+}
+```
+
+`config.js` 示例：
+
+```js
+export default {
+  features: {
+    jev: {
+      enabled: true,
+      options: {
+        apiUrl: 'https://api.typesafe.ai/v1/systemone',
+        apiKey: process.env.JEV_API_KEY,
+        model: 'jev-latest',
+        routingEnabled: true,
+        memoryEnabled: true,
+        rerankEnabled: true,
+      },
+    },
+  },
+};
+```
+
+也可以继续使用环境变量 JSON：
+
+```bash
+export MINT_EVAL_FEATURES_JSON='{"features":{"jev":{"enabled":true,"options":{"apiUrl":"https://api.typesafe.ai/v1/systemone","apiKey":"<JEV_API_KEY>","model":"jev-latest","routingEnabled":true,"memoryEnabled":true,"rerankEnabled":true}}}}'
+```
+
+也可以直接传入 `--features-json`。配置优先级为：`--features-json`、`MINT_EVAL_FEATURES_JSON`、`--features-file`、`MINT_EVAL_FEATURES_FILE`、自动发现的 `features.json` / `config.js`。`agent-eval` 会为当前运行创建独立的 RuntimeContext；未知 Feature 会被保留，不会要求修改评测主流程。路由结果和记忆门控结果会写入该次执行的 `state`，Wiki rerank 会通过同一 context 生效。
 
 ## 命令
 
@@ -265,6 +320,9 @@ npm run eval:langfuse:upload -w agent-eval -- \
 
 ```bash
 npm run eval:wiki-rag:judge -w agent-eval
+
+# 使用 Jev 作为 Judge
+npm run eval:wiki-rag:judge -w agent-eval -- --judge-provider jev --features-file features.json
 
 # 或使用临时配置，不写入 .env
 node scripts/with-node-version.cjs tsx agent-eval/src/cli.ts \

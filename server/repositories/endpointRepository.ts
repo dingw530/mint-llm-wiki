@@ -9,7 +9,6 @@ function toCamelCase(row: EndpointRow): Endpoint {
     apiKey: row.api_key,
     modelId: row.model_id,
     apiType: row.api_type,
-    category: (row.category === 'image' ? 'image' : 'text') as 'text' | 'image',
     verifiedAt: row.verified_at ?? null,
     isActive: row.is_active === 1,
     sortOrder: row.sort_order,
@@ -22,7 +21,7 @@ export function getAll(): Endpoint[] {
   const db = getDb();
   const rows = db
     .prepare(
-      'SELECT id, name, api_url, api_key, model_id, api_type, category, verified_at, is_active, sort_order, created_at, updated_at FROM model_endpoints ORDER BY sort_order, created_at',
+      'SELECT id, name, api_url, api_key, model_id, api_type, verified_at, is_active, sort_order, created_at, updated_at FROM model_endpoints ORDER BY sort_order, created_at',
     )
     .all() as EndpointRow[];
   return rows.map(toCamelCase);
@@ -32,7 +31,7 @@ export function getActive(): Endpoint | null {
   const db = getDb();
   const row = db
     .prepare(
-      'SELECT id, name, api_url, api_key, model_id, api_type, category, is_active, sort_order, created_at, updated_at FROM model_endpoints WHERE is_active = 1 LIMIT 1',
+      'SELECT id, name, api_url, api_key, model_id, api_type, is_active, sort_order, created_at, updated_at FROM model_endpoints WHERE is_active = 1 LIMIT 1',
     )
     .get() as EndpointRow | undefined;
   return row ? toCamelCase(row) : null;
@@ -42,7 +41,7 @@ export function getById(id: string): Endpoint | null {
   const db = getDb();
   const row = db
     .prepare(
-      'SELECT id, name, api_url, api_key, model_id, api_type, category, verified_at, is_active, sort_order, created_at, updated_at FROM model_endpoints WHERE id = ?',
+      'SELECT id, name, api_url, api_key, model_id, api_type, verified_at, is_active, sort_order, created_at, updated_at FROM model_endpoints WHERE id = ?',
     )
     .get(id) as EndpointRow | undefined;
   return row ? toCamelCase(row) : null;
@@ -55,14 +54,13 @@ export function insert(endpoint: {
   apiKey: string;
   modelId: string;
   apiType?: string;
-  category?: 'text' | 'image';
   isActive: boolean;
   sortOrder: number;
 }): Endpoint {
   const db = getDb();
   const now = new Date().toISOString();
   db.prepare(
-    'INSERT INTO model_endpoints (id, name, api_url, api_key, model_id, api_type, category, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO model_endpoints (id, name, api_url, api_key, model_id, api_type, is_active, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
   ).run(
     endpoint.id,
     endpoint.name,
@@ -70,7 +68,6 @@ export function insert(endpoint: {
     endpoint.apiKey,
     endpoint.modelId,
     endpoint.apiType || 'openai-chat',
-    endpoint.category || 'text',
     endpoint.isActive ? 1 : 0,
     endpoint.sortOrder,
     now,
@@ -83,7 +80,6 @@ export function insert(endpoint: {
     apiKey: endpoint.apiKey,
     modelId: endpoint.modelId,
     apiType: endpoint.apiType || 'openai-chat',
-    category: endpoint.category || 'text',
     isActive: endpoint.isActive,
     sortOrder: endpoint.sortOrder,
     createdAt: now,
@@ -99,7 +95,6 @@ export function update(
     apiKey: string;
     modelId: string;
     apiType: string;
-    category: string;
     isActive: boolean;
     sortOrder: number;
   }>,
@@ -128,10 +123,6 @@ export function update(
   if (fields.apiType !== undefined) {
     setClauses.push('api_type = ?');
     params.push(fields.apiType);
-  }
-  if (fields.category !== undefined) {
-    setClauses.push('category = ?');
-    params.push(fields.category);
   }
   if (fields.isActive !== undefined) {
     setClauses.push('is_active = ?');
@@ -178,7 +169,7 @@ export function getVerifiedActive(): Endpoint | null {
   const db = getDb();
   const row = db
     .prepare(
-      "SELECT id, name, api_url, api_key, model_id, api_type, category, verified_at, is_active, sort_order, created_at, updated_at FROM model_endpoints WHERE is_active = 1 AND category = 'text' AND verified_at IS NOT NULL LIMIT 1",
+      'SELECT id, name, api_url, api_key, model_id, api_type, verified_at, is_active, sort_order, created_at, updated_at FROM model_endpoints WHERE is_active = 1 AND verified_at IS NOT NULL LIMIT 1',
     )
     .get() as EndpointRow | undefined;
   return row ? toCamelCase(row) : null;

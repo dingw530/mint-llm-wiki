@@ -67,11 +67,15 @@ export function createJevMemoryGateProvider(): MemoryGateProvider {
   return {
     id: 'jev',
     evaluate: async ({ userContent }, config) => {
-      const result = await callJev(toJevConfig(config.jev), {
-        state: buildMemoryGateState(userContent),
-        model: config.jev.model,
-        questions: buildMemoryGateQuestions(),
-      });
+      const result = await callJev(
+        toJevConfig(config.jev),
+        {
+          state: buildMemoryGateState(userContent),
+          model: config.jev.model,
+          questions: buildMemoryGateQuestions(),
+        },
+        { operation: 'memory_gate' },
+      );
 
       if (!result.ok) {
         return { kind: 'unavailable', reason: result.reason, message: result.message };
