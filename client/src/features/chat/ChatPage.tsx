@@ -174,12 +174,11 @@ export default function ChatPage() {
         onUpdateConversation={updateConversation}
         activeEndpoint={activeEndpoint}
         endpoints={endpoints}
+        endpointsLoading={endpointsLoading}
         onEndpointChange={fetchEndpoints}
         chatEnabled={chatEnabled}
         connectionMode={onboardingRequired ? 'onboarding' : connectionMode}
-        repairEndpoint={
-          activeEndpoint || endpoints.find((endpoint) => endpoint.category === 'text') || null
-        }
+        repairEndpoint={activeEndpoint || endpoints[0] || null}
         onConnectModel={openConnection}
         onSkipOnboarding={skipOnboarding}
         onCloseConnection={() => setConnectionMode(null)}

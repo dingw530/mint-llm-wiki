@@ -38,7 +38,8 @@ export function createInitialReactEventState(): ReactEventState {
 
 function getNextSequence(state: ReactEventState, event: ReactReducerEvent): number | undefined {
   if (event.sequence === undefined) return state.lastSequence;
-  if (!Number.isSafeInteger(event.sequence) || event.sequence <= state.lastSequence) return undefined;
+  if (!Number.isSafeInteger(event.sequence) || event.sequence <= state.lastSequence)
+    return undefined;
   return event.sequence;
 }
 
@@ -46,7 +47,14 @@ function traceItem(
   state: ReactEventState,
   item: Omit<DecisionTraceItem, 'id'>,
 ): DecisionTraceItem[] {
-  return [...state.decisionTrace, { ...item, id: `${state.runId || 'run'}:${state.decisionTrace.length}` }];
+  return [
+    ...state.decisionTrace,
+    { ...item, id: `${state.runId || 'run'}:${state.decisionTrace.length}` },
+  ];
+}
+
+function finishActiveTraceItems(items: DecisionTraceItem[]): DecisionTraceItem[] {
+  return items.map((item) => (item.status === 'active' ? { ...item, status: 'done' } : item));
 }
 
 /**
@@ -63,12 +71,14 @@ export function reduceReactEvent(
       status: 'running',
       lastSequence: event.sequence || 0,
       steps: [],
-      decisionTrace: [{
-        id: `${event.runId || 'run'}:0`,
-        kind: 'start',
-        label: '开始分析问题',
-        status: 'active',
-      }],
+      decisionTrace: [
+        {
+          id: `${event.runId || 'run'}:0`,
+          kind: 'start',
+          label: '开始分析问题',
+          status: 'active',
+        },
+      ],
     };
   }
 
@@ -153,13 +163,12 @@ export function reduceReactEvent(
         ...state,
         status: 'running',
         decisionTrace: traceItem(state, {
-            kind: event.phase === 'retrying' ? 'retry' : 'error',
-          label: event.phase === 'retrying'
-            ? `动作失败，准备重试：${event.toolName || '工具调用'}`
-            : `动作失败：${event.toolName || '工具调用'}`,
-          detail: event.phase === 'retrying'
-            ? `第 ${event.retryCount || 0} 次重试`
-            : undefined,
+          kind: event.phase === 'retrying' ? 'retry' : 'error',
+          label:
+            event.phase === 'retrying'
+              ? `动作失败，准备重试：${event.toolName || '工具调用'}`
+              : `动作失败：${event.toolName || '工具调用'}`,
+          detail: event.phase === 'retrying' ? `第 ${event.retryCount || 0} 次重试` : undefined,
           status: event.phase === 'retrying' ? 'active' : 'error',
         }),
         steps: [
@@ -195,7 +204,10 @@ export function reduceReactEvent(
       return {
         ...state,
         status: 'completed',
-        decisionTrace: traceItem(state, { kind: 'complete', label: '已完成回答', status: 'done' }),
+        decisionTrace: traceItem(
+          { ...state, decisionTrace: finishActiveTraceItems(state.decisionTrace) },
+          { kind: 'complete', label: '已完成回答', status: 'done' },
+        ),
       };
     case 'loop_detected':
       return {
@@ -213,13 +225,19 @@ export function reduceReactEvent(
         ...state,
         status: 'failed',
         error: event.error,
-        decisionTrace: traceItem(state, { kind: 'failed', label: '生成失败', status: 'error' }),
+        decisionTrace: traceItem(
+          { ...state, decisionTrace: finishActiveTraceItems(state.decisionTrace) },
+          { kind: 'failed', label: '生成失败', status: 'error' },
+        ),
       };
     case 'run_cancelled':
       return {
         ...state,
         status: 'cancelled',
-        decisionTrace: traceItem(state, { kind: 'cancelled', label: '已停止生成', status: 'done' }),
+        decisionTrace: traceItem(
+          { ...state, decisionTrace: finishActiveTraceItems(state.decisionTrace) },
+          { kind: 'cancelled', label: '已停止生成', status: 'done' },
+        ),
       };
     default:
       return state;

@@ -531,6 +531,119 @@
   }
 }
 
+/* ── Compact Knowledge Workspace ── */
+
+.wiki-welcome {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100%;
+  margin: -40px -48px;
+  padding: clamp(152px, 22vh, 220px) 48px 72px;
+  background: var(--bg-primary);
+}
+
+.wiki-welcome::before {
+  display: none;
+}
+
+.wiki-welcome-main {
+  width: min(100%, 820px);
+  align-items: stretch;
+  text-align: left;
+}
+
+.wiki-welcome-heading {
+  margin-bottom: 28px;
+  text-align: center;
+}
+
+.wiki-welcome-kicker {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.wiki-welcome h2 {
+  margin-bottom: 8px;
+  font-size: clamp(30px, 4vw, 42px);
+}
+
+.wiki-welcome-heading p {
+  max-width: none;
+  font-size: 13px;
+}
+
+.wiki-search-container {
+  width: 100%;
+  margin-bottom: 36px;
+  align-self: center;
+  max-width: 560px;
+}
+
+.wiki-search-box {
+  box-shadow: var(--shadow-sm);
+}
+
+.wiki-search-hints {
+  padding: 8px 4px 0;
+  justify-content: center;
+  gap: 14px;
+}
+
+.wiki-welcome-status,
+.wiki-welcome-next {
+  margin-top: 24px;
+}
+
+.wiki-welcome-section-title {
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wiki-welcome-status .wiki-vector-health {
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 68%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-secondary) 62%, transparent);
+  box-shadow: none;
+}
+
+.wiki-welcome-next-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.wiki-welcome-next-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 72px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--border-subtle) 58%, transparent);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--bg-tertiary) 52%, transparent);
+}
+
+.wiki-welcome-next-grid strong {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.wiki-welcome-next-grid span {
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 /* ── Wiki Document Reader ── */
 
 .wiki-document-shell {

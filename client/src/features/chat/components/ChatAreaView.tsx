@@ -27,6 +27,7 @@ export interface ChatAreaViewProps {
   activeConversation: string | null;
   activeEndpoint: EndpointOutput | null;
   endpoints: EndpointOutput[];
+  endpointsLoading: boolean;
   title: string;
   loading: boolean;
   messages: Message[];
@@ -77,6 +78,7 @@ export default function ChatAreaView({
   activeConversation,
   activeEndpoint,
   endpoints,
+  endpointsLoading,
   title,
   loading,
   messages,
@@ -122,7 +124,7 @@ export default function ChatAreaView({
             {decisionTrace.length > 0 && <DecisionTrace items={decisionTrace} />}
           </div>
         )}
-        {!chatEnabled && messages.length === 0 && !connectionMode && (
+        {!endpointsLoading && !chatEnabled && messages.length === 0 && !connectionMode && (
           <div className="chat-model-gate">
             <div className="chat-model-gate-icon">✦</div>
             <h2>连接模型后开始对话</h2>

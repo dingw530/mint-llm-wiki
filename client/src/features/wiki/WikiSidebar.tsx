@@ -51,9 +51,10 @@ export function sortWikiTree(nodes: WikiFileTreeNode[], mode: WikiSortMode): Wik
       children: node.children ? sortWikiTree(node.children, mode) : undefined,
     }))
     .sort((a, b) => {
-      const comparison = mode === 'name-asc' || mode === 'name-desc'
-        ? a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-        : a.modifiedAt - b.modifiedAt;
+      const comparison =
+        mode === 'name-asc' || mode === 'name-desc'
+          ? a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+          : a.modifiedAt - b.modifiedAt;
       return comparison * direction || a.path.localeCompare(b.path);
     });
 }
@@ -62,6 +63,12 @@ export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return bytes + ' B';
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function shouldShowRootWikiNode(node: WikiFileTreeNode): boolean {
+  return node.type === 'directory'
+    ? node.name === 'sources' || node.name === 'pages'
+    : node.name === '_index.md' || node.name === 'index.md';
 }
 
 interface WikiSidebarProps {
@@ -168,9 +175,7 @@ export default function WikiSidebar({
   );
 
   useEffect(() => {
-    uploadJobs
-      .filter((job) => !job.isTerminal)
-      .forEach(startPolling);
+    uploadJobs.filter((job) => !job.isTerminal).forEach(startPolling);
   }, [uploadJobs, startPolling]);
 
   const uploadSingleFile = async (file: File) => {
@@ -245,12 +250,12 @@ export default function WikiSidebar({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const isWikiUploading = uploadJobs.some(
-    (j) => !j.isTerminal,
-  );
+  const isWikiUploading = uploadJobs.some((j) => !j.isTerminal);
 
   const activeUploadCount = uploadJobs.filter((job) => !job.isTerminal).length;
-  const attentionUploadCount = uploadJobs.filter((job) => job.isTerminal && !job.isSuccessful).length;
+  const attentionUploadCount = uploadJobs.filter(
+    (job) => job.isTerminal && !job.isSuccessful,
+  ).length;
   const renderWikiTreeNode = (node: WikiFileTreeNode, depth: number = 0) => {
     const isExpanded = wikiExpandedDirs.has(node.path);
     const isSelected = selectedFile === node.path;
@@ -339,7 +344,16 @@ export default function WikiSidebar({
             onClick={() => onViewModeChange('heat')}
             title="查看知识热度"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              width="14"
+              height="14"
+            >
               <path d="M4 19V9M10 19V5M16 19v-8M22 19V3" />
             </svg>
             热度
@@ -378,13 +392,27 @@ export default function WikiSidebar({
             title="上传文件"
             aria-label="上传文件"
           >
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <svg
+              viewBox="0 0 24 24"
+              width="15"
+              height="15"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
               <path d="M12 16V4" />
               <path d="m7 9 5-5 5 5" />
               <path d="M5 20h14" />
             </svg>
           </button>
-          <button className="wiki-tree-refresh" onClick={loadWikiTree} title="刷新文件列表" aria-label="刷新文件列表">
+          <button
+            className="wiki-tree-refresh"
+            onClick={loadWikiTree}
+            title="刷新文件列表"
+            aria-label="刷新文件列表"
+          >
             <svg
               viewBox="0 0 24 24"
               width="13"
@@ -422,12 +450,23 @@ export default function WikiSidebar({
         {!wikiLoading && !wikiError && wikiTree.length === 0 && (
           <div className="wiki-empty">暂无文件</div>
         )}
-        {!wikiLoading && !wikiError && sortWikiTree(wikiTree, wikiSortMode).map((node) => renderWikiTreeNode(node))}
+        {!wikiLoading &&
+          !wikiError &&
+          sortWikiTree(wikiTree, wikiSortMode)
+            .filter(shouldShowRootWikiNode)
+            .map((node) => renderWikiTreeNode(node))}
         {wikiDragOver && <div className="wiki-drop-hint">释放以上传</div>}
       </div>
       <section className="wiki-task-entry" aria-label="摄入任务入口">
-        <button type="button" className="wiki-task-entry-button" aria-label="打开摄入任务中心" onClick={() => setIsTaskCenterOpen(true)}>
-          <span className="wiki-task-entry-status" aria-hidden="true"><i className={activeUploadCount > 0 ? 'is-active' : ''} /></span>
+        <button
+          type="button"
+          className="wiki-task-entry-button"
+          aria-label="打开摄入任务中心"
+          onClick={() => setIsTaskCenterOpen(true)}
+        >
+          <span className="wiki-task-entry-status" aria-hidden="true">
+            <i className={activeUploadCount > 0 ? 'is-active' : ''} />
+          </span>
           <span className="wiki-task-entry-copy">
             <strong>摄入任务</strong>
             <span>
@@ -436,7 +475,9 @@ export default function WikiSidebar({
             </span>
           </span>
           <span className="wiki-task-entry-count">{uploadJobs.length}</span>
-          <span className="wiki-task-entry-arrow" aria-hidden="true">›</span>
+          <span className="wiki-task-entry-arrow" aria-hidden="true">
+            ›
+          </span>
         </button>
       </section>
       <IngestionTaskCenter
