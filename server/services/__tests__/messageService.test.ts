@@ -503,7 +503,6 @@ describe('messageService', () => {
           role: 'user',
           content: 'hi',
           createdAt: '',
-          imageData: null,
           reasoning: null,
         },
       ]);

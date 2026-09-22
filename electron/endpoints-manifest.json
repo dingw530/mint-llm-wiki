@@ -189,20 +189,6 @@
     "async": false
   },
   {
-    "id": "images:generate",
-    "ipcChannel": "images:generate",
-    "preloadMethod": "generateImage",
-    "method": "POST",
-    "httpPath": "/images/generate",
-    "args": [
-      {
-        "from": "body"
-      }
-    ],
-    "result": "direct",
-    "async": true
-  },
-  {
     "id": "agents:list",
     "ipcChannel": "agents:list",
     "preloadMethod": "getAgents",

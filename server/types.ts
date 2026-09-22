@@ -15,7 +15,6 @@ export interface MessageRow {
   role: string;
   content: string;
   reasoning: string | null;
-  image_data: string | null;
   created_at: string;
 }
 
@@ -60,7 +59,6 @@ export interface Message {
   role: string;
   content: string;
   reasoning?: string | null;
-  imageData?: string | null;
   createdAt: string;
   uiBlocks?: PersistedUiBlock[];
 }
@@ -415,7 +413,6 @@ export interface EndpointRow {
   api_key: string;
   model_id: string;
   api_type: string;
-  category: string;
   verified_at?: string | null;
   is_active: number;
   sort_order: number;
@@ -430,7 +427,6 @@ export interface Endpoint {
   apiKey: string;
   modelId: string;
   apiType: string;
-  category: 'text' | 'image';
   verifiedAt?: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -444,7 +440,6 @@ export interface EndpointInput {
   apiKey?: string;
   modelId: string;
   apiType?: string;
-  category?: 'text' | 'image';
 }
 
 export interface EndpointOutput {
@@ -454,7 +449,6 @@ export interface EndpointOutput {
   apiKeyMasked: string;
   modelId: string;
   apiType: string;
-  category: 'text' | 'image';
   verifiedAt?: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -473,6 +467,5 @@ export interface CreateMessageParams {
   role: string;
   content: string;
   reasoning?: string | null;
-  imageData?: string | null;
   createdAt: string;
 }

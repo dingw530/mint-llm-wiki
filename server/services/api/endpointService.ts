@@ -19,7 +19,6 @@ function toOutput(endpoint: Endpoint): EndpointOutput {
     apiKeyMasked,
     modelId: endpoint.modelId,
     apiType: endpoint.apiType || 'openai-chat',
-    category: endpoint.category || 'text',
     verifiedAt: endpoint.verifiedAt ?? null,
     isActive: endpoint.isActive,
     sortOrder: endpoint.sortOrder,
@@ -48,9 +47,6 @@ function validateInput(input: EndpointInput, existingId?: string): void {
   }
   if (input.name.length > 50) {
     throw Object.assign(new Error('端点名称不能超过50个字符'), { status: 400 });
-  }
-  if (input.category !== undefined && !['text', 'image'].includes(input.category)) {
-    throw Object.assign(new Error('分类值无效，仅支持 text 或 image'), { status: 400 });
   }
   if (!input.apiUrl || !input.apiUrl.trim()) {
     throw Object.assign(new Error('API URL 不能为空'), { status: 400 });
@@ -84,7 +80,6 @@ export function create(input: EndpointInput): EndpointOutput {
     apiKey,
     modelId: input.modelId.trim(),
     apiType: input.apiType || 'openai-chat',
-    category: input.category || 'text',
     isActive,
     sortOrder: all.length,
   });
@@ -102,7 +97,6 @@ export function updateEndpoint(id: string, input: EndpointInput): EndpointOutput
     apiUrl: input.apiUrl.trim(),
     modelId: input.modelId.trim(),
     apiType: input.apiType || 'openai-chat',
-    category: input.category || 'text',
   };
   // apiKey 为脱敏值或空字符串时视为未修改
   if (input.apiKey !== undefined && input.apiKey !== '' && !input.apiKey.includes('****')) {

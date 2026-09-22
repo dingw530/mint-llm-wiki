@@ -105,7 +105,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateBashSecurity: (data) => ipcRenderer.invoke('bash-security:update', data),
 
   // ── 文件 ──
-  downloadFile: (url, filename) => ipcRenderer.invoke('download-file', { url, filename }),
 
   // ── Wiki ──
   openWikiInObsidian: () => ipcRenderer.invoke('wiki:openInObsidian'),

@@ -17,7 +17,6 @@ export interface Message {
   content: string;
   runId?: string;
   reasoning?: string | null;
-  imageData?: string | null;
   createdAt: string;
   _tempId?: string;
   segments?: ContentSegment[];
@@ -99,7 +98,6 @@ export interface EndpointOutput {
   apiKeyMasked: string;
   modelId: string;
   apiType: string;
-  category: 'text' | 'image';
   verifiedAt?: string | null;
   isActive: boolean;
   sortOrder: number;
@@ -113,7 +111,6 @@ export interface EndpointInput {
   apiKey?: string;
   modelId: string;
   apiType?: string;
-  category?: 'text' | 'image';
 }
 
 export interface VisibleSettings {
@@ -331,27 +328,6 @@ export interface StreamReturn {
   abort: () => void;
 }
 
-// ── 图片生成类型 ──
-
-export interface ImageGenerateParams {
-  endpointId: string;
-  prompt: string;
-  size?: string;
-  quality?: string;
-  output_format?: string;
-}
-
-export interface GeneratedImage {
-  url: string;
-  revised_prompt?: string;
-  b64_json?: string;
-}
-
-export interface GenerateImageResult {
-  created: number;
-  data: GeneratedImage[];
-}
-
 // ── Electron IPC API 类型 ──
 
 export interface ElectronAPI {
@@ -483,7 +459,6 @@ export interface ElectronAPI {
   }) => Promise<{ success: boolean }>;
 
   // 文件
-  downloadFile?: (url: string, filename: string) => Promise<{ success?: boolean; reason?: string }>;
 
   // Wiki
   openWikiInObsidian: () => Promise<{ success: boolean }>;

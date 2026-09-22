@@ -77,8 +77,8 @@ export default function ChatPage() {
       const list = data.endpoints || [];
       setEndpoints(list);
       const active =
-        list.find((ep: EndpointOutput) => ep.isActive && ep.category === 'text' && ep.verifiedAt) ||
-        list.find((ep: EndpointOutput) => ep.isActive && ep.category === 'text') ||
+        list.find((ep: EndpointOutput) => ep.isActive && ep.verifiedAt) ||
+        list.find((ep: EndpointOutput) => ep.isActive) ||
         null;
       setActiveEndpoint(active);
     } catch (err) {

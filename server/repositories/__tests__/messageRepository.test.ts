@@ -8,15 +8,20 @@ describe('messageRepository', () => {
   const convId = uuidv4();
 
   afterAll(() => {
-    try { conversationRepo.deleteById(convId); } catch {}
+    try {
+      conversationRepo.deleteById(convId);
+    } catch {}
   });
 
   it('creates and retrieves a message', () => {
     conversationRepo.create({ id: convId, title: 'test-msgs' });
 
     messageRepo.create({
-      id: 'msg-test-1', conversationId: convId, role: 'user',
-      content: 'hello', createdAt: new Date().toISOString(),
+      id: 'msg-test-1',
+      conversationId: convId,
+      role: 'user',
+      content: 'hello',
+      createdAt: new Date().toISOString(),
     });
 
     const msgs = messageRepo.findByConversationId(convId);
@@ -26,19 +31,21 @@ describe('messageRepository', () => {
     expect(msgs[0].content).toBe('hello');
   });
 
-  it('gets history without image/createdAt fields', () => {
+  it('gets history without createdAt fields', () => {
     messageRepo.create({
-      id: 'msg-test-2', conversationId: convId, role: 'assistant',
-      content: 'response', reasoning: 'thinking...',
+      id: 'msg-test-2',
+      conversationId: convId,
+      role: 'assistant',
+      content: 'response',
+      reasoning: 'thinking...',
       createdAt: new Date().toISOString(),
     });
 
     const history = messageRepo.getHistory(convId);
-    const assistantMsg = history.find(m => m.role === 'assistant');
+    const assistantMsg = history.find((m) => m.role === 'assistant');
     expect(assistantMsg).toBeDefined();
     expect(assistantMsg!.content).toBe('response');
     expect(assistantMsg!.reasoning).toBe('thinking...');
-    expect((assistantMsg as any).imageData).toBeUndefined();
   });
 
   it('updates conversation timestamp', () => {
