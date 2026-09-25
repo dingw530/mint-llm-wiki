@@ -6,9 +6,8 @@ import { parseWikiPage } from '../utils/wikiShared.js';
 import type { CompiledPage } from '../utils/wikiShared.js';
 import type { WikiCompiledClaim } from '../utils/wikiCompiler.js';
 
-const clamp = (value: unknown, fallback: number): number => (
-  typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback
-);
+const clamp = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;
 
 /** 将文本转换为稳定的 Claim 去重键。 */
 export function normalizeClaimKey(text: string): string {
@@ -30,19 +29,41 @@ export function registerCompiledKnowledge(
   pages: CompiledPage[],
   claims: WikiCompiledClaim[] = [],
   options: { sourceType?: string; pageEventReason?: string } = {},
-): { source: lifecycleRepo.WikiSource; pages: lifecycleRepo.WikiPage[]; claims: lifecycleRepo.WikiClaim[] } {
+): {
+  source: lifecycleRepo.WikiSource;
+  pages: lifecycleRepo.WikiPage[];
+  claims: lifecycleRepo.WikiClaim[];
+} {
   return lifecycleRepo.transaction(() => {
     const sourceHash = hashWikiContent(sourceText);
     const existingSource = lifecycleRepo.findSourceByHash(sourcePath, sourceHash);
+    if (existingSource) {
+      const existingRegistration = findExistingRegistration(existingSource, pages);
+      if (existingRegistration) return existingRegistration;
+    }
     const previousSource = existingSource ? null : lifecycleRepo.findLatestSource(sourcePath);
-    const source = existingSource || lifecycleRepo.createSource({
-      path: sourcePath,
-      contentHash: sourceHash,
-      sourceType: options.sourceType ?? 'compiled',
-    });
-    if (previousSource && previousSource.id !== source.id && previousSource.status !== 'superseded') {
+    const source =
+      existingSource ||
+      lifecycleRepo.createSource({
+        path: sourcePath,
+        contentHash: sourceHash,
+        sourceType: options.sourceType ?? 'compiled',
+      });
+    if (
+      previousSource &&
+      previousSource.id !== source.id &&
+      previousSource.status !== 'superseded'
+    ) {
       lifecycleRepo.supersedeSource(previousSource.id, source.id);
-      lifecycleRepo.recordEvent('source', previousSource.id, 'superseded', null, source.id, sourcePath, 'source content hash changed');
+      lifecycleRepo.recordEvent(
+        'source',
+        previousSource.id,
+        'superseded',
+        null,
+        source.id,
+        sourcePath,
+        'source content hash changed',
+      );
     }
 
     const registeredPages: lifecycleRepo.WikiPage[] = [];
@@ -69,9 +90,18 @@ export function registerCompiledKnowledge(
       );
 
       const pageClaims = claims.filter((claim) => claim.pageTitle === page.title);
-      const effectiveClaims = pageClaims.length > 0
-        ? pageClaims
-        : [{ pageTitle: page.title, text: page.title, normalizedKey: `page:${normalizeClaimKey(page.title)}`, confidence: 0.45, importance: 0.4 }];
+      const effectiveClaims =
+        pageClaims.length > 0
+          ? pageClaims
+          : [
+              {
+                pageTitle: page.title,
+                text: page.title,
+                normalizedKey: `page:${normalizeClaimKey(page.title)}`,
+                confidence: 0.45,
+                importance: 0.4,
+              },
+            ];
       for (const claimInput of effectiveClaims) {
         const claimText = claimInput.text.trim();
         if (!claimText) continue;
@@ -81,7 +111,15 @@ export function registerCompiledKnowledge(
         if (same) {
           const nextConfidence = Math.min(1, same.confidence + (1 - same.confidence) * 0.12);
           const reinforced = lifecycleRepo.reinforceClaim(same.id, nextConfidence);
-          lifecycleRepo.recordEvent('claim', same.id, 'reinforced', nextConfidence - same.confidence, source.id, page.filename, claimInput.evidence || 'same claim supported by a new compilation');
+          lifecycleRepo.recordEvent(
+            'claim',
+            same.id,
+            'reinforced',
+            nextConfidence - same.confidence,
+            source.id,
+            page.filename,
+            claimInput.evidence || 'same claim supported by a new compilation',
+          );
           registeredClaims.push(reinforced);
           continue;
         }
@@ -89,17 +127,55 @@ export function registerCompiledKnowledge(
           pageId: registeredPage.id,
           claimText,
           normalizedKey,
-          status: active.length > 0 ? 'contested' : (clamp(claimInput.confidence, 0.5) >= 0.8 ? 'verified' : 'proposed'),
+          status:
+            active.length > 0
+              ? 'contested'
+              : clamp(claimInput.confidence, 0.5) >= 0.8
+                ? 'verified'
+                : 'proposed',
           confidence: clamp(claimInput.confidence, 0.5),
           importance: clamp(claimInput.importance, 0.5),
         });
-        lifecycleRepo.recordEvent('claim', claim.id, active.length > 0 ? 'contradicted' : 'created', null, source.id, page.filename, claimInput.evidence || null);
+        lifecycleRepo.recordEvent(
+          'claim',
+          claim.id,
+          active.length > 0 ? 'contradicted' : 'created',
+          null,
+          source.id,
+          page.filename,
+          claimInput.evidence || null,
+        );
         registeredClaims.push(claim);
       }
     }
     const compiledSource = lifecycleRepo.markSourceCompiled(source.id);
     return { source: compiledSource, pages: registeredPages, claims: registeredClaims };
   });
+}
+
+function findExistingRegistration(
+  source: lifecycleRepo.WikiSource,
+  pages: CompiledPage[],
+): {
+  source: lifecycleRepo.WikiSource;
+  pages: lifecycleRepo.WikiPage[];
+  claims: lifecycleRepo.WikiClaim[];
+} | null {
+  const registeredPages: lifecycleRepo.WikiPage[] = [];
+  const registeredClaims: lifecycleRepo.WikiClaim[] = [];
+  for (const page of pages) {
+    const existing = lifecycleRepo.findPageByPath(page.filename);
+    if (
+      !existing ||
+      existing.contentHash !== hashWikiContent(page.content) ||
+      existing.sourceId !== source.id
+    ) {
+      return null;
+    }
+    registeredPages.push(existing);
+    registeredClaims.push(...lifecycleRepo.findActiveClaimsForPage(existing.id));
+  }
+  return { source, pages: registeredPages, claims: registeredClaims };
 }
 
 export interface WikiLifecycleMigrationResult {
@@ -112,9 +188,7 @@ export interface WikiLifecycleMigrationResult {
 }
 
 function findWikiSourcePath(wikiPath: string, pagePath: string, sourceHint: string): string {
-  const candidates = sourceHint
-    ? [sourceHint, path.join('sources', sourceHint)]
-    : [];
+  const candidates = sourceHint ? [sourceHint, path.join('sources', sourceHint)] : [];
   for (const candidate of candidates) {
     const resolved = path.resolve(wikiPath, candidate);
     if (resolved.startsWith(path.resolve(wikiPath) + path.sep) && fs.existsSync(resolved)) {
@@ -129,7 +203,9 @@ function scanWikiMarkdownPages(wikiPath: string): string[] {
   if (!fs.existsSync(pagesPath)) return [];
   const result: string[] = [];
   const walk = (directory: string): void => {
-    for (const entry of fs.readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const entry of fs
+      .readdirSync(directory, { withFileTypes: true })
+      .sort((a, b) => a.name.localeCompare(b.name))) {
       if (entry.name.startsWith('.') || entry.name === '.gitkeep') continue;
       const absolute = path.join(directory, entry.name);
       if (entry.isDirectory()) {
@@ -149,7 +225,12 @@ function scanWikiMarkdownPages(wikiPath: string): string[] {
  */
 export function migrateExistingWikiPages(wikiPath: string): WikiLifecycleMigrationResult {
   const result: WikiLifecycleMigrationResult = {
-    scanned: 0, migrated: 0, unchanged: 0, skipped: 0, claimsCreated: 0, errors: [],
+    scanned: 0,
+    migrated: 0,
+    unchanged: 0,
+    skipped: 0,
+    claimsCreated: 0,
+    errors: [],
   };
   const absoluteWikiPath = path.resolve(wikiPath);
   if (!fs.existsSync(absoluteWikiPath) || !fs.statSync(absoluteWikiPath).isDirectory()) {
@@ -163,9 +244,10 @@ export function migrateExistingWikiPages(wikiPath: string): WikiLifecycleMigrati
       const parsed = parseWikiPage(relativePath, pageContent);
       const sourcePath = findWikiSourcePath(absoluteWikiPath, relativePath, parsed.source);
       const sourceAbsolutePath = path.join(absoluteWikiPath, sourcePath);
-      const sourceText = sourcePath.startsWith('legacy/') || !fs.existsSync(sourceAbsolutePath)
-        ? pageContent
-        : fs.readFileSync(sourceAbsolutePath, 'utf-8');
+      const sourceText =
+        sourcePath.startsWith('legacy/') || !fs.existsSync(sourceAbsolutePath)
+          ? pageContent
+          : fs.readFileSync(sourceAbsolutePath, 'utf-8');
       const before = lifecycleRepo.findPageByPath(relativePath);
       const registered = registerCompiledKnowledge(
         sourcePath,
@@ -183,7 +265,10 @@ export function migrateExistingWikiPages(wikiPath: string): WikiLifecycleMigrati
       result.claimsCreated += registered.claims.filter((claim) => claim.pageId === page.id).length;
     } catch (error) {
       result.skipped++;
-      result.errors.push({ path: relativePath, message: error instanceof Error ? error.message : String(error) });
+      result.errors.push({
+        path: relativePath,
+        message: error instanceof Error ? error.message : String(error),
+      });
     }
   }
   return result;

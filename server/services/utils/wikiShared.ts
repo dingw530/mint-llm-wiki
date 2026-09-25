@@ -1,7 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { randomUUID } from 'node:crypto';
 import { isPathSafe } from './pathSecurity.js';
-import { createMintWikiLink, parseMintWikiLink, sanitizeWikiFilenamePath } from './wikiLinkProtocol.js';
+import {
+  createMintWikiLink,
+  parseMintWikiLink,
+  sanitizeWikiFilenamePath,
+} from './wikiLinkProtocol.js';
 
 // ── Types ──
 
@@ -68,11 +73,13 @@ export function normalizeWikiCategories(value: unknown): WikiCategory[] {
       const raw = item as Record<string, unknown>;
       const name = typeof raw.name === 'string' ? raw.name.trim() : '';
       if (!name) return null;
-      const toStringArray = (candidate: unknown): string[] => (
+      const toStringArray = (candidate: unknown): string[] =>
         Array.isArray(candidate)
-          ? candidate.map(String).map(item => item.trim()).filter(Boolean)
-          : []
-      );
+          ? candidate
+              .map(String)
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : [];
       return {
         name,
         description: typeof raw.description === 'string' ? raw.description.trim() : '',
@@ -85,7 +92,7 @@ export function normalizeWikiCategories(value: unknown): WikiCategory[] {
 
 /** 读取并规范化 Schema，兼容旧版 categories: string[]。 */
 export function normalizeWikiSchema(value: unknown): WikiSchema {
-  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+  const raw = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
   return {
     ...raw,
     categories: normalizeWikiCategories(raw.categories),
@@ -292,12 +299,13 @@ function extractJsonArray(text: string, key: string): unknown[] | null {
 /** 将宽松解析得到的未知值收窄为可供证据校验使用的 Claim。 */
 function parseLooseClaims(value: unknown[] | null): LooseWikiClaim[] {
   if (!value) return [];
-  return value.filter((item): item is LooseWikiClaim => (
-    Boolean(item)
-    && typeof item === 'object'
-    && typeof (item as Record<string, unknown>).pageTitle === 'string'
-    && typeof (item as Record<string, unknown>).text === 'string'
-  ));
+  return value.filter(
+    (item): item is LooseWikiClaim =>
+      Boolean(item) &&
+      typeof item === 'object' &&
+      typeof (item as Record<string, unknown>).pageTitle === 'string' &&
+      typeof (item as Record<string, unknown>).text === 'string',
+  );
 }
 
 /**
@@ -305,24 +313,37 @@ function parseLooseClaims(value: unknown[] | null): LooseWikiClaim[] {
  */
 export function tryParseLooseJson(text: string): LooseWikiParseResult | null {
   // 1. standard parse
-  try { return JSON.parse(text); } catch { /* empty */ }
+  try {
+    return JSON.parse(text);
+  } catch {
+    /* empty */
+  }
 
   // 2. extract outermost { ... }
   const bs = text.indexOf('{');
   const be = text.lastIndexOf('}');
   if (bs >= 0 && be > bs) {
-    try { return JSON.parse(text.slice(bs, be + 1)); } catch { /* empty */ }
+    try {
+      return JSON.parse(text.slice(bs, be + 1));
+    } catch {
+      /* empty */
+    }
   }
 
   // 3. field-by-field extraction when content has unescaped quotes/newlines
   const pages: LooseWikiPage[] = [];
-  const pageRe = /\{\s*"filename"\s*:\s*"([^"]+)"\s*,\s*"title"\s*:\s*"([^"]+)"\s*,\s*(?:"summary"\s*:\s*"[^"]*"\s*,\s*)?"tags"\s*:\s*(\[[^\]]+\])\s*,/g;
+  const pageRe =
+    /\{\s*"filename"\s*:\s*"([^"]+)"\s*,\s*"title"\s*:\s*"([^"]+)"\s*,\s*(?:"summary"\s*:\s*"[^"]*"\s*,\s*)?"tags"\s*:\s*(\[[^\]]+\])\s*,/g;
   let m: RegExpExecArray | null;
   while ((m = pageRe.exec(text)) !== null) {
     const filename = m[1];
     const title = m[2];
     let tags: string[];
-    try { tags = JSON.parse(m[3]); } catch { tags = []; }
+    try {
+      tags = JSON.parse(m[3]);
+    } catch {
+      tags = [];
+    }
 
     const rest = text.slice(m.index + m[0].length);
     const contentKeyMatch = rest.match(/"content"\s*:\s*"/);
@@ -334,13 +355,22 @@ export function tryParseLooseJson(text: string): LooseWikiParseResult | null {
       const ch = rest[i];
       if (esc) {
         esc = false;
-        if (ch === 'n') { content += '\n'; continue; }
+        if (ch === 'n') {
+          content += '\n';
+          continue;
+        }
         if (ch === 'r') continue;
-        if (ch === 't') { content += '\t'; continue; }
+        if (ch === 't') {
+          content += '\t';
+          continue;
+        }
         content += ch;
         continue;
       }
-      if (ch === '\\') { esc = true; continue; }
+      if (ch === '\\') {
+        esc = true;
+        continue;
+      }
       if (ch === '"') {
         const after = rest.slice(i + 1).replace(/\s*\n?\s*/, '');
         if (after.startsWith('}') || after.startsWith(',') || after.startsWith(']')) break;
@@ -369,13 +399,14 @@ export function tryParseLooseJson(text: string): LooseWikiParseResult | null {
     const claims = parseLooseClaims(extractJsonArray(text, 'claims'));
     const relationshipsValue = extractJsonArray(text, 'relationships');
     const relationships = relationshipsValue
-      ? relationshipsValue.filter((item): item is Relationship => (
-        Boolean(item)
-        && typeof item === 'object'
-        && typeof (item as Record<string, unknown>).source === 'string'
-        && typeof (item as Record<string, unknown>).target === 'string'
-        && typeof (item as Record<string, unknown>).relation === 'string'
-      ))
+      ? relationshipsValue.filter(
+          (item): item is Relationship =>
+            Boolean(item) &&
+            typeof item === 'object' &&
+            typeof (item as Record<string, unknown>).source === 'string' &&
+            typeof (item as Record<string, unknown>).target === 'string' &&
+            typeof (item as Record<string, unknown>).relation === 'string',
+        )
       : [];
     return { pages, claims, relationships, summary: `成功提取 ${pages.length} 个页面` };
   }
@@ -389,10 +420,12 @@ export function tryParseLooseJson(text: string): LooseWikiParseResult | null {
 export function isSystemWikiPath(relativePath: string): boolean {
   const normalized = relativePath.replace(/\\/g, '/');
   const baseName = path.basename(normalized);
-  return normalized === '_index.md'
-    || normalized === '_schema.json'
-    || normalized === '_manifest.json'
-    || baseName.startsWith('_');
+  return (
+    normalized === '_index.md' ||
+    normalized === '_schema.json' ||
+    normalized === '_manifest.json' ||
+    baseName.startsWith('_')
+  );
 }
 
 /**
@@ -428,7 +461,7 @@ export function parseWikiFrontmatter(content: string): Record<string, unknown> |
       value = value.slice(1, -1);
       result[key.trim()] = value
         .split(',')
-        .map(v => v.trim().replace(/^['"]|['"]$/g, ''))
+        .map((v) => v.trim().replace(/^['"]|['"]$/g, ''))
         .filter(Boolean);
     } else {
       result[key.trim()] = value.replace(/^['"]|['"]$/g, '');
@@ -452,9 +485,9 @@ export function extractWikiHeadings(content: string): string[] {
   const body = stripWikiFrontmatter(content);
   return body
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => /^#{1,6}\s+/.test(line))
-    .map(line => line.replace(/^#{1,6}\s+/, '').trim())
+    .map((line) => line.trim())
+    .filter((line) => /^#{1,6}\s+/.test(line))
+    .map((line) => line.replace(/^#{1,6}\s+/, '').trim())
     .filter(Boolean);
 }
 
@@ -463,9 +496,10 @@ export function extractWikiHeadings(content: string): string[] {
  */
 export function parseWikiPage(relativePath: string, content: string): ParsedWikiPage {
   const frontmatter = parseWikiFrontmatter(content) || {};
-  const title = typeof frontmatter.title === 'string' && frontmatter.title
-    ? frontmatter.title
-    : path.basename(relativePath, path.extname(relativePath));
+  const title =
+    typeof frontmatter.title === 'string' && frontmatter.title
+      ? frontmatter.title
+      : path.basename(relativePath, path.extname(relativePath));
   const tags = Array.isArray(frontmatter.tags)
     ? frontmatter.tags.filter((tag): tag is string => typeof tag === 'string')
     : [];
@@ -497,7 +531,7 @@ export function readWikiManifest(wikiPath: string): WikiManifest {
     const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Partial<WikiManifest>;
     return {
       version: parsed.version || 1,
-      entries: Array.isArray(parsed.entries) ? parsed.entries as WikiManifestEntry[] : [],
+      entries: Array.isArray(parsed.entries) ? (parsed.entries as WikiManifestEntry[]) : [],
     };
   } catch {
     return { version: 1, entries: [] };
@@ -508,7 +542,7 @@ export function readWikiManifest(wikiPath: string): WikiManifest {
  * 覆盖写入 Wiki manifest。
  */
 export function writeWikiManifest(wikiPath: string, manifest: WikiManifest): void {
-  fs.writeFileSync(getManifestPath(wikiPath), JSON.stringify(manifest, null, 2), 'utf-8');
+  writeFileAtomically(getManifestPath(wikiPath), JSON.stringify(manifest, null, 2));
 }
 
 /**
@@ -516,6 +550,13 @@ export function writeWikiManifest(wikiPath: string, manifest: WikiManifest): voi
  */
 export function appendWikiManifestEntry(wikiPath: string, entry: WikiManifestEntry): void {
   const manifest = readWikiManifest(wikiPath);
+  const existing = manifest.entries.find((item) => item.id === entry.id);
+  if (existing) {
+    if (JSON.stringify(existing) !== JSON.stringify(entry)) {
+      throw new Error(`Wiki manifest id 已存在但内容不匹配: ${entry.id}`);
+    }
+    return;
+  }
   manifest.entries.push(entry);
   writeWikiManifest(wikiPath, manifest);
 }
@@ -550,9 +591,7 @@ function sanitizeContentLinks(content: string, pathMap: Map<string, string>): st
 /**
  * Write compiled pages to disk, assembling YAML frontmatter from separate fields + markdown body.
  */
-export function writeWikiPages(wikiPath: string, pages: CompiledPage[]): { filename: string; title: string; size: number; summary: string }[] {
-  const results: { filename: string; title: string; size: number; summary: string }[] = [];
-
+export function prepareWikiPages(wikiPath: string, pages: CompiledPage[]): CompiledPage[] {
   // 第一遍：计算所有页面的 sanitized 路径，建立映射表
   const pathMap = new Map<string, string>();
   for (const page of pages) {
@@ -568,48 +607,76 @@ export function writeWikiPages(wikiPath: string, pages: CompiledPage[]): { filen
     }
   }
 
-  // 第二遍：修正交叉链接后写入
-  for (const page of pages) {
+  // 第二遍：修正交叉链接并返回固定编译快照，不产生文件副作用。
+  return pages.map((page) => {
     const pagePath = page.filename.startsWith('pages/') ? page.filename : `pages/${page.filename}`;
     const sanitizedPath = pathMap.get(pagePath) || sanitizeWikiFilenamePath(pagePath);
-    page.filename = sanitizedPath;
-
-    // 修正正文中因 sanitize 导致的交叉链接失效（空格被替换为 -）
-    page.content = sanitizeContentLinks(page.content, pathMap);
-
     const pathSegments = sanitizedPath.split('/');
     if (pathSegments.length < 3) {
       throw new Error(`页面缺少分类目录: ${sanitizedPath}，格式必须为 pages/分类/文件名.md`);
     }
+    return {
+      ...page,
+      filename: sanitizedPath,
+      tags: [...(page.tags || [])],
+      content: sanitizeContentLinks(page.content, pathMap),
+    };
+  });
+}
 
-    const resolvedPath = path.resolve(wikiPath, sanitizedPath);
-    const dir = path.dirname(resolvedPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    // assemble YAML frontmatter from separate fields + markdown body
-    const frontmatterParts: string[] = [];
-    frontmatterParts.push(`title: ${page.title}`);
-    if (page.tags && page.tags.length > 0) {
-      frontmatterParts.push(`tags: [${page.tags.join(', ')}]`);
-    }
-    if (page.created) frontmatterParts.push(`created: ${page.created}`);
-    if (page.source) frontmatterParts.push(`source: ${page.source}`);
-    const fullContent = ['---', ...frontmatterParts, '---', '', page.content].join('\n');
-
-    fs.writeFileSync(resolvedPath, fullContent, 'utf-8');
-    const stat = fs.statSync(resolvedPath);
-
-    results.push({
-      filename: sanitizedPath, // return sanitized path
+/** Build stable page summaries without writing files. */
+export function summarizeWikiPages(
+  pages: CompiledPage[],
+): { filename: string; title: string; size: number; summary: string }[] {
+  return pages.map((page) => {
+    const content = renderWikiPage(page);
+    return {
+      filename: page.filename,
       title: page.title,
-      size: stat.size,
+      size: Buffer.byteLength(content, 'utf-8'),
       summary: page.summary?.trim() || getWikiPageSummary(page.content) || '暂无摘要',
-    });
-  }
+    };
+  });
+}
 
-  return results;
+/** Persist pages that have already passed path normalization. */
+export function writePreparedWikiPages(
+  wikiPath: string,
+  pages: CompiledPage[],
+): { filename: string; title: string; size: number; summary: string }[] {
+  for (const page of pages) {
+    const resolvedPath = path.resolve(wikiPath, page.filename);
+    if (!isPathSafe(wikiPath, page.filename)) throw new Error(`路径穿越被拒绝: ${page.filename}`);
+    fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+    writeFileAtomically(resolvedPath, renderWikiPage(page));
+  }
+  return summarizeWikiPages(pages);
+}
+
+/** Normalize and atomically persist compiled pages. */
+export function writeWikiPages(
+  wikiPath: string,
+  pages: CompiledPage[],
+): { filename: string; title: string; size: number; summary: string }[] {
+  return writePreparedWikiPages(wikiPath, prepareWikiPages(wikiPath, pages));
+}
+
+function renderWikiPage(page: CompiledPage): string {
+  const frontmatterParts = [`title: ${page.title}`];
+  if (page.tags && page.tags.length > 0) frontmatterParts.push(`tags: [${page.tags.join(', ')}]`);
+  if (page.created) frontmatterParts.push(`created: ${page.created}`);
+  if (page.source) frontmatterParts.push(`source: ${page.source}`);
+  return ['---', ...frontmatterParts, '---', '', page.content].join('\n');
+}
+
+function writeFileAtomically(filePath: string, content: string): void {
+  const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
+  try {
+    fs.writeFileSync(temporaryPath, content, 'utf-8');
+    fs.renameSync(temporaryPath, filePath);
+  } finally {
+    if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+  }
 }
 
 // ── Update _index.md ──
@@ -621,7 +688,9 @@ function parseFrontmatterTitle(md: string): string | null {
 }
 
 /** Scan pages/ directory recursively and group by top-level category. */
-function scanPagesByCategory(wikiPath: string): Record<string, { filename: string; title: string }[]> {
+function scanPagesByCategory(
+  wikiPath: string,
+): Record<string, { filename: string; title: string }[]> {
   const pagesDir = path.join(wikiPath, 'pages');
   const grouped: Record<string, { filename: string; title: string }[]> = {};
   if (!fs.existsSync(pagesDir)) return grouped;
@@ -644,7 +713,9 @@ function scanPagesByCategory(wikiPath: string): Record<string, { filename: strin
         const title = parseFrontmatterTitle(fileContent) || entry.replace(/\.md$/, '');
         if (!grouped[category]) grouped[category] = [];
         grouped[category].push({ filename: relativePath, title });
-      } catch { /* skip unreadable files */ }
+      } catch {
+        /* skip unreadable files */
+      }
     }
   };
 
@@ -653,7 +724,10 @@ function scanPagesByCategory(wikiPath: string): Record<string, { filename: strin
 }
 
 /** Regenerate _index.md with category index + recent updates. */
-export function updateIndexMd(wikiPath: string, newPages: { filename: string; title: string }[]): void {
+export function updateIndexMd(
+  wikiPath: string,
+  newPages: { filename: string; title: string }[],
+): void {
   const indexPath = path.join(wikiPath, '_index.md');
 
   // Scan current pages from disk
@@ -664,18 +738,13 @@ export function updateIndexMd(wikiPath: string, newPages: { filename: string; ti
     const segs = p.filename.replace(/^pages\//, '').split('/');
     const cat = segs.length >= 2 ? segs[0] : 'uncategorized';
     if (!grouped[cat]) grouped[cat] = [];
-    if (!grouped[cat].find(e => e.filename === p.filename)) {
+    if (!grouped[cat].find((e) => e.filename === p.filename)) {
       grouped[cat].push(p);
     }
   }
 
   // Build _index.md
-  const lines: string[] = [
-    '# Wiki 首页',
-    '',
-    '这是 LLM Wiki 知识库的首页。',
-    '',
-  ];
+  const lines: string[] = ['# Wiki 首页', '', '这是 LLM Wiki 知识库的首页。', ''];
 
   // Category index section
   const sortedCats = Object.keys(grouped).sort();
@@ -706,7 +775,7 @@ export function updateIndexMd(wikiPath: string, newPages: { filename: string; ti
     lines.push('');
   }
 
-  fs.writeFileSync(indexPath, lines.join('\n'), 'utf-8');
+  writeFileAtomically(indexPath, lines.join('\n'));
 }
 
 // ── Discover categories from pages/ ──
@@ -725,12 +794,12 @@ export function discoverCategoriesFromDir(wikiPath: string, schema: Record<strin
   }
   if (discovered.length > 0) {
     const existing = normalizeWikiCategories(schema.categories);
-    const existingNames = new Set(existing.map(category => category.name));
+    const existingNames = new Set(existing.map((category) => category.name));
     schema.categories = [
       ...existing,
       ...discovered
-        .filter(category => !existingNames.has(category))
-        .map(name => ({ name, description: '', include: [], exclude: [] })),
+        .filter((category) => !existingNames.has(category))
+        .map((name) => ({ name, description: '', include: [], exclude: [] })),
     ];
   }
 }

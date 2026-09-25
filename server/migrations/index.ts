@@ -687,6 +687,36 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    id: 31,
+    name: 'add-wiki-ingestion-commits',
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS wiki_ingestion_commits (
+          commit_id TEXT PRIMARY KEY,
+          job_id TEXT NOT NULL,
+          item_key TEXT NOT NULL,
+          wiki_path TEXT NOT NULL,
+          staged_source_path TEXT NOT NULL,
+          source_path TEXT NOT NULL,
+          snapshot_json TEXT,
+          result_json TEXT,
+          phase TEXT NOT NULL DEFAULT 'compiling'
+            CHECK(phase IN (
+              'compiling', 'prepared', 'source_finalized', 'pages_written',
+              'lifecycle_registered', 'search_indexed', 'manifest_written', 'committed'
+            )),
+          last_error TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE(job_id, item_key),
+          FOREIGN KEY (job_id) REFERENCES ingestion_jobs(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_wiki_ingestion_commits_job_phase
+          ON wiki_ingestion_commits(job_id, phase);
+      `);
+    },
+  },
 ];
 
 /**

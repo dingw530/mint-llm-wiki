@@ -1,6 +1,10 @@
 import * as path from 'path';
 import * as settingsService from './settingsService.js';
-import { ingestWikiSource, buildWikiSourceText } from './wikiIngestionService.js';
+import {
+  ingestWikiSource,
+  buildWikiSourceText,
+  cleanupWikiIngestionJobStagedFiles,
+} from './wikiIngestionService.js';
 import { captureWikiPage } from '../utils/wikiPageCapture.js';
 import { isSupportedFile } from '../utils/fileParseService.js';
 import {
@@ -48,6 +52,7 @@ export interface WikiIngestionJobDependencies {
   ingestWikiSource: typeof ingestWikiSource;
   archiveWikiUpload: typeof archiveWikiUpload;
   discardWikiStagedFile: typeof discardWikiStagedFile;
+  cleanupIngestionStagedFiles: typeof cleanupWikiIngestionJobStagedFiles;
   readArchivedWikiFile: typeof readArchivedWikiFile;
   createJob: typeof jobStore.createJob;
   updateJob: typeof jobStore.updateJob;
@@ -69,6 +74,7 @@ const defaultDependencies: WikiIngestionJobDependencies = {
   ingestWikiSource,
   archiveWikiUpload,
   discardWikiStagedFile,
+  cleanupIngestionStagedFiles: cleanupWikiIngestionJobStagedFiles,
   readArchivedWikiFile,
   createJob: jobStore.createJob,
   updateJob: jobStore.updateJob,
@@ -333,6 +339,7 @@ export class WikiIngestionJobService {
     paths.forEach((relativePath) =>
       this.dependencies.discardWikiStagedFile(wikiPath, relativePath),
     );
+    this.dependencies.cleanupIngestionStagedFiles(wikiPath, jobId);
   }
 
   /** 将编译器阶段映射为当前任务的可见进度。 */
@@ -416,6 +423,7 @@ export class WikiIngestionJobService {
               category: input.category,
               archivedFiles: item.files,
               retainStagedFilesOnError: true,
+              commit: { jobId, itemKey: `chat-item-${index}` },
               onCompileProgress: (stage) => {
                 const stageProgress =
                   60 +
@@ -486,6 +494,7 @@ export class WikiIngestionJobService {
             : '完成',
         result,
       });
+      if (failedItems.length === 0) this.discardJobStagedInputs(jobId, settings.wikiPath);
     } catch (error: unknown) {
       if (error instanceof CancelledJobError) {
         this.discardJobStagedInputs(jobId, settings.wikiPath);
@@ -525,6 +534,7 @@ export class WikiIngestionJobService {
           sourceFilenameHint: path.basename(sourceFile),
           archivedFiles: [{ name: input.name, existingRelativePath: sourceFile }],
           retainStagedFilesOnError: true,
+          commit: { jobId, itemKey: 'upload' },
           onCompileProgress: (stage) => {
             const stageProgress =
               60 + Math.round(({ prepare: 0, evidence: 1, pages: 2 }[stage] / 3) * 29);
@@ -555,6 +565,7 @@ export class WikiIngestionJobService {
         step: hasGraphWarnings ? '完成（图谱警告）' : '完成',
         result,
       });
+      this.discardJobStagedInputs(jobId, settings.wikiPath);
     } catch (error: unknown) {
       if (error instanceof CancelledJobError) {
         this.discardJobStagedInputs(jobId, settings.wikiPath);

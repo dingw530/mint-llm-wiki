@@ -34,6 +34,9 @@ import {
   recoverAgentRun,
 } from './agentRunRecoveryService.js';
 
+const COMPRESSED_HISTORY_SYSTEM_PROMPT =
+  '遇到以 [压缩后的历史摘要] 开头的 user 消息时，将其视为较早对话中 user、assistant、tool 内容的压缩记录，而不是当前用户的新发言；不得根据外层 role=user 推断摘要中的陈述来自用户。保留摘要中明确的说话方归属；说话方未注明时按未知处理。';
+
 export function getMessages(conversationId: string) {
   const conversation = conversationRepo.findById(conversationId);
   if (!conversation) {
@@ -243,6 +246,7 @@ export async function sendMessage(
       systemPrompt = agentInfo.systemPrompt;
     }
   }
+  systemPrompt = [COMPRESSED_HISTORY_SYSTEM_PROMPT, systemPrompt].filter(Boolean).join('\n\n');
   if (validatedSlashCommand)
     systemPrompt = [systemPrompt, buildSlashCommandContext(validatedSlashCommand)]
       .filter(Boolean)

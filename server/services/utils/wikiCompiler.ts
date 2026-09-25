@@ -11,7 +11,9 @@ import {
   INGEST_SYSTEM_PROMPT as SHARED_PROMPT,
   getWikiPageSummary,
   tryParseLooseJson,
-  writeWikiPages,
+  prepareWikiPages,
+  summarizeWikiPages,
+  writePreparedWikiPages,
   updateIndexMd,
   discoverCategoriesFromDir,
 } from './wikiShared.js';
@@ -31,6 +33,8 @@ export type WikiCompileProgressStage = 'prepare' | 'evidence' | 'pages';
 export interface CompileSourceOptions {
   title?: string;
   category?: string;
+  /** Return a durable compilation snapshot without writing pages or the index. */
+  persistPages?: boolean;
   /** 编译进入真实阶段时通知异步摄入任务。 */
   onProgress?: (stage: WikiCompileProgressStage) => void;
 }
@@ -64,7 +68,9 @@ function findMatchingEvidence(sourceText: string, evidence: string): string | un
     .map((candidate) => candidate.trim())
     .filter((candidate) => candidate.length >= 8)
     .sort((left, right) => right.length - left.length);
-  return candidates.find((candidate) => normalizedSource.includes(normalizeEvidenceText(candidate)));
+  return candidates.find((candidate) =>
+    normalizedSource.includes(normalizeEvidenceText(candidate)),
+  );
 }
 
 /** 为超长文档选择页面正文中能回指原文的片段。 */
@@ -114,9 +120,10 @@ function validateCompiledClaims(
   for (const claim of claims) {
     const pageTitle = typeof claim.pageTitle === 'string' ? claim.pageTitle.trim() : '';
     const claimText = typeof claim.text === 'string' ? claim.text.trim() : '';
-    const evidence = typeof claim.evidenceQuote === 'string' && claim.evidenceQuote.trim()
-      ? claim.evidenceQuote
-      : claim.evidence;
+    const evidence =
+      typeof claim.evidenceQuote === 'string' && claim.evidenceQuote.trim()
+        ? claim.evidenceQuote
+        : claim.evidence;
 
     if (!pageTitles.has(pageTitle)) {
       failures.push(`Claim 指向不存在的页面：${pageTitle || '（空标题）'}`);
@@ -177,13 +184,18 @@ function leadFactRelevance(fact: string, page: CompiledPage): number {
  * 将编译结果未覆盖的开篇事实原文追加到最相关页面，保证 Sources 中的关键定义可被 Wiki 搜索。
  */
 function preserveLeadFacts(sourceText: string, pages: CompiledPage[]): void {
-  const facts = extractLeadFacts(sourceText).filter((fact) => !pages.some((page) =>
-    normalizeEvidenceText(page.content).includes(normalizeEvidenceText(fact)),
-  ));
+  const facts = extractLeadFacts(sourceText).filter(
+    (fact) =>
+      !pages.some((page) =>
+        normalizeEvidenceText(page.content).includes(normalizeEvidenceText(fact)),
+      ),
+  );
   if (facts.length === 0 || pages.length === 0) return;
 
   for (const fact of facts) {
-    const target = [...pages].sort((left, right) => leadFactRelevance(fact, right) - leadFactRelevance(fact, left))[0];
+    const target = [...pages].sort(
+      (left, right) => leadFactRelevance(fact, right) - leadFactRelevance(fact, left),
+    )[0];
     target.content = `${target.content.trim()}\n\n## 原始资料关键事实\n\n${fact}`;
   }
 }
@@ -430,9 +442,7 @@ ${schemaInfo}
 原始资料：
 ${sourceText}`;
 
-  console.log(
-    `[wikiCompiler] calling AI: url=${settings.apiUrl}, model=${settings.modelId}`,
-  );
+  console.log(`[wikiCompiler] calling AI: url=${settings.apiUrl}, model=${settings.modelId}`);
 
   const adapter = getAdapter(settings.apiType || 'openai-chat');
   if (!adapter) throw new Error('Adapter not found');
@@ -479,9 +489,7 @@ ${sourceText}`;
     );
   }
 
-  console.log(
-    `[wikiCompiler] AI response received, length=${result.length}`,
-  );
+  console.log(`[wikiCompiler] AI response received, length=${result.length}`);
 
   return result;
 }
@@ -667,7 +675,7 @@ ${newBody}
     mergedPage.tags = mergeLists(
       (existingParsed?.tags as string[] | undefined) ?? [],
       llmParsed?.tags && Array.isArray(llmParsed.tags)
-      ? llmParsed.tags.filter((tag): tag is string => typeof tag === 'string')
+        ? llmParsed.tags.filter((tag): tag is string => typeof tag === 'string')
         : (page.tags ?? []),
     );
     console.log(
@@ -732,7 +740,12 @@ export async function compileSource(
     console.error(`[wikiCompiler] AI 返回非 JSON 格式 (len=${aiResult.length})`);
     throw new Error('AI 返回格式异常，完整返回已打印到日志');
   }
-  const compiled: { pages: CompiledPage[]; claims?: WikiCompiledClaim[]; relationships?: Relationship[]; summary: string } = parsed;
+  const compiled: {
+    pages: CompiledPage[];
+    claims?: WikiCompiledClaim[];
+    relationships?: Relationship[];
+    summary: string;
+  } = parsed;
 
   if (!compiled.pages || compiled.pages.length === 0) {
     throw new Error('AI 未生成任何 Wiki 页面');
@@ -751,7 +764,9 @@ export async function compileSource(
     } catch (error) {
       if (attempt === 1) {
         if (sourceText.length < 8000) throw error;
-        console.warn('[wikiCompiler] claims remained invalid; using deterministic long-source fallback');
+        console.warn(
+          '[wikiCompiler] claims remained invalid; using deterministic long-source fallback',
+        );
         compiled.claims = buildFallbackClaims(sourceText, compiled.pages);
         validateCompiledClaims(sourceText, compiled.pages, compiled.claims);
         break;
@@ -785,16 +800,24 @@ export async function compileSource(
   // 页面合并：对每个页面检查磁盘是否已有同名文件，若有则 LLM 合并
   const mergedPages: CompiledPage[] = [];
   for (const page of compiled.pages) {
-    const merged = await mergePageIfExists({
-      ...page,
-      summary: page.summary?.trim() || getWikiPageSummary(page.content) || undefined,
-    }, wikiPath, settings);
+    const merged = await mergePageIfExists(
+      {
+        ...page,
+        summary: page.summary?.trim() || getWikiPageSummary(page.content) || undefined,
+      },
+      wikiPath,
+      settings,
+    );
     mergedPages.push(merged);
   }
 
-  const results = writeWikiPages(wikiPath, mergedPages);
-  updateIndexMd(wikiPath, mergedPages);
-  compiled.pages = mergedPages;
+  const preparedPages = prepareWikiPages(wikiPath, mergedPages);
+  const results =
+    options?.persistPages === false
+      ? summarizeWikiPages(preparedPages)
+      : writePreparedWikiPages(wikiPath, preparedPages);
+  if (options?.persistPages !== false) updateIndexMd(wikiPath, preparedPages);
+  compiled.pages = preparedPages;
 
   return {
     pages: results,

@@ -12,7 +12,6 @@ import { estimateMessagesTokens } from './tokenEstimator.js';
 export const DEFAULT_CONTEXT_TOKEN_BUDGET = 100_000;
 export const DEFAULT_OUTPUT_TOKEN_RESERVE = 4_096;
 export const CONTEXT_COMPRESSION_THRESHOLD = 0.8;
-export const CONTEXT_COMPRESSION_TARGET = 0.6;
 
 export interface ContextPreparationOptions {
   /** 输入消息可使用的最大 estimated token 数。 */
@@ -36,17 +35,14 @@ export interface TrimOptions {
  * 2. 从尾部向前取最近 N 轮对话
  * 3. tool 消息连带保留（不能脱离其 assistant 独立存在）
  */
-export function trimContext(
-  messages: HistoryMessage[],
-  options: TrimOptions,
-): HistoryMessage[] {
+export function trimContext(messages: HistoryMessage[], options: TrimOptions): HistoryMessage[] {
   const { maxRounds } = options;
 
   if (maxRounds <= 0) return messages;
 
   // 分离 system 消息
-  const systemMessages = messages.filter(m => m.role === 'system');
-  const nonSystem = messages.filter(m => m.role !== 'system');
+  const systemMessages = messages.filter((m) => m.role === 'system');
+  const nonSystem = messages.filter((m) => m.role !== 'system');
 
   if (nonSystem.length === 0) return messages;
 
@@ -66,7 +62,7 @@ export function splitContextUnits(messages: HistoryMessage[]): HistoryMessage[][
   const units: HistoryMessage[][] = [];
   let current: HistoryMessage[] = [];
 
-  for (const message of messages.filter(item => item.role !== 'system')) {
+  for (const message of messages.filter((item) => item.role !== 'system')) {
     if (message.role === 'user' && current.length > 0) {
       units.push(current);
       current = [];
@@ -85,12 +81,9 @@ export function splitContextUnits(messages: HistoryMessage[]): HistoryMessage[][
  * @param maxTokens 摘要最大 estimated token 数
  * @returns 确定性摘要文本
  */
-export function buildFallbackContextSummary(
-  messages: HistoryMessage[],
-  maxTokens = 2_000,
-): string {
-  const lines = messages.map(message => {
-    const toolNames = message.tool_calls?.map(call => call.function.name).join(', ');
+export function buildFallbackContextSummary(messages: HistoryMessage[], maxTokens = 2_000): string {
+  const lines = messages.map((message) => {
+    const toolNames = message.tool_calls?.map((call) => call.function.name).join(', ');
     const role = toolNames ? `${message.role} [${toolNames}]` : message.role;
     return `${role}: ${(message.content || '').replace(/\s+/g, ' ').trim()}`;
   });
@@ -110,13 +103,14 @@ export async function prepareContext(
   messages: HistoryMessage[],
   options: ContextPreparationOptions,
 ): Promise<HistoryMessage[]> {
-  const systemMessages = messages.filter(message => message.role === 'system');
+  const systemMessages = messages.filter((message) => message.role === 'system');
   const units = splitContextUnits(messages);
   if (units.length === 0) return systemMessages;
 
   const budget = Math.max(1, options.maxTokens);
   const threshold = Math.floor(budget * CONTEXT_COMPRESSION_THRESHOLD);
-  if (estimateMessagesTokens(messages) <= threshold) return messages;
+  const estimateTokens = estimateMessagesTokens(messages);
+  if (estimateTokens <= threshold) return messages;
 
   const latestUnit = units[units.length - 1];
   const olderUnits = units.slice(0, -1);
@@ -133,13 +127,12 @@ export async function prepareContext(
   }
 
   const summaryMessage: HistoryMessage | null = summary
-    ? { role: 'user', content: summary }
+    ? {
+        role: 'user',
+        content: `[压缩后的历史摘要]\n${summary}`,
+      }
     : null;
-  let candidate = [
-    ...systemMessages,
-    ...(summaryMessage ? [summaryMessage] : []),
-    ...latestUnit,
-  ];
+  let candidate = [...systemMessages, ...(summaryMessage ? [summaryMessage] : []), ...latestUnit];
 
   // 当前最新单元必须优先保留；旧单元按时间从旧到新删除，直到满足预算。
   let retainedUnits = units.slice(-1);
@@ -163,10 +156,7 @@ export async function prepareContext(
   // 极端情况下最新单元自身超预算，按消息内容做最后保护性截断。
   if (estimateMessagesTokens(candidate) > budget) {
     const latestOnly = [...systemMessages, ...retainedUnits.flat()];
-    const summaryAllowance = Math.max(
-      0,
-      (budget - estimateMessagesTokens(latestOnly) - 8) * 3,
-    );
+    const summaryAllowance = Math.max(0, (budget - estimateMessagesTokens(latestOnly) - 8) * 3);
     if (summaryMessage && summaryAllowance > 0) {
       candidate = [
         ...latestOnly.slice(0, systemMessages.length),
@@ -183,7 +173,7 @@ export async function prepareContext(
     const availableChars = Math.max(0, (budget - estimateMessagesTokens(systemMessages)) * 3);
     const latest = retainedUnits.flat();
     let remaining = availableChars;
-    const shortened = latest.map(message => {
+    const shortened = latest.map((message) => {
       const content = message.content || '';
       const allowance = Math.max(0, Math.min(content.length, remaining));
       remaining -= allowance;
@@ -207,10 +197,7 @@ export async function prepareContext(
  *   从尾部开始，遇到 assistant(含 tool_calls) 或 user 标记为一轮计数
  *   tool 消息跟随其关联的 assistant，不计入轮数
  */
-function takeRecentRounds(
-  messages: HistoryMessage[],
-  maxRounds: number,
-): HistoryMessage[] {
+function takeRecentRounds(messages: HistoryMessage[], maxRounds: number): HistoryMessage[] {
   let rounds = 0;
   let cutIndex = messages.length;
 
