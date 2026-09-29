@@ -1,10 +1,14 @@
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
 const logger = require('./logger');
 const { registerElectronIpcHandlers } = require('./ipc');
+const { createWindowOptions } = require('./window-options');
+const { lockLightTheme } = require('./theme');
+
+lockLightTheme(nativeTheme);
 
 let mainWindow = null;
 let serverBundlePromise = null;
@@ -319,23 +323,7 @@ function registerIpcDescriptorGroup(name, descriptors) {
 function createWindow(port) {
   logger.info('Creating main window...');
 
-  mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 900,
-    minWidth: 800,
-    minHeight: 600,
-    title: 'Mint',
-    icon: path.join(__dirname, 'icon.png'),
-    backgroundColor: '#f1f5f3',
-    frame: false,
-    titleBarStyle: 'hiddenInset',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
-  });
+  mainWindow = new BrowserWindow(createWindowOptions(process.platform, __dirname));
 
   if (isDev) {
     mainWindow.loadURL('http://localhost:5800');

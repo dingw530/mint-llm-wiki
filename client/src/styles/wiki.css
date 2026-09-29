@@ -8,6 +8,10 @@
   background: var(--bg-primary);
 }
 
+.platform-darwin-electron .wiki-content-area {
+  background: var(--bg-primary);
+}
+
 /* ── Content Header ── */
 
 .wiki-content-header {
@@ -540,7 +544,18 @@
   min-height: 100%;
   margin: -40px -48px;
   padding: clamp(64px, 10vh, 104px) 48px 56px;
-  background: var(--bg-primary);
+  background:
+    radial-gradient(
+      ellipse at 52% 42%,
+      color-mix(in srgb, var(--accent) 13%, transparent),
+      transparent 38%
+    ),
+    radial-gradient(
+      ellipse at 74% 58%,
+      color-mix(in srgb, var(--accent-hover) 9%, transparent),
+      transparent 42%
+    ),
+    var(--bg-primary);
 }
 
 .wiki-welcome::before {
@@ -1168,7 +1183,6 @@
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
-  background: color-mix(in srgb, var(--bg-primary) 72%, transparent);
 }
 
 .wiki-mode-toggle {

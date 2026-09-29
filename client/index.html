@@ -1,9 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none';" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' http://localhost:* ws://localhost:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+    />
     <title>Mint</title>
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <style>
@@ -28,7 +32,9 @@
           linear-gradient(180deg, #f7faf8 0%, #f1f5f3 100%);
         color: #1c1c1c;
         z-index: 9999;
-        transition: opacity 180ms ease, transform 180ms ease;
+        transition:
+          opacity 180ms ease,
+          transform 180ms ease;
         overflow: hidden;
       }
       #boot-splash.is-fading {
@@ -41,7 +47,8 @@
         align-items: center;
         justify-content: center;
         gap: 20px;
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
       }
       #boot-splash .boot-brand-title {
         font-size: 22px;
@@ -60,20 +67,35 @@
         background: #2aa87d;
         animation: bootPulse 1.2s infinite ease-in-out;
       }
-      #boot-splash .boot-dots span:nth-child(2) { animation-delay: 0.15s; }
-      #boot-splash .boot-dots span:nth-child(3) { animation-delay: 0.3s; }
+      #boot-splash .boot-dots span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+      #boot-splash .boot-dots span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
       #boot-splash .boot-caption {
         font-size: 13px;
         color: #6a6a6a;
       }
       @keyframes bootPulse {
-        0%, 80%, 100% { transform: scale(0.75); opacity: 0.45; }
-        40% { transform: scale(1); opacity: 1; }
+        0%,
+        80%,
+        100% {
+          transform: scale(0.75);
+          opacity: 0.45;
+        }
+        40% {
+          transform: scale(1);
+          opacity: 1;
+        }
       }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="boot-splash" aria-hidden="true">
