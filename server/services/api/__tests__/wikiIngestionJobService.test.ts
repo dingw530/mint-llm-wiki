@@ -76,17 +76,18 @@ describe('wikiIngestionJobService', () => {
 
   it('records a successful result and graph warnings as done', async () => {
     const updates: Array<Partial<WikiJob>> = [];
+    const ingestWikiSource = vi.fn(async () => ({
+      sourceFile: 'sources/notes.md',
+      archivedFiles: ['sources/notes.md'],
+      pages: [{ filename: 'page.md', title: 'Page', size: 10 }],
+      summary: 'done',
+      manifestId: 'manifest-1',
+      graphErrors: ['edge failed'],
+    }));
     const service = createWikiIngestionJobService({
       readArchivedWikiFile: () => Buffer.from('hello'),
       parseFile: async () => ({ text: 'hello', format: 'md', originalName: 'notes.md' }),
-      ingestWikiSource: async () => ({
-        sourceFile: 'sources/notes.md',
-        archivedFiles: ['sources/notes.md'],
-        pages: [{ filename: 'page.md', title: 'Page', size: 10 }],
-        summary: 'done',
-        manifestId: 'manifest-1',
-        graphErrors: ['edge failed'],
-      }),
+      ingestWikiSource,
       updateJob: vi.fn((_id, patch) => {
         updates.push(patch);
         return undefined;
@@ -107,6 +108,11 @@ describe('wikiIngestionJobService', () => {
       step: '完成（图谱警告）',
       result: expect.objectContaining({ graphErrors: ['edge failed'] }),
     });
+    expect(ingestWikiSource).toHaveBeenCalledWith(
+      settings,
+      settings.wikiPath,
+      expect.objectContaining({ commit: { jobId: 'job-1', itemKey: 'upload' } }),
+    );
   });
 
   it('marks parse failures as error', async () => {
@@ -244,6 +250,16 @@ describe('wikiIngestionJobService', () => {
         { name: 'bad.md', content: Buffer.from('bad').toString('base64') },
       ],
     };
+    const ingestWikiSource = vi.fn(async (_settings, _path, options) => {
+      if (options.sourceText.includes('bad')) throw new Error('bad input');
+      return {
+        sourceFile: 'sources/good.md',
+        archivedFiles: [],
+        pages: [],
+        summary: 'done',
+        manifestId: 'manifest-1',
+      };
+    });
     const service = createWikiIngestionJobService({
       getAiSettings: () => settings,
       store,
@@ -254,16 +270,7 @@ describe('wikiIngestionJobService', () => {
         format: 'md',
         originalName: name,
       }),
-      ingestWikiSource: async (_settings, _path, options) => {
-        if (options.sourceText.includes('bad')) throw new Error('bad input');
-        return {
-          sourceFile: 'sources/good.md',
-          archivedFiles: [],
-          pages: [],
-          summary: 'done',
-          manifestId: 'manifest-1',
-        };
-      },
+      ingestWikiSource,
     });
 
     await service.runChat('job-1', input, settings, [
@@ -275,6 +282,10 @@ describe('wikiIngestionJobService', () => {
     expect(updates.at(-1)?.result).toMatchObject({
       failedItems: [{ name: 'bad.md', error: 'bad input' }],
     });
+    expect(ingestWikiSource.mock.calls.map(([, , options]) => options.commit)).toEqual([
+      { jobId: 'job-1', itemKey: 'chat-item-0' },
+      { jobId: 'job-1', itemKey: 'chat-item-1' },
+    ]);
   });
 
   it('serializes Wiki commits for the same Wiki path', async () => {

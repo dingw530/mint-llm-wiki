@@ -20,6 +20,21 @@
     8px 0 28px rgba(71, 83, 122, 0.04);
 }
 
+.platform-darwin-electron .sidebar {
+  --macos-sidebar-frost-base: 249 250 251;
+  --macos-sidebar-frost-edge: 235 238 242;
+  --macos-sidebar-frost-alpha: 0.28;
+  background: rgb(var(--macos-sidebar-frost-base) / var(--macos-sidebar-frost-alpha));
+  border-right-color: rgb(var(--macos-sidebar-frost-edge) / 0.78);
+  box-shadow:
+    1px 0 0 rgb(255 255 255 / 0.2),
+    8px 0 28px rgb(71 83 122 / 0.08);
+}
+
+.platform-darwin-electron .sidebar-header {
+  background: transparent;
+}
+
 /* ── Header ── */
 
 .sidebar-header {
@@ -200,6 +215,25 @@
 
 .module-btn.active svg {
   stroke: var(--accent);
+}
+
+.platform-darwin-electron .module-btn.active {
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  box-shadow: none;
+  color: var(--text-primary);
+}
+
+.platform-darwin-electron .module-chat-row:has(> .module-btn.active) {
+  background: var(--accent-subtle);
+  border: 1px solid var(--accent-border);
+  box-shadow: none;
+}
+
+.platform-darwin-electron .module-chat-row > .module-btn.active {
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
 /* ── Chat Content ── */
@@ -426,15 +460,19 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: color-mix(in srgb, var(--bg-primary) 72%, var(--bg-tertiary));
+  background: color-mix(in srgb, var(--bg-secondary) 84%, var(--bg-tertiary));
+}
+
+.platform-darwin-electron .sidebar-wiki-content {
+  background: transparent;
 }
 
 .wiki-tree-header-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 48px;
-  padding: 8px 12px 8px 16px;
+  min-height: 44px;
+  padding: 7px 12px 7px 16px;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -521,7 +559,7 @@
 .wiki-tree-scroll {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 8px 12px;
+  padding: 10px 8px 12px;
   position: relative;
   scrollbar-gutter: stable;
 }
@@ -535,8 +573,8 @@
   }
   align-items: center;
   gap: 7px;
-  min-height: 32px;
-  padding: 5px 10px;
+  min-height: 34px;
+  padding: 6px 10px;
   margin-bottom: 2px;
   cursor: pointer;
   font-size: 12px;
@@ -582,6 +620,11 @@
 
 .wiki-tree-node.selected svg {
   color: var(--accent);
+}
+
+.platform-darwin-electron .wiki-tree-node,
+.platform-darwin-electron .wiki-tree-node.selected {
+  color: var(--text-primary);
 }
 
 .wiki-tree-arrow {
@@ -648,7 +691,7 @@
   flex-shrink: 0;
   padding: 8px 10px 10px;
   border-top: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--bg-primary) 98%, var(--accent) 2%);
+  background: transparent;
 }
 
 .wiki-task-entry-button {
@@ -661,7 +704,7 @@
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-secondary);
-  background: color-mix(in srgb, var(--bg-elevated) 96%, var(--accent) 4%);
+  background: transparent;
   text-align: left;
   cursor: pointer;
   transition:

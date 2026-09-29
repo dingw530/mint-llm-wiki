@@ -127,6 +127,12 @@ body {
   position: relative;
 }
 
+.platform-darwin-electron,
+.platform-darwin-electron body,
+.platform-darwin-electron #root {
+  background: transparent;
+}
+
 /* Subtle grain texture for depth */
 body::after {
   content: '';
@@ -149,6 +155,10 @@ body::after {
   height: 100%;
   background: var(--bg-primary);
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.015);
+}
+
+.platform-darwin-electron .app-container {
+  background: transparent;
 }
 
 /* === Extracted to separate CSS file (see styles/) === */
@@ -250,6 +260,11 @@ body::after {
   min-width: 0;
   background: var(--bg-primary);
   position: relative;
+}
+
+.platform-darwin-electron .main-area,
+.platform-darwin-electron .assistant-page {
+  background: var(--bg-primary);
 }
 
 /* --------------------------------------------

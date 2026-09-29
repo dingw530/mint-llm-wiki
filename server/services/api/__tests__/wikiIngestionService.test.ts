@@ -9,6 +9,15 @@ vi.mock('../../utils/wikiCompiler.js', () => ({
 
 vi.mock('../../utils/wikiShared.js', () => ({
   appendWikiManifestEntry: vi.fn(),
+  updateIndexMd: vi.fn(),
+  writePreparedWikiPages: vi.fn((_wikiPath, pages) =>
+    pages.map((page) => ({
+      filename: page.filename,
+      title: page.title,
+      size: Buffer.byteLength(page.content),
+      summary: page.summary || page.content,
+    })),
+  ),
 }));
 
 vi.mock('../../graphBuilder.js', () => ({
@@ -32,6 +41,8 @@ import { compileSource } from '../../utils/wikiCompiler.js';
 import { stageWikiRawFile } from '../wikiFileService.js';
 import { rebuildWikiSearchIndex } from '../wikiSearchService.js';
 import type { AiSettings } from '../../../types.js';
+import * as jobStore from '../../jobs/adapters/sqliteJobStore.js';
+import * as commitRepository from '../../../repositories/wikiIngestionCommitRepository.js';
 
 describe('wikiIngestionService', () => {
   let tmpDir: string;
@@ -63,7 +74,9 @@ describe('wikiIngestionService', () => {
       fs.mkdirSync(path.join(tmpDir, 'sources'), { recursive: true });
 
       const relativePath = wikiIngestionService.archiveWikiRawFile(
-        tmpDir, 'My Great File!!.md', buffer,
+        tmpDir,
+        'My Great File!!.md',
+        buffer,
       );
       expect(relativePath).toContain('.md');
       // Should be lowercased and slugified
@@ -99,95 +112,145 @@ describe('wikiIngestionService', () => {
     });
 
     it('does not leave a source file after compilation fails', async () => {
-    const staged = stageWikiRawFile(tmpDir, 'failed.md', Buffer.from('failed'));
-    vi.mocked(compileSource).mockRejectedValueOnce(new Error('evidence rejected'));
-    const ingestionSettings = { wikiPath: tmpDir } as AiSettings;
+      const staged = stageWikiRawFile(tmpDir, 'failed.md', Buffer.from('failed'));
+      vi.mocked(compileSource).mockRejectedValueOnce(new Error('evidence rejected'));
+      const ingestionSettings = { wikiPath: tmpDir } as AiSettings;
 
-    await expect(wikiIngestionService.ingestWikiSource(
-      ingestionSettings,
-      tmpDir,
-      {
-        sourceText: 'failed',
-        sourceTitle: 'failed',
-        archivedFiles: [{ name: 'failed.md', existingRelativePath: staged }],
-      },
-    )).rejects.toThrow('evidence rejected');
+      await expect(
+        wikiIngestionService.ingestWikiSource(ingestionSettings, tmpDir, {
+          sourceText: 'failed',
+          sourceTitle: 'failed',
+          archivedFiles: [{ name: 'failed.md', existingRelativePath: staged }],
+        }),
+      ).rejects.toThrow('evidence rejected');
 
-    expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(0);
+      expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(0);
     });
 
     it('retains the staged input when a retryable job compilation fails', async () => {
-    const staged = stageWikiRawFile(tmpDir, 'retry.md', Buffer.from('retry'));
-    vi.mocked(compileSource).mockRejectedValueOnce(new Error('temporary failure'));
+      const staged = stageWikiRawFile(tmpDir, 'retry.md', Buffer.from('retry'));
+      vi.mocked(compileSource).mockRejectedValueOnce(new Error('temporary failure'));
 
-    await expect(wikiIngestionService.ingestWikiSource(
-      { wikiPath: tmpDir } as AiSettings,
-      tmpDir,
-      {
-        sourceText: 'retry',
-        sourceTitle: 'retry',
-        archivedFiles: [{ name: 'retry.md', existingRelativePath: staged }],
-        retainStagedFilesOnError: true,
-      },
-    )).rejects.toThrow('temporary failure');
+      await expect(
+        wikiIngestionService.ingestWikiSource({ wikiPath: tmpDir } as AiSettings, tmpDir, {
+          sourceText: 'retry',
+          sourceTitle: 'retry',
+          archivedFiles: [{ name: 'retry.md', existingRelativePath: staged }],
+          retainStagedFilesOnError: true,
+        }),
+      ).rejects.toThrow('temporary failure');
 
-    expect(fs.existsSync(path.join(tmpDir, staged))).toBe(true);
-    expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(0);
+      expect(fs.existsSync(path.join(tmpDir, staged))).toBe(true);
+      expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(0);
     });
 
     it('moves the source into sources only after the ingestion pipeline succeeds', async () => {
-    const staged = stageWikiRawFile(tmpDir, 'success.md', Buffer.from('success'));
-    const page = {
-      filename: 'pages/success.md',
-      title: 'Success',
-      tags: [],
-      content: '# Success\n\n已验证内容',
-    };
-    vi.mocked(compileSource).mockResolvedValueOnce({
-      pages: [{ filename: page.filename, title: page.title, size: page.content.length, summary: 'done' }],
-      compiledPages: [page],
-      relationships: [],
-      claims: [],
-      summary: 'done',
-    });
+      const staged = stageWikiRawFile(tmpDir, 'success.md', Buffer.from('success'));
+      const page = {
+        filename: 'pages/success.md',
+        title: 'Success',
+        tags: [],
+        content: '# Success\n\n已验证内容',
+      };
+      vi.mocked(compileSource).mockResolvedValueOnce({
+        pages: [
+          {
+            filename: page.filename,
+            title: page.title,
+            size: page.content.length,
+            summary: 'done',
+          },
+        ],
+        compiledPages: [page],
+        relationships: [],
+        claims: [],
+        summary: 'done',
+      });
 
-    const result = await wikiIngestionService.ingestWikiSource(
-      { wikiPath: tmpDir } as AiSettings,
-      tmpDir,
-      {
-        sourceText: 'success',
-        sourceTitle: 'success',
-        archivedFiles: [{ name: 'success.md', existingRelativePath: staged }],
-      },
-    );
+      const result = await wikiIngestionService.ingestWikiSource(
+        { wikiPath: tmpDir } as AiSettings,
+        tmpDir,
+        {
+          sourceText: 'success',
+          sourceTitle: 'success',
+          archivedFiles: [{ name: 'success.md', existingRelativePath: staged }],
+        },
+      );
 
-    expect(result.sourceFile).toMatch(/^sources\//);
-    expect(fs.existsSync(path.join(tmpDir, result.sourceFile))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, staged))).toBe(false);
+      expect(result.sourceFile).toMatch(/^sources\//);
+      expect(fs.existsSync(path.join(tmpDir, result.sourceFile))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, staged))).toBe(false);
     });
 
     it('rolls back a finalized source when a later ingestion step fails', async () => {
-    const staged = stageWikiRawFile(tmpDir, 'index-failure.md', Buffer.from('index failure'));
-    vi.mocked(compileSource).mockResolvedValueOnce({
-      pages: [],
-      compiledPages: [],
-      relationships: [],
-      claims: [],
-      summary: 'done',
-    });
-    vi.mocked(rebuildWikiSearchIndex).mockRejectedValueOnce(new Error('index failed'));
+      const staged = stageWikiRawFile(tmpDir, 'index-failure.md', Buffer.from('index failure'));
+      vi.mocked(compileSource).mockResolvedValueOnce({
+        pages: [],
+        compiledPages: [],
+        relationships: [],
+        claims: [],
+        summary: 'done',
+      });
+      vi.mocked(rebuildWikiSearchIndex).mockRejectedValueOnce(new Error('index failed'));
 
-    await expect(wikiIngestionService.ingestWikiSource(
-      { wikiPath: tmpDir } as AiSettings,
-      tmpDir,
-      {
-        sourceText: 'index failure',
-        sourceTitle: 'index-failure',
-        archivedFiles: [{ name: 'index-failure.md', existingRelativePath: staged }],
-      },
-    )).rejects.toThrow('index failed');
+      await expect(
+        wikiIngestionService.ingestWikiSource({ wikiPath: tmpDir } as AiSettings, tmpDir, {
+          sourceText: 'index failure',
+          sourceTitle: 'index-failure',
+          archivedFiles: [{ name: 'index-failure.md', existingRelativePath: staged }],
+        }),
+      ).rejects.toThrow('index failed');
 
-    expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(0);
+      expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(0);
     });
-});
+
+    it('resumes a durable commit from its snapshot without recompiling or duplicating the source', async () => {
+      const staged = stageWikiRawFile(tmpDir, 'recovery.md', Buffer.from('recovery source'));
+      const jobId = jobStore.createJob('recovery.md', 15, {
+        sourceType: 'upload',
+        payload: { sourceFile: staged },
+      });
+      const page = {
+        filename: 'pages/recovery/recovered.md',
+        title: 'Recovered',
+        tags: [],
+        content: '# Recovered\n\nEvidence',
+      };
+      vi.mocked(compileSource).mockResolvedValueOnce({
+        pages: [{ filename: page.filename, title: page.title, size: 30, summary: 'Evidence' }],
+        compiledPages: [page],
+        relationships: [],
+        claims: [],
+        summary: 'recovered',
+      });
+      const request = {
+        sourceText: 'recovery source',
+        sourceTitle: 'recovery',
+        archivedFiles: [{ name: 'recovery.md', existingRelativePath: staged }],
+        retainStagedFilesOnError: true,
+        commit: { jobId, itemKey: 'upload' },
+      };
+
+      const first = await wikiIngestionService.ingestWikiSource(
+        { wikiPath: tmpDir } as AiSettings,
+        tmpDir,
+        request,
+      );
+      const second = await wikiIngestionService.ingestWikiSource(
+        { wikiPath: tmpDir } as AiSettings,
+        tmpDir,
+        request,
+      );
+
+      const commit = commitRepository.getWikiIngestionCommit(jobId, 'upload');
+      expect(vi.mocked(compileSource)).toHaveBeenCalledTimes(1);
+      expect(second.manifestId).toBe(first.manifestId);
+      expect(commit?.phase).toBe('committed');
+      expect(fs.readdirSync(path.join(tmpDir, 'sources'))).toHaveLength(1);
+      expect(fs.existsSync(path.join(tmpDir, staged))).toBe(true);
+
+      wikiIngestionService.cleanupWikiIngestionJobStagedFiles(tmpDir, jobId);
+      expect(fs.existsSync(path.join(tmpDir, staged))).toBe(false);
+    });
+  });
 });

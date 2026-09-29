@@ -8,30 +8,31 @@
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF.svg?logo=vite&logoColor=white)](https://vitejs.dev/)
 [![GitHub Stars](https://img.shields.io/github/stars/dingw530/mint-ai-chat?style=social)](https://github.com/dingw530/mint-ai-chat)
 
-Mint 是一款以 LLM Wiki 知识库为核心的 AI 助手，基于 Electron 构建为原生桌面应用。它可以将文档、网页和对话沉淀为可持续使用的知识，并连接任意兼容 OpenAI 的 API 端点；所有数据始终保留在本机。
+Mint 是一款以个人知识工作台为核心的 AI 助手，基于 Electron 构建为桌面应用。它将文档、网页和对话整理为可检索、可持续维护的 Wiki，并通过带来源引用的知识问答、Agent 和工具调用帮助用户理解与使用这些知识。会话、设置和 Wiki 默认保存在本机；对话及配置的向量/语义服务会按用户设置连接相应 API。
 
 <p align="center">
   <video src="https://dingw530.github.io/mint-ai-chat/assets/example.mp4" alt="Mint 预览" width="800" />
 </p>
 
-
 ## 功能特性
 
-- 自定义 Agent 与 API 端点配置
-- 用户记忆系统，用于保留上下文
-- **LLM Wiki 知识库** —— 从文档、URL 和聊天内容构建可检索、可持续积累的 AI 知识库
-- **知识库问答** —— 基于 Wiki 知识进行上下文增强对话，帮助用户理解、整理和应用个人知识
-- **知识图谱** —— 可视化实体关系图（概念 / 实践 / 方法论），支持从 Wiki 导入内容后自动构建
-- 使用 AES-256-GCM 加密存储 API 密钥
-- 自定义无边框窗口与标题栏
+- **个人知识工作台** —— 默认进入 Wiki，集中浏览来源文档、整理后的知识页面、索引状态和摄入任务
+- **知识采集与整理** —— 导入文件、网页和聊天内容；后台任务将资料编译为 Wiki 页面，并在意外中断后恢复未完成的提交
+- **混合知识检索与问答** —— 结合全文和向量检索，从 Wiki 中查找相关内容并在对话中提供来源引用；可选启用实验性 Jev 语义重排
+- **知识图谱与热度视图** —— 浏览 Wiki 中的概念、实践、方法论关系，以及知识页面的使用情况
+- **Agent 与工具** —— 创建自定义 Agent，使用自动或手动路由、ReAct 工具循环、工具权限确认和流式响应
+- **长期记忆、Skills 与 MCP** —— 管理用户记忆，从本地 Markdown 加载 Skills，并连接 MCP Server 扩展工具
+- **多模型接入** —— 配置 OpenAI、Anthropic 或兼容 OpenAI 的模型端点
+- **本地数据与桌面体验** —— 使用 SQLite 保存应用数据，以 AES-256-GCM 加密 API 密钥，并提供 macOS 原生窗口效果
 
 ## 技术栈
 
-- **桌面端**：Electron 41.7.1
-- **前端**：React 18.2.0、Vite 5.1.0、使用设计令牌的原生 CSS
-- **后端**：Express 4.18.2、TypeScript 6.0.3、better-sqlite3 12.11.1（SQLite）
-- **IPC**：直接调用服务层（无 HTTP 开销）
-- **测试**：Vitest 1.6.1
+- **桌面端**：Electron 41.7.1，使用 contextBridge 和 IPC 连接渲染进程与主进程
+- **前端**：React 18.3、Vite 5.4、TypeScript 6、React Router、Radix UI 与原生 CSS 设计令牌
+- **服务端**：Node.js 20.19.4、Express 4.22、TypeScript 6；AI 接入使用 Vercel AI SDK 及 OpenAI、Anthropic、OpenAI-compatible providers
+- **数据与检索**：better-sqlite3 12.8、SQLite FTS 和 sqlite-vec；支持配置外部 Chroma 向量库及 OpenAI-compatible embeddings
+- **Agent 集成**：Model Context Protocol SDK、SSE 流式传输、Langfuse / OpenTelemetry 可观测性
+- **评测与测试**：独立的 `agent-eval` Wiki-RAG 评测与报告查看器；Vitest 1.6
 
 ## 快速开始
 
@@ -130,22 +131,21 @@ npm run verify:change -- --profile ui --change 2026-08-16-example
 
 ## 项目简介
 
-Mint 的核心定位是以 LLM Wiki 知识库为基础的个人 AI 助手：它帮助用户采集、整理、理解和调用个人知识，并在此基础上提供智能对话与自动化能力。
+Mint 的核心定位是个人知识工作台。默认首页围绕 Wiki 展示知识内容和索引状态，用户可以从原始资料开始采集，经由编译与生命周期管理形成知识页面，再用检索、引用问答、图谱和 Agent 工具调用来使用这些知识。
 
 产品围绕以下能力构建：
 
-- **Agent 架构** —— 自定义 Agent 系统，支持系统提示词、自动路由和锁定 Agent 模式
-- **ReAct 模式** —— 推理与行动循环：Agent 观察、推理、调用工具，并迭代地将工具结果整合到响应中
-- **工具调用** —— 基于 BaseTool 的插件式工具系统，包含 HTTP 请求、Wiki 检索、文件操作等
-- **MCP 协议** —— 集成 Model Context Protocol，支持动态管理 MCP Server 连接
-- **记忆系统** —— 支持多类别（通用 / 偏好 / 事实）的长期用户记忆与自动召回
-- **上下文窗口** —— 使用滑动窗口管理 Token，控制上下文消耗
-- **Skills 系统** —— 从本地 Markdown 文件动态加载、热插拔 Skills
-- **知识图谱** —— 包含三种节点类型（概念 / 实践 / 方法论）的实体关系图，使用 vis-network 进行力导向渲染，并可从 Wiki 导入内容后自动构建。节点按标签去重；跨批次边通过 AI 指定的关系或共享标签创建。
-- **流式响应** —— 基于 SSE 的实时流式响应，按数据块逐步渲染
-- **多模型** —— 兼容任意 OpenAI 格式的 API 端点，支持灵活切换模型
-- **IPC 架构** —— 在 Electron 主进程中直接调用服务层，绕过 HTTP 开销
-- **端到端加密** —— 使用 AES-256-GCM 加密 API 密钥
+- **知识采集与生命周期** —— 上传文件、从 URL 或对话保存资料；摄入任务持久化，重启后可以恢复已编译但未完成提交的内容
+- **混合检索** —— Wiki 页面按标题和章节切分，使用全文检索与向量检索召回，再以 RRF 排序；可选的 Jev rerank 默认关闭，失败时回退到原排序
+- **来源问答** —— Agent 可检索 Wiki 并在回答中呈现命中的页面、章节和引用信息
+- **Agent 与 ReAct** —— 支持自定义提示词、自动路由或固定 Agent，以及多轮工具调用和流式输出
+- **工具与审批** —— 内置 Wiki、文件、HTTP 等工具；按工具策略执行权限检查，并可在需要时等待用户批准
+- **MCP 与 Skills** —— 动态管理 MCP Server 连接，并从本地 Markdown 文件加载 Skills
+- **长期记忆与上下文管理** —— 按类别保存、召回用户记忆，并通过上下文窗口控制对话历史
+- **知识浏览** —— 提供文档、知识图谱和知识热度视图；图谱包含概念、实践和方法论节点
+- **模型与数据** —— 支持 OpenAI、Anthropic 和兼容 OpenAI 的端点；应用数据使用本地 SQLite，API 密钥以 AES-256-GCM 加密存储
+- **运行与观测** —— Web 模式通过 Express 提供 HTTP/SSE；Electron 模式通过 IPC 调用主进程服务，并支持 Langfuse / OpenTelemetry 追踪
+- **独立评测** —— `agent-eval/` 提供 Wiki-RAG 数据集、运行记录、来源追溯指标和可视化报告
 
 ## 架构
 
@@ -159,9 +159,9 @@ Mint 的核心定位是以 LLM Wiki 知识库为基础的个人 AI 助手：它�
 渲染进程（React）
     ↕ IPC (contextBridge)
 主进程
-    ├── 服务层（conversation、message、settings、agent、endpoint、memory、mcp）
-    ├── SQLite (better-sqlite3)
-    └── AI 代理（兼容 OpenAI 的流式接口）
+    ├── 服务层（对话、Agent、Wiki、记忆、工具、设置与 MCP）
+    ├── SQLite（better-sqlite3、FTS、sqlite-vec）
+    └── AI SDK providers（OpenAI、Anthropic、OpenAI-compatible）
 ```
 
 ## 项目结构
@@ -174,16 +174,20 @@ electron/             # Electron 主进程
 
 client/               # React SPA（渲染进程）
   src/
-    components/       # UI（Sidebar、ChatArea、Settings、Agents 等）
-    hooks/            # useSSE、useIPC
+    features/         # 按功能组织的 chat、wiki、agents、settings 等模块
+    components/       # 共享 UI 组件
+    hooks/            # useSSE、IPC 与客户端状态 hooks
     services/         # API 客户端（自动识别 Electron 与 HTTP）
     styles/           # 设计系统（CSS 自定义属性）
 
-server/               # Express API（TypeScript）
+server/               # Express 服务与 Agent runtime（TypeScript）
   index.ts            # 入口
+  endpoints/          # 声明式 HTTP / Electron IPC endpoint 注册
   services/           # 业务逻辑层
   repositories/       # 数据访问层（SQLite）
   __tests__/          # 集成测试与单元测试
+
+agent-eval/           # Wiki-RAG 评测 CLI、数据集与报告查看器
 ```
 
 ## 许可证

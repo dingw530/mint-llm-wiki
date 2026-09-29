@@ -93,15 +93,59 @@ export function stageWikiRawFile(wikiPath: string, fileName: string, buffer: Buf
  * @returns 正式文件相对于 Wiki 根目录的路径
  */
 export function finalizeWikiSourceFile(wikiPath: string, relativePath: string): string {
+  return finalizeWikiSourceFileTo(wikiPath, relativePath);
+}
+
+/**
+ * Finalize a staged source at a stable target, optionally retaining the input for job recovery.
+ */
+export function finalizeWikiSourceFileTo(
+  wikiPath: string,
+  relativePath: string,
+  targetRelativePath?: string,
+  retainStagedFile = false,
+): string {
   const normalized = relativePath.replace(/\\/g, '/');
   if (!isStagedWikiFile(normalized)) return normalized;
 
   const stagedPath = resolveWikiRelativePath(wikiPath, normalized);
   const sourcesDir = path.join(wikiPath, 'sources');
   ensureDir(sourcesDir);
-  const targetPath = ensureUniqueFilePath(path.join(sourcesDir, path.basename(stagedPath)));
-  fs.renameSync(stagedPath, targetPath);
-  return path.relative(wikiPath, targetPath).replace(/\\/g, '/');
+  const targetRelative =
+    targetRelativePath?.replace(/\\/g, '/') ||
+    path
+      .relative(wikiPath, ensureUniqueFilePath(path.join(sourcesDir, path.basename(stagedPath))))
+      .replace(/\\/g, '/');
+  if (!targetRelative.startsWith('sources/')) throw new Error('正式 Source 路径无效');
+  const targetPath = resolveWikiRelativePath(wikiPath, targetRelative);
+
+  if (fs.existsSync(targetPath)) {
+    if (
+      !fs.existsSync(stagedPath) ||
+      !fs.readFileSync(targetPath).equals(fs.readFileSync(stagedPath))
+    ) {
+      throw new Error(`正式 Source 路径已存在且内容不匹配: ${targetRelative}`);
+    }
+    return targetRelative;
+  }
+  if (!fs.existsSync(stagedPath)) throw new Error(`摄入暂存文件不存在: ${normalized}`);
+
+  if (retainStagedFile) {
+    copyFileAtomically(stagedPath, targetPath);
+  } else {
+    fs.renameSync(stagedPath, targetPath);
+  }
+  return targetRelative;
+}
+
+function copyFileAtomically(sourcePath: string, targetPath: string): void {
+  const temporaryPath = `${targetPath}.${process.pid}.tmp`;
+  try {
+    fs.copyFileSync(sourcePath, temporaryPath);
+    fs.renameSync(temporaryPath, targetPath);
+  } finally {
+    if (fs.existsSync(temporaryPath)) fs.unlinkSync(temporaryPath);
+  }
 }
 
 /**
@@ -148,7 +192,12 @@ export function stageWikiSourceText(
   return writeWikiSourceText(wikiPath, WIKI_INGESTION_STAGING_DIR, sourceText, title, filenameHint);
 }
 
-function writeWikiRawFile(wikiPath: string, directory: string, fileName: string, buffer: Buffer): string {
+function writeWikiRawFile(
+  wikiPath: string,
+  directory: string,
+  fileName: string,
+  buffer: Buffer,
+): string {
   const targetDir = path.join(wikiPath, directory);
   ensureDir(targetDir);
   const date = new Date().toISOString().slice(0, 10);
@@ -183,10 +232,15 @@ function writeWikiSourceText(
     ? stripDatePrefixes(path.basename(filenameHint, path.extname(filenameHint)))
     : title;
   const sourceContent = `# ${title || '未命名资料'}\n\n> 原始资料，不可变。摄入日期：${date}\n\n${sourceText}\n`;
-  return writeWikiRawFile(wikiPath, directory, `${hintBase}.md`, Buffer.from(sourceContent, 'utf-8'));
+  return writeWikiRawFile(
+    wikiPath,
+    directory,
+    `${hintBase}.md`,
+    Buffer.from(sourceContent, 'utf-8'),
+  );
 }
 
-function isStagedWikiFile(relativePath: string): boolean {
+export function isStagedWikiFile(relativePath: string): boolean {
   return relativePath.startsWith(`${WIKI_INGESTION_STAGING_DIR}/`);
 }
 

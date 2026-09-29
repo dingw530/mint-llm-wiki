@@ -136,6 +136,9 @@ describe('messageService', () => {
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
       await sendMessage('conv-1', 'hello', sink);
       expect(messageRepo.create).toHaveBeenCalledTimes(2); // user msg + AI response
+      const sentMessages = vi.mocked(streamChat).mock.calls[0][0];
+      expect(sentMessages[0].role).toBe('system');
+      expect(sentMessages[0].content).toContain('遇到以 [压缩后的历史摘要] 开头的 user 消息时');
       expect(streamChat).toHaveBeenCalledWith(
         expect.any(Array),
         expect.any(Object),
@@ -239,7 +242,9 @@ describe('messageService', () => {
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
       await sendMessage('conv-1', 'hi', sink, 'custom-agent');
       // streamChat should be called with custom system prompt
-      expect(streamChat).toHaveBeenCalled();
+      const systemContent = vi.mocked(streamChat).mock.calls[0][0][0].content || '';
+      expect(systemContent).toContain('遇到以 [压缩后的历史摘要] 开头的 user 消息时');
+      expect(systemContent).toContain('You are custom!');
     });
 
     it('injects memory context when enabled', async () => {
@@ -264,9 +269,10 @@ describe('messageService', () => {
       await sendMessage('conv-1', 'hi', sink);
       expect(memoryService.buildMemoryContext).toHaveBeenCalled();
       const sentMessages = vi.mocked(streamChat).mock.calls[0][0];
-      expect(sentMessages.find((message) => message.role === 'system')?.content).toBe(
-        'base prompt',
-      );
+      const systemContent =
+        sentMessages.find((message) => message.role === 'system')?.content || '';
+      expect(systemContent).toContain('遇到以 [压缩后的历史摘要] 开头的 user 消息时');
+      expect(systemContent).toContain('base prompt');
       expect(sentMessages.map((message) => message.role)).toEqual(['system', 'user', 'user']);
       expect(sentMessages[1].content).toContain('<user_memory>');
       expect(sentMessages[2].content).toBe('hi');
@@ -307,6 +313,7 @@ describe('messageService', () => {
 
       const sentMessages = vi.mocked(reactChat).mock.calls[0][0];
       expect(sentMessages.map((message) => message.role)).toEqual(['system', 'user', 'user']);
+      expect(sentMessages[0].content).toContain('遇到以 [压缩后的历史摘要] 开头的 user 消息时');
       expect(sentMessages[1].content).toContain('<user_memory>');
       expect(sentMessages[2].content).toBe('hi');
     });

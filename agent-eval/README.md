@@ -219,6 +219,7 @@ npm run eval:versions:compare -w agent-eval -- \
 - `citationAccuracyRate`：来源引用准确率
 - `citationGroundingRate`：最终答案引用能在本次检索证据中找到对应身份的比例
 - `retrievalCoverageRate`：工具检索结果对目标来源断言的覆盖率；它与最终答案展示的引用覆盖率分开统计
+- `recallAtK` / `recallAtKValue`：默认来源级 `Recall@5`，按有序 `retrievedCitations` 的前 5 个证据项，计算 `requiredSourceFiles` / `requiredSourceChunks` 标注的相关来源召回率；无相关来源标注或未保存检索排序的用例不参与平均
 - `abstentionAccuracy`：无答案拒答准确率
 - `answerGatePassAt1` / `evidenceGatePassAt1`：答案 Gate / 证据 Gate 的最终通过率；答案 Gate 会区分硬条件和关键词等弱信号
 - `qualityPassAt1`：答案 Gate 与证据 Gate 同时通过率

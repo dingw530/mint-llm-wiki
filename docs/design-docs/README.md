@@ -6,6 +6,7 @@
 
 | 变更                                                                                                            | 日期       | 状态   |
 | --------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| [Server 目录与领域边界收敛](../changes/2026-09-29-server-structure/design-doc.md)                                | 2026-09-29 | 提案   |
 | [AI Chat](../changes/2026-04-27-ai-chat/design-doc.md)                                                          | 2026-04-27 | 已完成 |
 | [Weather Agent Tool](../changes/2026-04-28-weather-agent-tool/design-doc.md)                                    | 2026-04-28 | 已完成 |
 | [System Prompt & Thinking Mode](../changes/2026-04-28-system-prompt-thinking-mode/design-doc.md)                | 2026-04-28 | 已完成 |

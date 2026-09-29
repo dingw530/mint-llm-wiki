@@ -1,0 +1,53 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "编译快照持久化后可从新进程恢复提交，且不重复调用 LLM。",
+      "risk": "critical",
+      "invariants": ["idempotence", "ordering", "drain"],
+      "requiredEvidence": ["process-smoke"],
+      "probes": ["unit", "crash-recovery-smoke"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "重复恢复不产生重复 Source、Page、Claim 支持/事件或 manifest。",
+      "risk": "critical",
+      "invariants": ["idempotence", "ordering"],
+      "requiredEvidence": ["process-smoke"],
+      "probes": ["unit", "crash-recovery-smoke"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "Source、页面、生命周期、搜索索引和 manifest 最终指向同一稳定提交。",
+      "risk": "critical",
+      "invariants": ["ordering", "idempotence"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["unit", "boundary", "crash-recovery-smoke"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "子进程在提交中途被终止后，新进程能够恢复并满足提交不变量。",
+      "risk": "critical",
+      "invariants": ["drain", "idempotence", "ordering"],
+      "requiredEvidence": ["process-smoke"],
+      "probes": ["crash-recovery-smoke"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "Chat 作业条目以独立稳定身份恢复，已完成条目不重做或被其他条目回滚。",
+      "risk": "high",
+      "invariants": ["idempotence", "ordering"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["unit", "boundary", "crash-recovery-smoke"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "旧正式 Source 路径、证据失败清理和普通摄入成功失败行为保持兼容。",
+      "risk": "high",
+      "invariants": ["rollback", "regression_free"],
+      "requiredEvidence": ["integration"],
+      "probes": ["unit", "boundary"]
+    }
+  ]
+}

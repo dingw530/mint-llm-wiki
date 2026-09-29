@@ -1,5 +1,6 @@
 import {
   getJudgeDimensionGate,
+  type EvalJudgeDimensionResult,
   type EvalJudgeInput,
   type EvalJudgeResult,
   type JudgeExecutor,
@@ -25,9 +26,23 @@ export interface JevJudgeConfig {
   apiKey: string;
   modelId: string;
   timeoutMs: number;
+  scoreCalibrationId?: JevScoreCalibrationId;
 }
 
 export type JudgeProvider = 'llm' | 'jev';
+export type JevScoreCalibrationId = 'wiki-rag-llm-reference-20260910-v1';
+
+const JEV_SCORE_CALIBRATIONS: Record<
+  JevScoreCalibrationId,
+  Record<string, Record<number, number>>
+> = {
+  'wiki-rag-llm-reference-20260910-v1': {
+    correctness: { 2: 3.764, 3: 4 },
+    groundedness: { 2: 3.654, 3: 4 },
+    completeness: { 2: 3.088, 3: 4 },
+    trajectory: { 1: 2.544, 2: 3.912 },
+  },
+};
 
 function clampScore(value: number): number {
   return Math.min(4, Math.max(1, Math.round(value)));
@@ -43,6 +58,16 @@ function answerScore(answer: JevAnswer): number {
   if (answer.type === 'noul') return clampScore(answer.noul * 4);
   const passed = answer.choice === 'pass' || answer.choice === 'true';
   return passed ? 4 : 1;
+}
+
+/** Map a Jev score bin to its historical LLM Judge reference-bin mean. */
+function calibrateJevScore(
+  dimensionId: string,
+  rawScore: number,
+  calibrationId: JevScoreCalibrationId | undefined,
+): number {
+  if (!calibrationId) return rawScore;
+  return JEV_SCORE_CALIBRATIONS[calibrationId][dimensionId]?.[rawScore] ?? rawScore;
 }
 
 function evidenceIds(input: EvalJudgeInput): string[] {
@@ -132,7 +157,7 @@ export function createJevJudge(config: JevJudgeConfig): JudgeExecutor {
     );
     if (!result.ok) throw new Error(`Jev Judge failed: ${result.reason} ${result.message}`);
     const ids = evidenceIds(input);
-    const dimensions = rubric.dimensions.map((dimension) => {
+    const dimensions: EvalJudgeDimensionResult[] = rubric.dimensions.map((dimension) => {
       const answer = result.answers[dimension.id];
       if (!answer) throw new Error(`Jev Judge missing dimension: ${dimension.id}`);
       if (dimension.importance === 'veto') {
@@ -144,11 +169,16 @@ export function createJevJudge(config: JevJudgeConfig): JudgeExecutor {
           reason: jevFailureReason(dimension.name, answer),
         };
       }
+      const rawScore = answerScore(answer);
+      const score = calibrateJevScore(dimension.id, rawScore, config.scoreCalibrationId);
       return {
         id: dimension.id,
-        score: answerScore(answer),
+        score,
+        ...(config.scoreCalibrationId ? { rawJevScore: rawScore } : {}),
         evidenceIds: ids,
-        reason: jevFailureReason(dimension.name, answer),
+        reason: config.scoreCalibrationId
+          ? `Jev 原始评分 ${answer.type === 'score' ? answer.score.toFixed(2) : rawScore}（档位 ${rawScore}），校准到历史 LLM 量尺 ${score.toFixed(2)}。`
+          : jevFailureReason(dimension.name, answer),
       };
     });
     const failed = dimensions.filter(
@@ -163,11 +193,14 @@ export function createJevJudge(config: JevJudgeConfig): JudgeExecutor {
     return {
       dimensions,
       confidence,
-      shortReason: failed.length
-        ? `Jev 未通过维度：${failed.map((dimension) => dimension.id).join('、')}。`
-        : 'Jev 判定全部维度通过。',
+      shortReason: config.scoreCalibrationId
+        ? 'Jev 原始评分已保留；校准 Gate 结果将在分数映射后计算。'
+        : failed.length
+          ? `Jev 未通过维度：${failed.map((dimension) => dimension.id).join('、')}。`
+          : 'Jev 判定全部维度通过。',
       criticalFailure: dimensions.find((dimension) => dimension.passed === false)?.reason,
       judgeModel: config.modelId,
+      ...(config.scoreCalibrationId ? { scoreCalibrationId: config.scoreCalibrationId } : {}),
     };
   };
 }
