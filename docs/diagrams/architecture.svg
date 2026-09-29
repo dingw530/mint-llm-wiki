@@ -190,7 +190,7 @@
   <g filter="url(#shadow)">
     <rect x="100" y="870" width="350" height="46" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="1.5"/>
     <text x="122" y="891" class="node-title">React Web Client</text>
-    <text x="122" y="908" class="small">chat · wiki · settings · images</text>
+    <text x="122" y="908" class="small">chat · wiki · agents · settings</text>
 
     <rect x="525" y="870" width="350" height="46" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="1.5"/>
     <text x="547" y="891" class="node-title">Electron Shell</text>
