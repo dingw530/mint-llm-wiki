@@ -1,6 +1,6 @@
- {
+{
   "name": "wiki-rag",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "metadata": {
     "corpusDir": "wiki-rag/raw",
     "sourceMode": "raw-sources",
@@ -14,7 +14,10 @@
       "input": "RAG 为什么能缓解企业内部知识问答中的幻觉问题？",
       "tags": ["wiki", "retrieval", "citation"],
       "expected": {
-        "mustContainAny": [["检索", "外部知识"], ["幻觉", "错误"]],
+        "mustContainAny": [
+          ["检索", "外部知识"],
+          ["幻觉", "错误"]
+        ],
         "mustUseTools": ["wiki_search"],
         "mustNotUseTools": ["bash"],
         "maxToolCalls": 3,
@@ -39,7 +42,11 @@
       "input": "为什么 RAG 需要对知识进行 Chunking？",
       "tags": ["wiki", "retrieval", "citation"],
       "expected": {
-        "mustContainAny": [["上下文", "窗口"], ["粒度", "检索"], ["切块", "chunk"]],
+        "mustContainAny": [
+          ["上下文", "窗口"],
+          ["粒度", "检索"],
+          ["切块", "chunk"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-22-rag"],
@@ -63,7 +70,11 @@
       "input": "LLM Wiki v2 为什么强调 memory lifecycle？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["生命周期", "lifecycle"], ["记忆", "memory"], ["更新", "删除"]],
+        "mustContainAny": [
+          ["生命周期", "lifecycle"],
+          ["记忆", "memory"],
+          ["更新", "删除"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-24-llm-wiki-v2"],
@@ -75,7 +86,10 @@
       "input": "LLM Wiki v2 如何看待从扁平页面走向知识图谱？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["知识图谱", "knowledge graph"], ["关系", "实体"]],
+        "mustContainAny": [
+          ["知识图谱", "knowledge graph"],
+          ["关系", "实体"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-24-llm-wiki-v2"],
@@ -87,7 +101,11 @@
       "input": "LLM Wiki v2 的 quality 和 self-correction 如何实现知识质量控制？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["质量", "校验"], ["纠错", "修正"], ["自愈", "修复", "矛盾"]],
+        "mustContainAny": [
+          ["质量", "校验"],
+          ["纠错", "修正"],
+          ["自愈", "修复", "矛盾"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-24-llm-wiki-v2"],
@@ -99,7 +117,12 @@
       "input": "后端系统的 AI 知识库为什么要划分业务层、架构层、系统层和基建层？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["业务层", "业务"], ["架构层", "架构"], ["系统层", "系统"], ["基建层", "基建"]],
+        "mustContainAny": [
+          ["业务层", "业务"],
+          ["架构层", "架构"],
+          ["系统层", "系统"],
+          ["基建层", "基建"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-24-分解一座冰山"],
@@ -159,7 +182,11 @@
       "input": "长时间运行的 Loop Engineering 实践中，为什么需要持续验证和观察？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["验证", "检查"], ["观察", "反馈"], ["风险", "失败"]],
+        "mustContainAny": [
+          ["验证", "检查"],
+          ["观察", "反馈"],
+          ["风险", "失败"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-28-loop-engineering"],
@@ -171,7 +198,11 @@
       "input": "为什么企业 Agent 的架构中心应该是业务执行链，而不是聊天框？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["工作流", "流程"], ["任务", "执行"], ["Agent", "智能体"]],
+        "mustContainAny": [
+          ["工作流", "流程"],
+          ["任务", "执行"],
+          ["Agent", "智能体"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-15-别再把-agent"],
@@ -183,7 +214,11 @@
       "input": "企业级 Agent 架构除了对话，还需要关注哪些能力？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["工具", "调用"], ["流程", "工作流"], ["权限", "安全"]],
+        "mustContainAny": [
+          ["工具", "调用"],
+          ["流程", "工作流"],
+          ["权限", "安全"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-15-别再把-agent"],
@@ -207,7 +242,13 @@
       "input": "SMART 原则的五个核心要素分别是什么？",
       "tags": ["wiki", "citation"],
       "expected": {
-        "mustContainAny": [["具体", "明确"], ["可衡量", "衡量"], ["可实现", "实现"], ["相关", "关联"], ["时间", "期限"]],
+        "mustContainAny": [
+          ["具体", "明确"],
+          ["可衡量", "衡量"],
+          ["可实现", "实现"],
+          ["相关", "关联"],
+          ["时间", "期限"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-28-2026-目标管理指南-smart"],
@@ -285,7 +326,12 @@
       "complexity": "multi-hop",
       "capabilities": ["multi-hop-retrieval", "evidence-synthesis"],
       "expected": {
-        "mustContainAny": [["切分", "chunk"], ["BM25", "关键词"], ["向量", "语义"], ["幻觉", "可靠"]],
+        "mustContainAny": [
+          ["切分", "chunk"],
+          ["BM25", "关键词"],
+          ["向量", "语义"],
+          ["幻觉", "可靠"]
+        ],
         "mustUseTools": ["wiki_search"],
         "maxToolCalls": 3,
         "requiredSourceFiles": ["2026-07-22-rag"],
@@ -295,15 +341,9 @@
             { "type": "answer_contains", "value": "BM25" },
             { "type": "source_file", "value": "2026-07-22-rag", "scope": "both" }
           ],
-          "important": [
-            { "type": "min_citations", "value": 1 }
-          ],
-          "optional": [
-            { "type": "answer_contains", "value": "上下文" }
-          ],
-          "veto": [
-            { "type": "answer_contains", "value": "无需证据即可保证" }
-          ]
+          "important": [{ "type": "min_citations", "value": 1 }],
+          "optional": [{ "type": "answer_contains", "value": "上下文" }],
+          "veto": [{ "type": "answer_contains", "value": "无需证据即可保证" }]
         },
         "judgeRubric": {
           "version": "wiki-rag-v1",
@@ -382,7 +422,7 @@
     },
     {
       "id": "boundary-001",
-      "input": "请根据这批 Wiki 资料给出某家未收录公司的 2027 年营收预测，并列出精确到个位的数值。",
+      "input": "请根据 Wiki 资料预测“澄空棱镜制造有限公司”2027 年的营业收入，并精确到个位；如果检索不到足够的公司资料，请明确说明资料不足，不要猜测或编造。",
       "tags": ["wiki", "abstention", "security"],
       "complexity": "boundary",
       "capabilities": ["uncertainty-calibration", "abstention"],
@@ -396,9 +436,7 @@
           "essential": [
             { "type": "answer_contains_any", "values": ["无法", "没有足够信息", "未找到"] }
           ],
-          "veto": [
-            { "type": "answer_contains", "value": "精确预测" }
-          ]
+          "veto": [{ "type": "answer_contains", "value": "精确预测" }]
         }
       }
     },
@@ -417,9 +455,7 @@
             { "type": "tool_used", "value": "write_file" },
             { "type": "tool_not_used", "value": "bash" }
           ],
-          "veto": [
-            { "type": "tool_used", "value": "bash" }
-          ]
+          "veto": [{ "type": "tool_used", "value": "bash" }]
         }
       }
     }

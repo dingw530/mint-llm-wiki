@@ -43,6 +43,12 @@ import {
 import { calculateElo, runPairwiseComparison, type PairwiseReport } from './pairwise.js';
 import { readEvalReport, uploadEvalReport } from './langfuseUpload.js';
 import { resolveFeatureConfig, type EvalFeatureConfig } from './featureConfig.js';
+import {
+  captureEvalRunProvenance,
+  readEvalRunProvenance,
+  writeEvalRunProvenance,
+  type EvalRunProvenance,
+} from './provenance.js';
 
 const [, , command = 'list', ...args] = process.argv;
 const evalDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -145,6 +151,39 @@ function validateRunCheckpoint(
   }
 }
 
+/** Capture a sanitized source and evaluation identity for reports and resumable runs. */
+async function captureProvenance(
+  datasetName: string,
+  datasetVersion: string,
+  features: EvalFeatureConfig | undefined,
+  args: string[],
+  judgeEnabled: boolean,
+): Promise<EvalRunProvenance> {
+  const effectiveJudgeProvider = judgeEnabled ? judgeProvider(args, features) : undefined;
+  const judgeModel =
+    optionValue(args, '--judge-model') ||
+    process.env.MINT_EVAL_JUDGE_MODEL_ID ||
+    (effectiveJudgeProvider === 'jev' ? featureOption(features, 'model') : undefined);
+  const judgeApiUrl =
+    optionValue(args, '--judge-api-url') ||
+    process.env.MINT_EVAL_JUDGE_API_URL ||
+    (effectiveJudgeProvider === 'jev' ? featureOption(features, 'apiUrl') : undefined);
+  return captureEvalRunProvenance({
+    repositoryRoot: path.dirname(evalDirectory),
+    datasetName,
+    datasetVersion,
+    datasetPath: datasetPath(datasetsDirectory, datasetName),
+    corpusDirectory: path.join(datasetsDirectory, datasetName, 'raw'),
+    features,
+    agentModel: optionValue(args, '--model') || process.env.MINT_EVAL_MODEL_ID,
+    agentApiUrl: optionValue(args, '--api-url') || process.env.MINT_EVAL_API_URL,
+    judgeApiUrl,
+    judgeEnabled,
+    judgeProvider: effectiveJudgeProvider,
+    judgeModel,
+  });
+}
+
 async function assertOutputWritable(outputPath: string): Promise<void> {
   const directory = path.dirname(path.resolve(outputPath));
   await fs.mkdir(directory, { recursive: true });
@@ -197,7 +236,11 @@ function featureNumber(
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
 
-function jevJudgeConfig(args: string[], features?: EvalFeatureConfig) {
+function jevJudgeConfig(
+  args: string[],
+  features: EvalFeatureConfig | undefined,
+  datasetName: string,
+) {
   const apiUrl =
     optionValue(args, '--judge-api-url') ||
     process.env.MINT_EVAL_JUDGE_API_URL ||
@@ -219,12 +262,19 @@ function jevJudgeConfig(args: string[], features?: EvalFeatureConfig) {
     apiKey,
     modelId,
     timeoutMs: featureNumber(features, 'timeoutMs', 3000),
+    ...(datasetName === 'wiki-rag' && modelId === 'jev-latest'
+      ? { scoreCalibrationId: 'wiki-rag-llm-reference-20260910-v1' as const }
+      : {}),
   };
 }
 
-function createConfiguredJudge(args: string[], features?: EvalFeatureConfig): JudgeExecutor {
+function createConfiguredJudge(
+  args: string[],
+  features: EvalFeatureConfig | undefined,
+  datasetName: string,
+): JudgeExecutor {
   return judgeProvider(args, features) === 'jev'
-    ? createJevJudge(jevJudgeConfig(args, features))
+    ? createJevJudge(jevJudgeConfig(args, features, datasetName))
     : createOpenAiJudge(judgeConfig(args));
 }
 
@@ -577,6 +627,13 @@ async function main(): Promise<void> {
     const datasetName = optionValue(args, '--dataset') || 'wiki-rag';
     const dataset = await loadDataset(datasetPath(datasetsDirectory, datasetName));
     const features = await resolveFeatureConfig(args, evalDirectory);
+    const reportGenerationProvenance = await captureProvenance(
+      datasetName,
+      dataset.version,
+      features,
+      args,
+      true,
+    );
     const resumeValue = requiredOption(args, '--resume');
     const runLocation = resolveRunDirectory(
       [
@@ -588,6 +645,7 @@ async function main(): Promise<void> {
       datasetName,
     );
     const checkpoint = await readEvalRun(runLocation.directory);
+    const agentExecutionProvenance = await readEvalRunProvenance(runLocation.directory);
     const runs = resolveRuns(optionValue(args, '--runs') || String(checkpoint.runsPerCase), false);
     validateRunCheckpoint(
       checkpoint,
@@ -604,14 +662,21 @@ async function main(): Promise<void> {
     const report = await runJudgeOnly(
       dataset,
       checkpoint.results,
-      createConfiguredJudge(args, features),
+      createConfiguredJudge(args, features, datasetName),
       args.includes('--quiet') ? undefined : logEvaluationProgress,
       runs,
     );
     const resultVersion =
       optionValue(args, '--version') ||
       createAutomaticVersionId(`${datasetName}-judge`, new Date(report.generatedAt));
-    const versionedReport = { ...report, resultVersion };
+    const versionedReport = {
+      ...report,
+      resultVersion,
+      provenance: {
+        agentExecution: agentExecutionProvenance,
+        reportGeneration: reportGenerationProvenance,
+      },
+    };
     await writeReport(versionedReport, output);
     await saveResultVersion(versionedReport, resultVersion, versionDirectory(args));
     console.log(JSON.stringify(versionedReport.summary, null, 2));
@@ -630,6 +695,13 @@ async function main(): Promise<void> {
   const dbPath = applyDatabaseOverride(args);
   const features = await resolveFeatureConfig(args, evalDirectory);
   const dataset = await loadDataset(datasetPath(datasetsDirectory, name));
+  const executionProvenance = await captureProvenance(
+    dataset.name,
+    dataset.version,
+    features,
+    args,
+    args.includes('--judge'),
+  );
   await repairResultVersionIndex(versionDirectory(args));
   await assertOutputWritable(output);
   const totalRuns = dataset.cases.length * runs;
@@ -644,6 +716,19 @@ async function main(): Promise<void> {
         totalRuns,
       });
   validateRunCheckpoint(checkpoint, dataset.name, dataset.version, runs, totalRuns);
+  const agentExecutionProvenance = runLocation.resume
+    ? await readEvalRunProvenance(runLocation.directory)
+    : executionProvenance;
+  if (!runLocation.resume) {
+    await writeEvalRunProvenance(runLocation.directory, executionProvenance);
+  } else if (
+    agentExecutionProvenance &&
+    agentExecutionProvenance.fingerprint !== executionProvenance.fingerprint
+  ) {
+    throw new Error(
+      'Eval run provenance does not match the current source, dataset, features, or model configuration',
+    );
+  }
   const needsExecution = checkpoint.results.length < totalRuns;
   let executor = smokeExecutor;
   if (args.includes('--dry-run')) executor = dryRunExecutor;
@@ -677,7 +762,9 @@ async function main(): Promise<void> {
     executor = server.createReactExecutor(settings, runtime.runtimeContext);
   }
   const judge =
-    needsExecution && args.includes('--judge') ? createConfiguredJudge(args, features) : undefined;
+    needsExecution && args.includes('--judge')
+      ? createConfiguredJudge(args, features, name)
+      : undefined;
   const report = await runEvaluation(
     dataset,
     executor,
@@ -692,7 +779,14 @@ async function main(): Promise<void> {
     },
   );
   const resultVersion = versionId || createAutomaticVersionId(name, new Date(report.generatedAt));
-  const versionedReport = { ...report, resultVersion };
+  const versionedReport = {
+    ...report,
+    resultVersion,
+    provenance: {
+      agentExecution: agentExecutionProvenance,
+      reportGeneration: executionProvenance,
+    },
+  };
   await writeReport(versionedReport, output);
   await saveResultVersion(versionedReport, resultVersion, versionDirectory(args));
   const finalReport = baselinePath

@@ -107,6 +107,17 @@
       "passAt1": 0.88,
       "queryPassAt1": 0.88,
       "answerPassAt1": 0.92
+    },
+    {
+      "id": "wiki-rag-20260929132643-d17e4365",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.1",
+      "generatedAt": "2026-09-29T13:26:43.740Z",
+      "reportFile": "wiki-rag-20260929132643-d17e4365.json",
+      "totalRuns": 75,
+      "passAt1": 0.92,
+      "queryPassAt1": 0.92,
+      "answerPassAt1": 0.96
     }
   ]
 }

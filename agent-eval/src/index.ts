@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import type { EvalReportProvenance } from './provenance.js';
 
 export interface EvalTraceEvent {
   type: string;
@@ -135,6 +136,7 @@ export interface EvalRunOptions {
 export interface EvalJudgeDimensionResult {
   id: string;
   score?: number;
+  rawJevScore?: number;
   passed?: boolean;
   evidenceIds: string[];
   reason: string;
@@ -144,7 +146,9 @@ export interface EvalJudgeResult {
   criticalFailure?: string;
   confidence: number;
   shortReason: string;
+  rawShortReason?: string;
   judgeModel?: string;
+  scoreCalibrationId?: string;
   rubricVersion?: string;
   skipped?: boolean;
   skipReason?: string;
@@ -181,6 +185,7 @@ export interface EvalCaseResult {
   events?: EvalTraceEvent[];
   citations: EvalCitation[];
   retrievedCitations?: EvalCitation[];
+  retrievalRankingAvailable?: boolean;
   state?: Record<string, unknown>;
   citationCount: number;
   retrievedCitationCount: number;
@@ -223,6 +228,7 @@ export interface EvalCaseStats {
   meanLatencyMs: number;
   latencyStdDevMs: number;
   p95LatencyMs: number;
+  recallAtK?: number;
 }
 export interface EvalComparison {
   baselineGeneratedAt: string;
@@ -235,6 +241,7 @@ export interface EvalReport {
   dataset: string;
   version: string;
   resultVersion?: string;
+  provenance?: EvalReportProvenance;
   runsPerCase: number;
   generatedAt: string;
   summary: {
@@ -249,6 +256,9 @@ export interface EvalReport {
     passAtKValue: number;
     passPowerK: number;
     passPowerKValue: number;
+    recallAtK?: number;
+    recallAtKValue?: number;
+    recallAtKRuns?: number;
     toolSuccessRate: number;
     toolBudgetPassRate: number;
     wikiSearchBudgetPassRate: number;
@@ -294,6 +304,9 @@ export interface EvalReport {
   results: EvalCaseResult[];
 }
 export type AgentEvalExecutor = (evalCase: EvalCase) => Promise<EvalExecution>;
+
+const RECALL_AT_K = 5;
+const NON_PERSISTED_STREAM_EVENT_TYPES = new Set(['answer', 'thought', 'a2ui']);
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'string' && item.length > 0);
@@ -547,6 +560,33 @@ function buildEvidenceChecks(evalCase: EvalCase, citations: EvalCitation[]): boo
   ];
 }
 
+/** Calculate source-level recall against the first k retrieved evidence items. */
+function calculateRecallAtK(
+  evalCase: EvalCase,
+  retrievedCitations: EvalCitation[],
+  k: number,
+): number | undefined {
+  const requiredFiles = evalCase.expected.requiredSourceFiles || [];
+  const requiredChunks = evalCase.expected.requiredSourceChunks || [];
+  const relevantCount = requiredFiles.length + requiredChunks.length;
+  if (!relevantCount) return undefined;
+
+  const topK = retrievedCitations.slice(0, k);
+  const recalledFiles = requiredFiles.filter((source) => {
+    const normalized = source.toLocaleLowerCase();
+    return topK.some((citation) =>
+      `${citation.file} ${citation.title || ''} ${citation.sourceFile || ''}`
+        .toLocaleLowerCase()
+        .includes(normalized),
+    );
+  }).length;
+  const recalledChunks = requiredChunks.filter((chunk) =>
+    topK.some((citation) => citation.chunkId === chunk),
+  ).length;
+
+  return (recalledFiles + recalledChunks) / relevantCount;
+}
+
 function getWikiSearchBudget(evalCase: EvalCase): number | undefined {
   if (evalCase.expected.maxWikiSearchCalls !== undefined)
     return evalCase.expected.maxWikiSearchCalls;
@@ -708,6 +748,23 @@ function accountToolEvents(events: EvalTraceEvent[]): ToolAccounting {
   );
   const executedEnds = ends.filter((event) => !isBudgetBlockedToolEnd(event));
   return { starts, executedStarts, ends, executedEnds, blockedEnds };
+}
+
+/** Project raw runtime events to report metadata, excluding streamed response payloads. */
+function projectEvalTraceEvents(events: EvalTraceEvent[]): EvalTraceEvent[] {
+  return events
+    .filter((event) => !NON_PERSISTED_STREAM_EVENT_TYPES.has(event.type))
+    .map((event) => ({
+      type: event.type,
+      round: event.round,
+      callId: event.callId,
+      toolName: event.toolName,
+      phase: event.phase,
+      status: event.status,
+      summary: event.summary,
+      error: event.error,
+      result: event.result,
+    }));
 }
 
 /** 加载并校验一个 Agent 评估数据集。 */
@@ -1083,9 +1140,10 @@ export function verifyExecution(
     rubricScore,
     reasons,
     content: execution.content,
-    events,
+    events: projectEvalTraceEvents(events),
     citations,
     retrievedCitations,
+    retrievalRankingAvailable: execution.retrievedCitations !== undefined,
     citationCount: citations.length,
     retrievedCitationCount: retrievedCitations.length,
     citationCoverage,
@@ -1259,7 +1317,12 @@ export function assessJudgeResult(
         throw new Error(`Invalid judge veto result: ${dimension.id}`);
       vetoFailed ||= !review.passed;
     } else {
-      if (!Number.isInteger(review.score) || review.score! < 1 || review.score! > 4)
+      if (
+        !Number.isFinite(review.score) ||
+        review.score! < 1 ||
+        review.score! > 4 ||
+        (!result.scoreCalibrationId && !Number.isInteger(review.score))
+      )
         throw new Error(`Invalid judge score: ${dimension.id}`);
       const weight = judgeDimensionWeight(dimension.importance);
       total += weight * 4;
@@ -1274,18 +1337,29 @@ export function assessJudgeResult(
   const criticalFailure = normalizeCriticalFailure(result.criticalFailure);
   const answerGatePassed = !criticalFailure && judgeGatePassed(answerScore);
   const evidenceGatePassed = !criticalFailure && judgeGatePassed(evidenceScore);
+  const passed =
+    answerGatePassed &&
+    evidenceGatePassed &&
+    !vetoFailed &&
+    essentialPassed &&
+    weightedScore >= 0.75;
   return {
     ...result,
     criticalFailure: criticalFailure || undefined,
     weightedScore,
     answerGatePassed,
     evidenceGatePassed,
-    passed:
-      answerGatePassed &&
-      evidenceGatePassed &&
-      !vetoFailed &&
-      essentialPassed &&
-      weightedScore >= 0.75,
+    ...(result.scoreCalibrationId
+      ? {
+          rawShortReason: result.shortReason,
+          shortReason: criticalFailure
+            ? `分数已校准，但保留 Jev 原始 Veto 判定：${criticalFailure}`
+            : passed
+              ? '按历史 LLM Judge 分布校准后通过 Gate。'
+              : '按历史 LLM Judge 分布校准后仍未通过 Gate。',
+        }
+      : {}),
+    passed,
   };
 }
 
@@ -1340,23 +1414,16 @@ export async function runEvaluation(
         deterministic.answerGate = {
           ...deterministic.answerGate!,
           judgePassed: deterministic.judge.answerGatePassed,
-          passed:
-            deterministic.answerGate!.hardPassed && deterministic.judge.answerGatePassed === true,
         };
         deterministic.evidenceGate = {
           ...deterministic.evidenceGate!,
           judgePassed: deterministic.judge.evidenceGatePassed,
-          passed:
-            deterministic.evidenceGate!.hardPassed &&
-            deterministic.judge.evidenceGatePassed === true,
         };
-        deterministic.answerPassed = deterministic.answerGate.passed;
-        deterministic.queryPassed = deterministic.answerPassed && deterministic.evidenceGate.passed;
-        deterministic.passed =
-          deterministic.queryPassed && deterministic.toolBudgetPassed && !deterministic.vetoed;
         deterministic.qualityPassed =
-          deterministic.answerGate.passed &&
-          deterministic.evidenceGate.passed &&
+          deterministic.answerGate.hardPassed &&
+          deterministic.judge.answerGatePassed === true &&
+          deterministic.evidenceGate.hardPassed &&
+          deterministic.judge.evidenceGatePassed === true &&
           deterministic.toolBudgetPassed &&
           !deterministic.vetoed;
       } else if (evalCase.expected.judgeRubric) {
@@ -1401,7 +1468,7 @@ function executionFromStoredResult(result: EvalCaseResult): EvalExecution {
     content: result.content,
     events,
     citations,
-    retrievedCitations: result.retrievedCitations || citations,
+    retrievedCitations: result.retrievedCitations,
     state: result.state,
   };
 }
@@ -1478,20 +1545,16 @@ export async function runJudgeOnly(
         deterministic.answerGate = {
           ...deterministic.answerGate!,
           judgePassed: judged.answerGatePassed,
-          passed: deterministic.answerGate!.hardPassed && judged.answerGatePassed === true,
         };
         deterministic.evidenceGate = {
           ...deterministic.evidenceGate!,
           judgePassed: judged.evidenceGatePassed,
-          passed: deterministic.evidenceGate!.hardPassed && judged.evidenceGatePassed === true,
         };
-        deterministic.answerPassed = deterministic.answerGate.passed;
-        deterministic.queryPassed = deterministic.answerPassed && deterministic.evidenceGate.passed;
-        deterministic.passed =
-          deterministic.queryPassed && deterministic.toolBudgetPassed && !deterministic.vetoed;
         deterministic.qualityPassed =
-          deterministic.answerGate.passed &&
-          deterministic.evidenceGate.passed &&
+          deterministic.answerGate.hardPassed &&
+          deterministic.judge.answerGatePassed === true &&
+          deterministic.evidenceGate.hardPassed &&
+          deterministic.judge.evidenceGatePassed === true &&
           deterministic.toolBudgetPassed &&
           !deterministic.vetoed;
       } else if (evalCase.expected.judgeRubric) {
@@ -1572,6 +1635,10 @@ export function buildReport(
   results: EvalCaseResult[],
   runsPerCase: number,
 ): EvalReport {
+  const reportResults = results.map((result) => ({
+    ...result,
+    ...(result.events ? { events: projectEvalTraceEvents(result.events) } : {}),
+  }));
   const totalRuns = results.length;
   const passedRuns = results.filter((result) => result.passed).length;
   const queryPassedRuns = results.filter((result) => result.queryPassed).length;
@@ -1588,6 +1655,15 @@ export function buildReport(
   const k = Math.min(3, Math.max(1, runsPerCase));
   const caseStats = grouped.map((group) => {
     const latencies = group.runs.map((result) => result.latencyMs);
+    const evalCase = dataset.cases.find((item) => item.id === group.caseId);
+    const recallValues = evalCase
+      ? group.runs.flatMap((result) => {
+          if (result.retrievalRankingAvailable === false || result.retrievedCitations === undefined)
+            return [];
+          const recall = calculateRecallAtK(evalCase, result.retrievedCitations, RECALL_AT_K);
+          return recall === undefined ? [] : [recall];
+        })
+      : [];
     return {
       caseId: group.caseId,
       runs: group.runs.length,
@@ -1599,6 +1675,7 @@ export function buildReport(
       meanLatencyMs: average(latencies),
       latencyStdDevMs: standardDeviation(latencies),
       p95LatencyMs: percentile(latencies, 0.95),
+      ...(recallValues.length ? { recallAtK: average(recallValues) } : {}),
     };
   });
   const citationCases = dataset.cases.filter(
@@ -1631,6 +1708,17 @@ export function buildReport(
       ? citationResults.reduce((sum, result) => sum + result.retrievalCoverage, 0) /
         citationResults.length
       : 0;
+  const recallValues = results.flatMap((result) => {
+    const evalCase = dataset.cases.find((item) => item.id === result.caseId);
+    if (
+      !evalCase ||
+      result.retrievalRankingAvailable === false ||
+      result.retrievedCitations === undefined
+    )
+      return [];
+    const recall = calculateRecallAtK(evalCase, result.retrievedCitations, RECALL_AT_K);
+    return recall === undefined ? [] : [recall];
+  });
   const judgedResults = results.filter((result) => result.judge && !result.judge.skipped);
   const firstJudgedResults = judgedResults.filter((result) => result.runIndex === 1);
   const firstAnswerGateResults = firstRuns.map(
@@ -1674,6 +1762,13 @@ export function buildReport(
       passAtKValue: k,
       passPowerK: average(caseStats.map((stat) => stat.passPowerK)),
       passPowerKValue: k,
+      ...(recallValues.length
+        ? {
+            recallAtK: average(recallValues),
+            recallAtKValue: RECALL_AT_K,
+            recallAtKRuns: recallValues.length,
+          }
+        : {}),
       toolSuccessRate: successfulTools / Math.max(1, totalTools),
       toolBudgetPassRate:
         results.filter((result) => result.toolBudgetPassed).length / Math.max(1, totalRuns),
@@ -1743,7 +1838,7 @@ export function buildReport(
       averageAnswerChars: averageResult((result) => result.answerChars || result.content.length),
     },
     caseStats,
-    results,
+    results: reportResults,
   };
 }
 
@@ -1758,6 +1853,7 @@ export function compareReports(report: EvalReport, baseline: EvalReport): EvalRe
     'qualityPassAt1',
     'passAtK',
     'passPowerK',
+    'recallAtK',
     'toolBudgetPassRate',
     'retrievalCoverageRate',
     'citationAccuracyRate',
@@ -1769,17 +1865,23 @@ export function compareReports(report: EvalReport, baseline: EvalReport): EvalRe
     'averageLatencyMs',
     'p95LatencyMs',
   ] as const;
+  const recallComparable =
+    typeof report.summary.recallAtK === 'number' && typeof baseline.summary.recallAtK === 'number';
   const deltas = Object.fromEntries(
-    metricNames.map((name) => [
-      name,
-      Number(report.summary[name] ?? 0) - Number(baseline.summary[name] ?? 0),
-    ]),
+    metricNames
+      .filter((name) => name !== 'recallAtK' || recallComparable)
+      .map((name) => [
+        name,
+        Number(report.summary[name] ?? 0) - Number(baseline.summary[name] ?? 0),
+      ]),
   );
   const warnings: string[] = [];
   if (report.dataset !== baseline.dataset)
     warnings.push(`数据集不同：${baseline.dataset} → ${report.dataset}`);
   if (report.version !== baseline.version)
     warnings.push(`数据集版本不同：${baseline.version} → ${report.version}`);
+  if (!recallComparable && report.summary.recallAtK !== baseline.summary.recallAtK)
+    warnings.push('基线或当前报告缺少 Recall@k，已跳过该项差值');
   return {
     ...report,
     comparison: {
