@@ -1,3 +1,4 @@
+import { createMemorySemanticClassifier } from '../infrastructure/ai/memorySemanticClassifier.js';
 import * as memoryJobRepository from '../infrastructure/persistence/memoryJobRepository.js';
 import * as memoryScopeRepository from '../infrastructure/persistence/memoryScopeRepository.js';
 import * as settingsService from '../services/api/settingsService.js';
@@ -14,11 +15,17 @@ import type { MemoryGateConfig, MemoryGateInput } from '../domains/memory/index.
 import type { AiSettings } from '../types.js';
 
 /** Compose Memory with persistence, settings, transcript and model adapters. Importing this module does not start work. */
+const semanticClassifier = createMemorySemanticClassifier({
+  getAiSettings: () => settingsService.getAiSettings(),
+  getJevSettings: () => settingsService.getJevSettings(),
+  extractionClient: memoryExtractionClient,
+});
 const memoryJobService = createMemoryJobService({
   jobs: memoryJobRepository,
   getTranscript: memoryScopeRepository.findTranscriptForJob,
   getAiSettings: settingsService.getAiSettings,
   extractionClient: memoryExtractionClient,
+  semanticClassifier,
 });
 const jevMemoryGateProvider = createJevMemoryGateProvider();
 
@@ -55,6 +62,13 @@ export function performMemoryExtraction(
     conversationId,
     memoryExtractionClient,
     jobId,
+    undefined,
+    undefined,
+    createMemorySemanticClassifier({
+      getAiSettings: () => settings,
+      getJevSettings: () => settingsService.getJevSettings(),
+      extractionClient: memoryExtractionClient,
+    }),
   );
 }
 

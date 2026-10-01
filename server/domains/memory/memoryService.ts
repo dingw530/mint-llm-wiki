@@ -20,6 +20,8 @@ import {
   rankMemoryCandidates,
   toMemorySearchDocument,
 } from './memoryQuery.js';
+import { canonicalMemoryKey, normalizeMemoryOperations } from './memorySemanticPolicy.js';
+import type { MemorySemanticClassifier } from './memorySemanticPolicy.js';
 import { shouldPromoteToCore } from './memoryCorePolicy.js';
 import { packMemoryContext } from './memoryContextPacking.js';
 import type { MemoryContextPackingResult, MemoryPackingBudget } from './memoryContextPacking.js';
@@ -457,45 +459,36 @@ function applySingleMemoryOperation(
   }
   const same = action !== 'DELETE' && candidates.find((candidate) => candidate.content === content);
   if (same) {
-    memoryRepo.createEvent({
-      ...event,
-      resultMemoryId: same.id,
-      status: 'noop',
-    });
+    memoryRepo.createEvent({ ...event, resultMemoryId: same.id, status: 'noop' });
     return null;
   }
   if (candidates.some((candidate) => candidate.policySource === 'user')) {
-    memoryRepo.createEvent({
-      ...event,
-      status: 'noop',
-      errorCode: 'user_policy_preserved',
-    });
+    memoryRepo.createEvent({ ...event, status: 'noop', errorCode: 'user_policy_preserved' });
     return null;
   }
   if (action === 'DELETE') {
     for (const candidate of candidates) memoryRepo.update(candidate.id, { status: 'deleted' });
-    memoryRepo.createEvent({
-      ...event,
-      supersededIds: candidateIds,
-      status: 'deleted',
-    });
+    memoryRepo.createEvent({ ...event, supersededIds: candidateIds, status: 'deleted' });
     return null;
   }
   if (!content) return null;
   const confidence = clampScore(operation.confidence, 0.8);
   const memoryType = operation.memoryType || 'semantic';
   const userSourceText = memoryRepo.findUserSourceText(operation.sourceMessageId);
-  const contextPolicy = shouldPromoteToCore({
-    memoryKey,
-    subject,
-    memoryType,
-    confidence,
-    scope,
-    content,
-    userSourceText,
-  })
-    ? 'core'
-    : 'retrievable';
+  const contextPolicy =
+    (operation.semanticDecision === undefined ||
+      canonicalMemoryKey(operation.semanticDecision) !== null) &&
+    shouldPromoteToCore({
+      memoryKey,
+      subject,
+      memoryType,
+      confidence,
+      scope,
+      content,
+      userSourceText,
+    })
+      ? 'core'
+      : 'retrievable';
 
   const next = memoryRepo.create({
     id: uuidv4(),
@@ -642,6 +635,7 @@ export async function performExtractionWithClient(
     bindingRevision: 0,
   },
   shutdownSignal?: AbortSignal,
+  semanticClassifier?: MemorySemanticClassifier,
 ): Promise<boolean> {
   if (!settings.memoryEnabled) return true;
 
@@ -690,10 +684,12 @@ export async function performExtractionWithClient(
     }
     await applyExtractedOperations(
       parsedOperations.operations,
+      messages,
       conversationId,
       jobId,
       scope,
       controller.signal,
+      semanticClassifier,
     );
     return true;
   } catch (err) {
@@ -737,13 +733,18 @@ function parseExtractionResponse(
 /** Resolve keys outside the transaction and prohibit writes after cancellation. */
 async function applyExtractedOperations(
   operations: MemoryOperation[],
+  messages: MemoryExtractionMessage[],
   conversationId: string,
   jobId: string | null,
   scope: MemoryScopeSnapshot,
   signal: AbortSignal,
+  classifier?: MemorySemanticClassifier,
 ): Promise<void> {
+  const resolved = classifier
+    ? await normalizeMemoryOperations(operations, messages, classifier, signal)
+    : operations;
   signal.throwIfAborted();
-  applyMemoryOperations(operations, conversationId, jobId, scope);
+  applyMemoryOperations(resolved, conversationId, jobId, scope);
 }
 
 /** 解析 LLM 返回的结构化记忆操作；格式不合法时安全返回空数组。 */

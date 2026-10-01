@@ -85,3 +85,10 @@ export type {
   MemoryGateResolution,
   MemoryGateSkipReason,
 } from './gates/index.js';
+
+export type {
+  MemorySemanticClassifier,
+  MemorySemanticInput,
+  MemorySemanticDecision,
+  MemorySemanticKind,
+} from './memorySemanticPolicy.js';

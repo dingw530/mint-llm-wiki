@@ -151,9 +151,7 @@ describe('Memory job service', () => {
           extractionStarted?.();
         }),
     );
-    const { jobs, service, extractionClient, currentJob } = createWorker({
-      transcript,
-    });
+    const { jobs, service, extractionClient, currentJob } = createWorker({ transcript });
     jobs.claimNext = vi.fn().mockReturnValueOnce(currentJob);
     const started = new Promise<void>((resolve) => {
       extractionStarted = resolve;
@@ -175,6 +173,7 @@ describe('Memory job service', () => {
       'job-1',
       { scopeKind: 'global', spaceId: null, bindingRevision: 1 },
       expect.any(AbortSignal),
+      undefined,
     );
     expect(jobs.complete).toHaveBeenCalledWith('job-1', 'assistant-1');
   });

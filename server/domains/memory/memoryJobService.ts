@@ -1,5 +1,6 @@
 import type { AiSettings } from '../../types.js';
 import type { MemoryExtractionMessage, MemoryJob, MemoryScopeSnapshot } from './types.js';
+import type { MemorySemanticClassifier } from './memorySemanticPolicy.js';
 import type { MemoryExtractionClient } from './ports.js';
 import * as memoryService from './memoryService.js';
 
@@ -24,6 +25,7 @@ export interface MemoryJobServiceDependencies {
   ): MemoryExtractionMessage[];
   getAiSettings(): AiSettings;
   extractionClient: MemoryExtractionClient;
+  semanticClassifier?: MemorySemanticClassifier;
 }
 
 interface MemoryWorkerState {
@@ -149,6 +151,7 @@ export function createMemoryJobService(dependencies: MemoryJobServiceDependencie
           job.id,
           scope,
           state.abortController.signal,
+          dependencies.semanticClassifier,
         );
         if (!succeeded) throw new Error('memory_extraction_failed');
       }
@@ -163,12 +166,7 @@ export function createMemoryJobService(dependencies: MemoryJobServiceDependencie
     }
   }
 
-  return {
-    enqueueMemoryProcessing,
-    startMemoryProcessing,
-    stopMemoryProcessing,
-    trackMemoryGate,
-  };
+  return { enqueueMemoryProcessing, startMemoryProcessing, stopMemoryProcessing, trackMemoryGate };
 }
 
 function selectSnapshot(

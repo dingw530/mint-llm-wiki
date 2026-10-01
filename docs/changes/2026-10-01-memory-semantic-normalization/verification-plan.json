@@ -1,0 +1,37 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "别名事实经语义识别归一化后再匹配旧事实，UPDATE/DELETE 命中标准键，重复不新增",
+      "risk": "medium",
+      "invariants": ["normalization_before_write"],
+      "requiredEvidence": ["integration"],
+      "probes": ["semantic-integration"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "Jev 优先；不可用或非法响应才降级 LLM；other/uncertain/低置信度不翻案",
+      "risk": "medium",
+      "invariants": ["asymmetric_fallback"],
+      "requiredEvidence": ["unit"],
+      "probes": ["semantic-unit"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "识别与提取置信度独立；来源/主体/作用域校验保留；无法识别只按需召回",
+      "risk": "medium",
+      "invariants": ["conservative_core"],
+      "requiredEvidence": ["integration"],
+      "probes": ["semantic-integration"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "任务与兼容入口注入相同识别器；取消后不降级、不落库；有界超时；无新跨域依赖",
+      "risk": "medium",
+      "invariants": ["bounded_shutdown"],
+      "requiredEvidence": ["integration"],
+      "probes": ["semantic-integration"]
+    }
+  ]
+}

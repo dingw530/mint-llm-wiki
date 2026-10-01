@@ -1,3 +1,4 @@
+import type { MemorySemanticDecision } from './memorySemanticPolicy.js';
 export type MemoryStatus = 'active' | 'superseded' | 'deleted';
 export type MemoryType = 'semantic' | 'episodic' | 'procedural';
 export type MemoryOperationAction = 'ADD' | 'UPDATE' | 'NOOP' | 'DELETE';
@@ -120,6 +121,8 @@ export interface MemoryExtractionMessage {
 }
 
 export interface MemoryOperation {
+  /** Domain-only metadata; never accepted from the extraction JSON. */
+  semanticDecision?: MemorySemanticDecision;
   action: MemoryOperationAction;
   memoryKey?: string;
   subject?: string;
