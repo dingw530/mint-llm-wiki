@@ -1,0 +1,138 @@
+{
+  "target": {
+    "id": "Class:server/runtime/serverRuntime.ts:ServerRuntime",
+    "name": "ServerRuntime",
+    "type": "Class",
+    "filePath": "server/runtime/serverRuntime.ts"
+  },
+  "direction": "upstream",
+  "impactedCount": 10,
+  "risk": "LOW",
+  "riskSharedAxes": "LOW",
+  "riskScale": {
+    "comparableAcrossKinds": true,
+    "unusedAxes": []
+  },
+  "epistemic": "exact",
+  "summary": {
+    "direct": 2,
+    "processes_affected": 0,
+    "modules_affected": 2
+  },
+  "byDepthCounts": {
+    "1": 2,
+    "2": 4,
+    "3": 4
+  },
+  "affected_processes": [],
+  "affected_modules": [
+    {
+      "name": "Server",
+      "hits": 3,
+      "impact": "indirect"
+    },
+    {
+      "name": "Runtime",
+      "hits": 1,
+      "impact": "direct"
+    }
+  ],
+  "byDepth": {
+    "1": [
+      {
+        "depth": 1,
+        "id": "File:server/index.ts",
+        "name": "index.ts",
+        "filePath": "server/index.ts",
+        "relationType": "IMPORTS",
+        "confidence": 1,
+        "processes": []
+      },
+      {
+        "depth": 1,
+        "id": "Function:server/index.ts:createRuntime",
+        "name": "createRuntime",
+        "filePath": "server/index.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": []
+      }
+    ],
+    "2": [
+      {
+        "depth": 2,
+        "id": "File:docs/architecture/server-lifecycle-remediation.md",
+        "name": "server-lifecycle-remediation.md",
+        "filePath": "docs/architecture/server-lifecycle-remediation.md",
+        "relationType": "IMPORTS",
+        "confidence": 0.8,
+        "processes": []
+      },
+      {
+        "depth": 2,
+        "id": "File:server/cli/index.ts",
+        "name": "index.ts",
+        "filePath": "server/cli/index.ts",
+        "relationType": "IMPORTS",
+        "confidence": 1,
+        "processes": []
+      },
+      {
+        "depth": 2,
+        "id": "File:server/electron-bundle.ts",
+        "name": "electron-bundle.ts",
+        "filePath": "server/electron-bundle.ts",
+        "relationType": "IMPORTS",
+        "confidence": 1,
+        "processes": []
+      },
+      {
+        "depth": 2,
+        "id": "Function:server/index.ts:startServerRuntime",
+        "name": "startServerRuntime",
+        "filePath": "server/index.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": []
+      }
+    ],
+    "3": [
+      {
+        "depth": 3,
+        "id": "File:docs/changes/2026-09-11-server-lifecycle-remediation/exec-plan.md",
+        "name": "exec-plan.md",
+        "filePath": "docs/changes/2026-09-11-server-lifecycle-remediation/exec-plan.md",
+        "relationType": "IMPORTS",
+        "confidence": 0.8,
+        "processes": []
+      },
+      {
+        "depth": 3,
+        "id": "File:docs/technical-and-product-planning-debt.md",
+        "name": "technical-and-product-planning-debt.md",
+        "filePath": "docs/technical-and-product-planning-debt.md",
+        "relationType": "IMPORTS",
+        "confidence": 0.8,
+        "processes": []
+      },
+      {
+        "depth": 3,
+        "id": "Function:server/index.ts:startDockerServer",
+        "name": "startDockerServer",
+        "filePath": "server/index.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": []
+      },
+      {
+        "depth": 3,
+        "id": "Function:server/index.ts:startServer",
+        "name": "startServer",
+        "filePath": "server/index.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": []
+      }
+    ]
+  }
+}

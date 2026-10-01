@@ -29,6 +29,30 @@ describe('API base helpers', () => {
     expect(extractBodyFromManifest({ ...endpoint, args: [] }, [])).toBeUndefined();
   });
 
+  it('serializes an unnamed query mapping from a filter object', () => {
+    const endpoint = {
+      id: 'memories:list',
+      ipcChannel: 'memories:list',
+      preloadMethod: 'getMemories',
+      method: 'GET',
+      httpPath: '/memories',
+      args: [{ from: 'query' }],
+      result: null,
+      async: false,
+    } as const;
+
+    expect(
+      buildUrlFromManifest(endpoint, [
+        {
+          scopeKind: 'unassigned',
+          includeUnassigned: true,
+          includeInactive: true,
+          category: undefined,
+        },
+      ]),
+    ).toBe('/memories?scopeKind=unassigned&includeUnassigned=true&includeInactive=true');
+  });
+
   it('uses HTTP outside Electron and preserves Electron IPC errors', async () => {
     window.electronAPI = undefined;
     expect(isElectron()).toBe(false);

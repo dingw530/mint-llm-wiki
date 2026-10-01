@@ -15,7 +15,7 @@ export * as conversationService from './services/api/conversationService.js';
 export * as settingsService from './services/api/settingsService.js';
 export * as agentService from './services/api/agentService.js';
 export * as endpointService from './services/api/endpointService.js';
-export * as memoryService from './services/api/memoryService.js';
+export { memoryService } from './bootstrap/memory.js';
 export * as mcpServerRepository from './repositories/mcpServerRepository.js';
 export { mcpService } from './services/api/mcpService.js';
 export * as skillService from './services/api/skillService.js';

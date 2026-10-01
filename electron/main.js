@@ -265,6 +265,7 @@ function setupIpcHandlers() {
     'conversations',
     'endpoints',
     'memories',
+    'memory-spaces',
     'mcp-servers',
     'bash-security',
     'skills',

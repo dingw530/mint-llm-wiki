@@ -8,6 +8,8 @@ export interface Conversation {
   updatedAt: string;
   lockedAgent: string | null;
   routingMode: string;
+  memorySpaceId?: string | null;
+  memoryBindingRevision?: number;
 }
 
 export interface Message {
@@ -68,7 +70,29 @@ export interface Memory {
   sourceConversationId: string | null;
   createdAt: string;
   updatedAt: string;
+  memoryKey?: string;
+  subject?: string;
+  scopeKind?: 'global' | 'space' | 'unassigned';
+  spaceId?: string | null;
+  contextPolicy?: 'core' | 'retrievable';
+  policySource?: 'user' | 'auto' | 'migration';
+  status?: string;
+  importance?: number;
+  accessCount?: number;
+  validFrom?: string | null;
+  validTo?: string | null;
 }
+
+export interface MemorySpace {
+  id: string;
+  name: string;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type MemoryScopeKind = 'global' | 'space' | 'unassigned';
+export type MemoryContextPolicy = 'core' | 'retrievable';
 
 export interface McpServer {
   id: string;
@@ -380,6 +404,21 @@ export interface ElectronAPI {
 
   // 消息
   getMessages: (convId: string) => Promise<{ messages: Message[] }>;
+  getConversationMemorySpace: (conversationId: string) => Promise<{
+    conversationId: string;
+    memorySpaceId: string | null;
+    memoryBindingRevision: number;
+    scopeKind: MemoryScopeKind;
+  }>;
+  setConversationMemorySpace: (
+    conversationId: string,
+    data: { spaceId: string | null },
+  ) => Promise<{
+    conversationId: string;
+    memorySpaceId: string | null;
+    memoryBindingRevision: number;
+    changed: boolean;
+  }>;
 
   // 设置
   getSettings: () => Promise<VisibleSettings>;
@@ -435,10 +474,28 @@ export interface ElectronAPI {
   }>;
 
   // 记忆
-  getMemories: (category?: string) => Promise<Memory[]>;
-  createMemory: (data: { content: string; category?: string }) => Promise<Memory>;
-  updateMemory: (id: string, data: { content?: string; category?: string }) => Promise<Memory>;
+  getMemories: (filters?: {
+    category?: string;
+    scopeKind?: MemoryScopeKind;
+    spaceId?: string;
+    contextPolicy?: MemoryContextPolicy;
+    includeUnassigned?: boolean;
+    includeInactive?: boolean;
+  }) => Promise<Memory[]>;
+  createMemory: (data: Partial<Memory> & { content: string }) => Promise<Memory>;
+  updateMemory: (id: string, data: Partial<Memory>) => Promise<Memory>;
   deleteMemory: (id: string) => Promise<{ success: boolean }>;
+  assignMemoryScope: (data: {
+    ids: string[];
+    scopeKind: 'global' | 'space';
+    spaceId: string | null;
+  }) => Promise<{ updated: number }>;
+  getMemorySpaces: (includeArchived?: string) => Promise<{ spaces: MemorySpace[] }>;
+  createMemorySpace: (data: { name: string }) => Promise<{ space: MemorySpace }>;
+  updateMemorySpace: (
+    id: string,
+    data: { name?: string; archived?: boolean },
+  ) => Promise<{ space: MemorySpace }>;
 
   // MCP Server
   getMcpServers: () => Promise<{ servers: McpServer[] }>;

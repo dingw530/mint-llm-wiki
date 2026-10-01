@@ -57,7 +57,7 @@ function runVitestJson() {
       env: {
         ...process.env,
         AI_CHAT_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef',
-        AI_CHAT_DB_PATH: '/tmp/ai-chat-test-runner.db',
+        AI_CHAT_DB_PATH: process.env.AI_CHAT_DB_PATH || '/tmp/ai-chat-test-runner.db',
       },
     });
     const report = readFileSync(outputFile, 'utf-8');
@@ -70,7 +70,11 @@ function runVitestJson() {
     };
   } catch (err) {
     let report = '';
-    try { report = readFileSync(outputFile, 'utf-8'); } catch { /* runner failure before report creation */ }
+    try {
+      report = readFileSync(outputFile, 'utf-8');
+    } catch {
+      /* runner failure before report creation */
+    }
     rmSync(outputDir, { recursive: true, force: true });
     return {
       report,
@@ -138,11 +142,13 @@ try {
   // JSON parse failed — output raw failure info
   parsed = {
     summary: { total: 0, passed: 0, failed: 1, durationMs: 0 },
-    failures: [{
-      file: 'runner',
-      name: 'test runner',
-      error: `Failed to parse vitest output: ${parseErr.message}\n\nRaw output:\n${rawOutput.slice(0, 5000)}`,
-    }],
+    failures: [
+      {
+        file: 'runner',
+        name: 'test runner',
+        error: `Failed to parse vitest output: ${parseErr.message}\n\nRaw output:\n${rawOutput.slice(0, 5000)}`,
+      },
+    ],
     rawOutput,
   };
 }

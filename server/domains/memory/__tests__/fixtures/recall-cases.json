@@ -1,0 +1,271 @@
+{
+  "version": "2026-09-30-v2",
+  "cases": [
+    {
+      "caseId": "Q-01",
+      "query": "中文回复",
+      "expectedIds": ["quality-01"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "用户明确偏好中文回复语言"
+    },
+    {
+      "caseId": "Q-02",
+      "query": "简洁回答",
+      "expectedIds": ["quality-02"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "喜欢简洁直接的回答"
+    },
+    {
+      "caseId": "Q-03",
+      "query": "时区 上海",
+      "expectedIds": ["quality-03"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "当前时区设置为上海"
+    },
+    {
+      "caseId": "Q-04",
+      "query": "前端工程师",
+      "expectedIds": ["quality-04"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "职业是前端工程师"
+    },
+    {
+      "caseId": "Q-05",
+      "query": "Mint SQLite FTS5",
+      "expectedIds": ["quality-05"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Mint 持久化使用 SQLite FTS5"
+    },
+    {
+      "caseId": "Q-06",
+      "query": "AgentMemory 知识空间",
+      "expectedIds": ["quality-06"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "AgentMemory 提供知识空间和记忆检索"
+    },
+    {
+      "caseId": "Q-07",
+      "query": "strictNullChecks TypeScript",
+      "expectedIds": ["quality-07"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "TypeScript strictNullChecks 已启用"
+    },
+    {
+      "caseId": "Q-08",
+      "query": "Vue Composition API",
+      "expectedIds": ["quality-08"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Vue Composition API 用于组件状态"
+    },
+    {
+      "caseId": "Q-09",
+      "query": "ReAct iteration budget",
+      "expectedIds": ["quality-09"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "ReAct iteration budget 默认五轮"
+    },
+    {
+      "caseId": "Q-10",
+      "query": "Electron IPC contextIsolation",
+      "expectedIds": ["quality-10"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Electron IPC 使用 contextIsolation"
+    },
+    {
+      "caseId": "Q-11",
+      "query": "Express SSE streaming",
+      "expectedIds": ["quality-11"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Express SSE streaming 复用统一 sink"
+    },
+    {
+      "caseId": "Q-12",
+      "query": "SQLite bm25 FTS5",
+      "expectedIds": ["quality-12"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "SQLite FTS5 使用 bm25 排序"
+    },
+    {
+      "caseId": "Q-13",
+      "query": "Node runtime 20",
+      "expectedIds": ["quality-13"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Node runtime 使用 20 版本"
+    },
+    {
+      "caseId": "Q-14",
+      "query": "Kubernetes rollout",
+      "expectedIds": ["quality-14"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Kubernetes rollout 采用逐步发布"
+    },
+    {
+      "caseId": "Q-15",
+      "query": "Redis cache TTL",
+      "expectedIds": ["quality-15"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Redis cache TTL 设置为十分钟"
+    },
+    {
+      "caseId": "Q-16",
+      "query": "Docker Compose local",
+      "expectedIds": ["quality-16"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Docker Compose 管理 local 依赖"
+    },
+    {
+      "caseId": "Q-17",
+      "query": "Python pytest fixture",
+      "expectedIds": ["quality-17"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Python pytest 使用 fixture 隔离数据库"
+    },
+    {
+      "caseId": "Q-18",
+      "query": "React useEffect cleanup",
+      "expectedIds": ["quality-18"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "React useEffect cleanup 清理订阅"
+    },
+    {
+      "caseId": "Q-19",
+      "query": "Rust Tokio async",
+      "expectedIds": ["quality-19"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Rust Tokio async runtime 处理任务"
+    },
+    {
+      "caseId": "Q-20",
+      "query": "SDD Harness traceability",
+      "expectedIds": ["quality-20"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "SDD Harness traceability 记录 AC 证据"
+    },
+    {
+      "caseId": "Q-21",
+      "query": "transaction rollback migration",
+      "expectedIds": ["quality-21"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "SQLite migration transaction rollback 保留数据"
+    },
+    {
+      "caseId": "Q-22",
+      "query": "binding revision snapshot",
+      "expectedIds": ["quality-22"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "Conversation binding revision 固定 message snapshot"
+    },
+    {
+      "caseId": "Q-23",
+      "query": "sourceMessageId 审计",
+      "expectedIds": ["quality-23"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "sourceMessageId 用于审计事实来源"
+    },
+    {
+      "caseId": "Q-24",
+      "query": "NFKC Unicode normalize",
+      "expectedIds": ["quality-24"],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": true,
+      "content": "NFKC Unicode normalize query tokens"
+    },
+    {
+      "caseId": "Q-25",
+      "query": "ledger alpha archive-key",
+      "expectedIds": ["quality-25"],
+      "scopeKind": "space",
+      "spaceId": "quality-space-a",
+      "lexicallyAnswerable": true,
+      "content": "Alpha space ledger archive-key metadata"
+    },
+    {
+      "caseId": "Q-26",
+      "query": "ledger beta archive-key",
+      "expectedIds": ["quality-26"],
+      "scopeKind": "space",
+      "spaceId": "quality-space-b",
+      "lexicallyAnswerable": true,
+      "content": "Beta space ledger archive-key metadata"
+    },
+    {
+      "caseId": "Q-27",
+      "query": "unseen nebula token",
+      "expectedIds": [],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": false
+    },
+    {
+      "caseId": "Q-28",
+      "query": "orbital violet comet",
+      "expectedIds": [],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": false
+    },
+    {
+      "caseId": "Q-29",
+      "query": "ceramic horizon signal",
+      "expectedIds": [],
+      "scopeKind": "global",
+      "spaceId": null,
+      "lexicallyAnswerable": false
+    },
+    {
+      "caseId": "Q-30",
+      "query": "ledger alpha archive-key",
+      "expectedIds": [],
+      "scopeKind": "space",
+      "spaceId": "quality-space-b",
+      "lexicallyAnswerable": false
+    }
+  ]
+}

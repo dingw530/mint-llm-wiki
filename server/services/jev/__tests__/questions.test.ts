@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORY_ORDER } from '../../api/memoryService.js';
+import { CATEGORY_ORDER } from '../../../domains/memory/index.js';
 import type { Agent } from '../../../types.js';
 import {
   MEMORY_ACTION_OPTIONS,

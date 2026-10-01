@@ -1,0 +1,14 @@
+{
+  "repoPath": "/Users/wangding/WorkSpace/personal/ai-chat",
+  "lastCommit": "2fe23f45137cffdbcc229de3763001154d210207",
+  "indexedAt": "2026-09-30T07:11:18.291Z",
+  "stats": {
+    "files": 856,
+    "nodes": 15961,
+    "edges": 30174,
+    "communities": 310,
+    "processes": 748,
+    "embeddings": 0
+  },
+  "branch": "develop"
+}

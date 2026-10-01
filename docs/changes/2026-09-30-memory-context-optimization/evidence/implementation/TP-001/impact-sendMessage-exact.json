@@ -1,0 +1,199 @@
+{
+  "target": {
+    "id": "Function:server/services/messageService.ts:sendMessage",
+    "name": "sendMessage",
+    "type": "Function",
+    "filePath": "server/services/messageService.ts"
+  },
+  "direction": "upstream",
+  "impactedCount": 6,
+  "risk": "LOW",
+  "riskSharedAxes": "LOW",
+  "riskScale": {
+    "comparableAcrossKinds": true,
+    "unusedAxes": []
+  },
+  "epistemic": "lower-bound",
+  "boundaries": [
+    "1 call site invoking `sendMessage` was dropped at index time because the receiver's type could not be established (e.g. an unresolved constructor, factory or chained expression). Those callers are absent from this result — actual impact may be higher."
+  ],
+  "causes": {
+    "scopeExtractionFiles": 0,
+    "receiverTyping": 1,
+    "dispatchBoundary": 0,
+    "externalBoundary": 0,
+    "undecidedSatisfaction": 0,
+    "callableValueReferences": 0
+  },
+  "summary": {
+    "direct": 3,
+    "processes_affected": 2,
+    "modules_affected": 1
+  },
+  "byDepthCounts": {
+    "1": 3,
+    "2": 1,
+    "3": 2
+  },
+  "affected_processes": [
+    {
+      "name": "handleChat",
+      "type": "Function",
+      "filePath": "server/cli/commands/chat.ts",
+      "affected_process_count": 6,
+      "total_hits": 6,
+      "earliest_broken_step": 1
+    },
+    {
+      "name": "runRepl",
+      "type": "Function",
+      "filePath": "server/cli/repl.ts",
+      "affected_process_count": 6,
+      "total_hits": 6,
+      "earliest_broken_step": 1
+    }
+  ],
+  "affected_modules": [
+    {
+      "name": "Api",
+      "hits": 2,
+      "impact": "direct"
+    }
+  ],
+  "byDepth": {
+    "1": [
+      {
+        "depth": 1,
+        "id": "File:server/routes/messages.ts",
+        "name": "messages.ts",
+        "filePath": "server/routes/messages.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": []
+      },
+      {
+        "depth": 1,
+        "id": "Function:server/cli/commands/chat.ts:handleChat",
+        "name": "handleChat",
+        "filePath": "server/cli/commands/chat.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": [
+          {
+            "id": "proc_248_handlechat",
+            "label": "HandleChat → CreateSchema",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_249_handlechat",
+            "label": "HandleChat → GetSqliteVecExtensionPath",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_250_handlechat",
+            "label": "HandleChat → IsCompatibleMigrationError",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_246_handlechat",
+            "label": "HandleChat → Up",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_594_handlechat",
+            "label": "HandleChat → GetElectronAPI",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_255_handlechat",
+            "label": "HandleChat → SeedData",
+            "processType": "cross_community",
+            "step": 1
+          }
+        ]
+      },
+      {
+        "depth": 1,
+        "id": "Function:server/cli/repl.ts:runRepl",
+        "name": "runRepl",
+        "filePath": "server/cli/repl.ts",
+        "relationType": "CALLS",
+        "confidence": 0.85,
+        "processes": [
+          {
+            "id": "proc_293_runrepl",
+            "label": "RunRepl → SeedData",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_290_runrepl",
+            "label": "RunRepl → IsCompatibleMigrationError",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_286_runrepl",
+            "label": "RunRepl → Up",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_289_runrepl",
+            "label": "RunRepl → GetSqliteVecExtensionPath",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_288_runrepl",
+            "label": "RunRepl → CreateSchema",
+            "processType": "cross_community",
+            "step": 1
+          },
+          {
+            "id": "proc_600_runrepl",
+            "label": "RunRepl → GetElectronAPI",
+            "processType": "cross_community",
+            "step": 1
+          }
+        ]
+      }
+    ],
+    "2": [
+      {
+        "depth": 2,
+        "id": "File:server/app.ts",
+        "name": "app.ts",
+        "filePath": "server/app.ts",
+        "relationType": "IMPORTS",
+        "confidence": 1,
+        "processes": []
+      }
+    ],
+    "3": [
+      {
+        "depth": 3,
+        "id": "File:docs/architecture/server-lifecycle-remediation.md",
+        "name": "server-lifecycle-remediation.md",
+        "filePath": "docs/architecture/server-lifecycle-remediation.md",
+        "relationType": "IMPORTS",
+        "confidence": 0.8,
+        "processes": []
+      },
+      {
+        "depth": 3,
+        "id": "File:server/index.ts",
+        "name": "index.ts",
+        "filePath": "server/index.ts",
+        "relationType": "IMPORTS",
+        "confidence": 1,
+        "processes": []
+      }
+    ]
+  }
+}

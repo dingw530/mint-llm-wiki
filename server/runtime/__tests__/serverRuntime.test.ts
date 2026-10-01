@@ -7,6 +7,7 @@ const dependencies = vi.hoisted(() => ({
   mcpInitialize: vi.fn().mockResolvedValue(undefined),
   mcpShutdown: vi.fn().mockResolvedValue(undefined),
   startMemory: vi.fn(),
+  initializeMemoryIndex: vi.fn(() => true),
   stopMemory: vi.fn().mockResolvedValue(undefined),
   wikiStart: vi.fn(),
   wikiShutdown: vi.fn(),
@@ -23,7 +24,8 @@ vi.mock('../../services/api/skillService.js', () => ({ listSkills: dependencies.
 vi.mock('../../services/api/mcpService.js', () => ({
   mcpService: { initialize: dependencies.mcpInitialize, shutdown: dependencies.mcpShutdown },
 }));
-vi.mock('../../services/api/memoryJobService.js', () => ({
+vi.mock('../../bootstrap/memory.js', () => ({
+  initializeMemorySearchIndex: dependencies.initializeMemoryIndex,
   startMemoryProcessing: dependencies.startMemory,
   stopMemoryProcessing: dependencies.stopMemory,
 }));
@@ -83,6 +85,10 @@ describe('ServerRuntime', () => {
     expect(runtime.state).toBe('running');
     expect(runtime.port).toBe(3456);
     expect(app.listen).toHaveBeenCalledTimes(1);
+    expect(dependencies.initializeMemoryIndex).toHaveBeenCalledTimes(1);
+    expect(dependencies.initializeMemoryIndex.mock.invocationCallOrder[0]).toBeLessThan(
+      dependencies.startMemory.mock.invocationCallOrder[0],
+    );
 
     await Promise.all([runtime.shutdown('test'), runtime.shutdown('test-again')]);
     expect(runtime.state).toBe('stopped');
@@ -119,5 +125,30 @@ describe('ServerRuntime', () => {
     expect(dependencies.cancelAllRuns.mock.invocationCallOrder[0]).toBeLessThan(
       server.closeAllConnections.mock.invocationCallOrder[0],
     );
+  });
+
+  it('keeps SQLite open if memory work misses the shutdown deadline', async () => {
+    let finishMemoryStop: (() => void) | undefined;
+    dependencies.stopMemory.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishMemoryStop = resolve;
+        }),
+    );
+    const { app } = createAppMock();
+    const runtime = new ServerRuntime({
+      app,
+      preferredPort: 3456,
+      host: '127.0.0.1',
+      shutdownTimeoutMs: 50,
+    });
+
+    await runtime.start();
+    await runtime.shutdown('memory-drain-timeout');
+
+    expect(runtime.state).toBe('stopped');
+    expect(dependencies.stopMemory).toHaveBeenCalledTimes(1);
+    expect(dependencies.closeDb).not.toHaveBeenCalled();
+    finishMemoryStop?.();
   });
 });

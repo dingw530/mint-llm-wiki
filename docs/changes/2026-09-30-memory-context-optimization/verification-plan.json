@@ -1,0 +1,109 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "core 与类型/分类独立；迁移保留旧记录及版本来源；未归属可管理但不能召回",
+      "risk": "high",
+      "invariants": ["migration_preserves_data", "no_unassigned_recall"],
+      "requiredEvidence": ["integration"],
+      "probes": ["memory-integration", "browser-ac"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "最终记忆消息估算值 ≤ 有效预算；core ≤ 500；固定项与超长事实不突破，零预算无空包装",
+      "risk": "medium",
+      "invariants": ["bounded_memory_tokens", "deterministic_selection"],
+      "requiredEvidence": ["unit", "integration"],
+      "probes": ["memory-unit", "memory-entry"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "无绑定只读 global；绑定 A 不读 B；伪造、已归档空间不扩大范围；同键写入不跨空间替代",
+      "risk": "high",
+      "invariants": ["scope_isolation", "no_scope_fallback"],
+      "requiredEvidence": ["integration"],
+      "probes": ["memory-integration", "memory-entry"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "中文短语/技术标识符词法命中；零合格词面匹配时不注入；返回项满足相关性与数量规则",
+      "risk": "medium",
+      "invariants": ["relevant_recall", "abstain_when_unmatched"],
+      "requiredEvidence": ["unit", "integration"],
+      "probes": ["memory-unit", "memory-integration"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "过期/未来/撤销/被替代/非法状态事实不注入；更新与索引同事务；失败后无半更新",
+      "risk": "high",
+      "invariants": ["active_valid_only", "atomic_index_update", "rollback"],
+      "requiredEvidence": ["integration"],
+      "probes": ["memory-integration"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "作业按消息快照及空间绑定版本处理；重复幂等，新快照重排；切换空间不混合旧轨迹",
+      "risk": "high",
+      "invariants": ["snapshot_scope_immutable", "idempotence", "ordering"],
+      "requiredEvidence": ["integration"],
+      "probes": ["memory-integration", "memory-entry"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "关闭记忆后上下文召回、门控、入队与提取调用均为零；管理 CRUD 仍可使用",
+      "risk": "medium",
+      "invariants": ["memory_disabled_no_work"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["memory-entry", "browser-ac"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "普通/Agent/ReAct、CLI chat/REPL 与 Electron 使用相同选择；一次模型调用最多一个记忆块；压缩后不重复，SSE 顺序保留",
+      "risk": "high",
+      "invariants": ["cross_entry_consistency", "no_duplicate_injection", "sse_ordering"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["memory-entry", "memory-process", "electron-smoke"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "用户创建空间、绑定/解除会话、设置/取消常驻、批量归属后重开回显一致；非法输入/冲突可见；HTTP 与 IPC 对应字段一致",
+      "risk": "high",
+      "invariants": ["user_policy_preserved", "persistence_roundtrip", "endpoint_parity"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["memory-integration", "browser-ac"]
+    },
+    {
+      "id": "AC-010",
+      "statement": "Memory 源码和测试按目标领域归位；入口只用公共接口；无新循环/深层跨域导入，已知入口构建解析一致",
+      "risk": "high",
+      "invariants": ["domain_boundary", "regression_free", "import_side_effect_free"],
+      "requiredEvidence": ["integration", "static"],
+      "probes": ["boundary", "memory-static", "memory-entry"]
+    },
+    {
+      "id": "AC-011",
+      "statement": "停止后不接收新记忆作业，已启动任务受控结束；SQLite 关闭后无记忆/访问统计写入；重启恢复不重复",
+      "risk": "high",
+      "invariants": ["no_new_work", "drain", "no_write_after_db_close", "idempotence"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["memory-lifecycle", "memory-process"]
+    },
+    {
+      "id": "AC-012",
+      "statement": "诊断输出实际入选数量、估算 token、候选和跳过原因；失败日志不含正文/查询/原始响应，访问统计只计入选",
+      "risk": "medium",
+      "invariants": ["content_free_observation", "selected_access_only"],
+      "requiredEvidence": ["unit", "integration"],
+      "probes": ["memory-unit", "memory-integration"]
+    },
+    {
+      "id": "AC-013",
+      "statement": "固定至少 30 个标注案例；词法可回答子集 Recall@8 ≥ 0.85，无关注入率 ≤ 0.10，跨空间误取为零；1 万条 fixture p95 达标；留存新旧基线及局限",
+      "risk": "medium",
+      "invariants": ["measured_retrieval_quality", "reproducible_baseline"],
+      "requiredEvidence": ["integration"],
+      "probes": ["memory-quality"]
+    }
+  ]
+}

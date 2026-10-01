@@ -8,8 +8,17 @@ vi.mock('../../repositories/conversationRepository.js', () => ({
 vi.mock('../../repositories/messageRepository.js', () => ({
   findByConversationId: vi.fn(),
   create: vi.fn(),
+  createWithMemoryScope: vi.fn(),
   getHistory: vi.fn(),
   updateConversationTimestamp: vi.fn(),
+}));
+
+vi.mock('../../infrastructure/persistence/memoryScopeRepository.js', () => ({
+  findConversationScope: vi.fn(() => ({
+    scopeKind: 'global',
+    spaceId: null,
+    bindingRevision: 1,
+  })),
 }));
 
 vi.mock('../../repositories/a2uiRepository.js', () => ({
@@ -32,13 +41,34 @@ vi.mock('../api/settingsService.js', () => ({
   })),
 }));
 
-vi.mock('../api/memoryService.js', () => ({
+vi.mock('../../domains/memory/index.js', () => ({
+  MEMORY_CONTEXT_PREFIX: '<user_memory>\\nMemory facts only.',
+  MEMORY_CONTEXT_SUFFIX: '</user_memory>',
+  createMemoryJobService: vi.fn(() => ({
+    enqueueMemoryProcessing: vi.fn(),
+    startMemoryProcessing: vi.fn(),
+    stopMemoryProcessing: vi.fn(async () => undefined),
+  })),
   buildMemoryContext: vi.fn(() => ''),
+  prepareMemoryContext: vi.fn(() => ({
+    text: '',
+    observation: {
+      totalBudget: 0,
+      coreBudget: 0,
+      estimatedTokens: 0,
+      coreCandidateCount: 0,
+      retrievalCandidateCount: 0,
+      selectedCoreIds: [],
+      selectedRetrievalIds: [],
+      skipped: {},
+    },
+  })),
   performExtraction: vi.fn(),
   recordMemoryGateOutcome: vi.fn(),
-}));
-
-vi.mock('../memoryGateProviders/index.js', () => ({
+  createMemory: vi.fn(),
+  deleteMemory: vi.fn(),
+  listMemories: vi.fn(),
+  updateMemory: vi.fn(),
   evaluateMemoryGate: vi.fn(async () => ({
     memorize: false,
     providerId: 'legacy',
@@ -46,8 +76,14 @@ vi.mock('../memoryGateProviders/index.js', () => ({
   })),
 }));
 
-vi.mock('../api/memoryJobService.js', () => ({
+vi.mock('../../bootstrap/memory.js', () => ({
+  trackMemoryGate: vi.fn((work: () => Promise<void>) => Promise.resolve().then(work)),
   enqueueMemoryProcessing: vi.fn(),
+  evaluateMemoryGate: vi.fn(async () => ({
+    memorize: false,
+    providerId: 'legacy',
+    attempts: [],
+  })),
 }));
 
 vi.mock('../api/agentService.js', () => ({
@@ -77,19 +113,21 @@ import * as conversationRepo from '../../repositories/conversationRepository.js'
 import * as messageRepo from '../../repositories/messageRepository.js';
 import * as a2uiRepository from '../../repositories/a2uiRepository.js';
 import * as settingsService from '../api/settingsService.js';
-import * as memoryService from '../api/memoryService.js';
+import * as memoryService from '../../domains/memory/index.js';
 import * as agentService from '../api/agentService.js';
-import { enqueueMemoryProcessing } from '../api/memoryJobService.js';
-import { evaluateMemoryGate } from '../memoryGateProviders/index.js';
+import { enqueueMemoryProcessing } from '../../bootstrap/memory.js';
+import { evaluateMemoryGate } from '../../bootstrap/memory.js';
 import { routingService } from '../api/routingService.js';
 import { streamChat } from '../aiProxy.js';
 import { reactChat } from '../reactLoopCore.js';
 import { getAllToolDefinitions } from '../toolOrchestration.js';
+import { agentRunRegistry } from '../agentRun.js';
 import { sendMessage, getMessages } from '../messageService.js';
 
 describe('messageService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    agentRunRegistry.clear();
     vi.mocked(agentService.findById).mockReturnValue(undefined);
 
     vi.mocked(conversationRepo.findById).mockReturnValue({
@@ -263,11 +301,31 @@ describe('messageService', () => {
         wikiPath: '',
         wikiMaxFileSize: 10485760,
       });
-      vi.mocked(memoryService.buildMemoryContext).mockReturnValue('记忆：用户在北京');
+      vi.mocked(memoryService.prepareMemoryContext).mockReturnValue({
+        text: '记忆：用户在北京',
+        observation: {
+          totalBudget: 2_000,
+          coreBudget: 500,
+          estimatedTokens: 20,
+          coreCandidateCount: 1,
+          retrievalCandidateCount: 1,
+          selectedCoreIds: [],
+          selectedRetrievalIds: ['memory-1'],
+          skipped: {},
+        },
+      });
       vi.mocked(messageRepo.getHistory).mockReturnValue([{ role: 'user', content: 'hi' }]);
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
       await sendMessage('conv-1', 'hi', sink);
-      expect(memoryService.buildMemoryContext).toHaveBeenCalled();
+      expect(memoryService.prepareMemoryContext).toHaveBeenCalled();
+      const memoryContextCall = vi.mocked(memoryService.prepareMemoryContext).mock.calls[0];
+      expect(memoryContextCall[1]).toEqual({
+        scopeKind: 'global',
+        spaceId: null,
+        bindingRevision: 1,
+      });
+      expect(memoryContextCall[2]).toMatchObject({ inputBudget: 95_904 });
+      expect(Number.isSafeInteger(memoryContextCall[2]?.remainingInputTokens)).toBe(true);
       const sentMessages = vi.mocked(streamChat).mock.calls[0][0];
       const systemContent =
         sentMessages.find((message) => message.role === 'system')?.content || '';
@@ -294,7 +352,19 @@ describe('messageService', () => {
         wikiPath: '',
         wikiMaxFileSize: 10485760,
       });
-      vi.mocked(memoryService.buildMemoryContext).mockReturnValue('记忆：用户在北京');
+      vi.mocked(memoryService.prepareMemoryContext).mockReturnValue({
+        text: '记忆：用户在北京',
+        observation: {
+          totalBudget: 2_000,
+          coreBudget: 500,
+          estimatedTokens: 20,
+          coreCandidateCount: 1,
+          retrievalCandidateCount: 1,
+          selectedCoreIds: [],
+          selectedRetrievalIds: ['memory-1'],
+          skipped: {},
+        },
+      });
       vi.mocked(messageRepo.getHistory).mockReturnValue([{ role: 'user', content: 'hi' }]);
       vi.mocked(getAllToolDefinitions).mockResolvedValueOnce([
         {

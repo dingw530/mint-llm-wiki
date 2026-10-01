@@ -159,7 +159,7 @@ describe('standard IPC handlers', () => {
     }
     registerIpcHandlers(conversationsIpcOnlyEndpoints, {}, ipcMain);
 
-    expect(handlers.size).toBe(57);
+    expect(handlers.size).toBe(60);
     expect(handlers.has('conversations:rename')).toBe(true);
     expect(handlers.has('conversations:lockAgent')).toBe(true);
     expect(handlers.has('conversations:resolveToolApproval')).toBe(true);

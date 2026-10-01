@@ -1,0 +1,35 @@
+{
+  "checkedAt": "2026-10-01",
+  "database": "~/.mint/data.db",
+  "backup": "~/.mint/data.db.pre-memory-repair-20261001",
+  "latestMigration": {
+    "id": 32,
+    "name": "add-memory-scopes-and-retrieval-index"
+  },
+  "before": {
+    "totalRows": 121,
+    "unassignedActiveRows": 121,
+    "conflictingKeyGroups": 7,
+    "rowsInConflictingGroups": 84,
+    "conflictFreeRows": 37
+  },
+  "repair": {
+    "endpoint": "POST /api/memories/assign-scope",
+    "targetScope": "global",
+    "updatedRows": 37,
+    "rule": "restore legacy global scope for conflict-free records; keep competing same-key facts pending",
+    "rawMemoryContentExposedInToolOutput": false
+  },
+  "after": {
+    "totalRows": 121,
+    "activeGlobalRows": 37,
+    "activeUnassignedRows": 84
+  },
+  "listApiProbe": {
+    "origin": "http://localhost:5800/api",
+    "global": { "status": 200, "returnedRows": 37 },
+    "unassigned": { "status": 200, "returnedRows": 84 },
+    "memoryContentLogged": false
+  },
+  "memoryEnabled": false
+}

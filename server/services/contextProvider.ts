@@ -1,4 +1,10 @@
 import type { AiSettings, HistoryMessage } from '../types.js';
+import type { MemoryScopeSnapshot, MemoryPackingBudget } from '../domains/memory/index.js';
+import { estimateTokens, estimateMessagesTokens } from './utils/tokenEstimator.js';
+import {
+  DEFAULT_CONTEXT_TOKEN_BUDGET,
+  DEFAULT_OUTPUT_TOKEN_RESERVE,
+} from './utils/contextWindow.js';
 import { createMemoryContextProvider } from './contextProviders/memoryContextProvider.js';
 import { createWikiContextProvider } from './contextProviders/wikiContextProvider.js';
 
@@ -8,6 +14,9 @@ export type ContextPlacement = 'system' | 'before-latest-user';
 export interface ContextProviderInput {
   settings: AiSettings;
   userContent: string;
+  memoryScope?: MemoryScopeSnapshot;
+  memoryBudget?: Omit<MemoryPackingBudget, 'remainingInputTokens'>;
+  remainingInputTokens?: number;
 }
 
 /** One provider-owned message contribution and its deterministic placement. */
@@ -28,20 +37,22 @@ export interface ContextProvider {
 function cloneMessages(messages: HistoryMessage[]): HistoryMessage[] {
   return messages.map((message) => ({
     ...message,
-    ...message.tool_calls === undefined
+    ...(message.tool_calls === undefined
       ? {}
       : {
           tool_calls: message.tool_calls.map((toolCall) => ({
             ...toolCall,
             function: { ...toolCall.function },
           })),
-        },
+        }),
   }));
 }
 
 /** Return providers in the stable order used for every request. */
 function sortProviders(providers: readonly ContextProvider[]): ContextProvider[] {
-  return [...providers].sort((left, right) => left.order - right.order || left.id.localeCompare(right.id));
+  return [...providers].sort(
+    (left, right) => left.order - right.order || left.id.localeCompare(right.id),
+  );
 }
 
 /** Reject duplicate ids so one context source cannot silently shadow another. */
@@ -57,10 +68,21 @@ function assertUniqueProviderIds(providers: readonly ContextProvider[]): void {
 function collectContributions(
   providers: readonly ContextProvider[],
   input: ContextProviderInput,
+  baseMessages: HistoryMessage[],
 ): ContextContribution[] {
-  return sortProviders(providers)
-    .map((provider) => provider.provide(input))
-    .filter((contribution): contribution is ContextContribution => contribution !== undefined && contribution.content.trim() !== '');
+  const orderedProviders = sortProviders(providers);
+  const inputBudget =
+    input.memoryBudget?.inputBudget ?? DEFAULT_CONTEXT_TOKEN_BUDGET - DEFAULT_OUTPUT_TOKEN_RESERVE;
+  const contributions: ContextContribution[] = [];
+  let usedTokens = estimateMessagesTokens(baseMessages);
+  for (const provider of orderedProviders) {
+    const remainingInputTokens = Math.max(0, inputBudget - usedTokens);
+    const contribution = provider.provide({ ...input, remainingInputTokens });
+    if (!contribution || contribution.content.trim() === '') continue;
+    contributions.push(contribution);
+    usedTokens += estimateTokens(contribution.content) + 4;
+  }
+  return contributions;
 }
 
 /** Apply all system contributions to the existing system prompt or a new first message. */
@@ -98,7 +120,11 @@ function applyBeforeLatestUserContributions(
   const contextMessages = contributions.map(({ content }) => ({ role: 'user', content }));
   const latestUserIndex = findLatestUserIndex(messages);
   if (latestUserIndex < 0) return [...messages, ...contextMessages];
-  return [...messages.slice(0, latestUserIndex), ...contextMessages, ...messages.slice(latestUserIndex)];
+  return [
+    ...messages.slice(0, latestUserIndex),
+    ...contextMessages,
+    ...messages.slice(latestUserIndex),
+  ];
 }
 
 /** Default request context sources used by the main conversation entry point. */
@@ -114,10 +140,14 @@ export function applyContextProviders(
   providers: readonly ContextProvider[] = DEFAULT_CONTEXT_PROVIDERS,
 ): HistoryMessage[] {
   assertUniqueProviderIds(providers);
-  const contributions = collectContributions(providers, input);
+  const contributions = collectContributions(providers, input, messages);
   const assembled = cloneMessages(messages);
-  const systemContributions = contributions.filter((contribution) => contribution.placement === 'system');
-  const userContributions = contributions.filter((contribution) => contribution.placement === 'before-latest-user');
+  const systemContributions = contributions.filter(
+    (contribution) => contribution.placement === 'system',
+  );
+  const userContributions = contributions.filter(
+    (contribution) => contribution.placement === 'before-latest-user',
+  );
   return applyBeforeLatestUserContributions(
     applySystemContributions(assembled, systemContributions),
     userContributions,

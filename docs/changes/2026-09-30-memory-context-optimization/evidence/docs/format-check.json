@@ -1,0 +1,15 @@
+{
+  "scope": "documentation-only",
+  "prettier": {
+    "command": "npx --no-install prettier --check <all new docs/json and changed related docs/indices>",
+    "exitCode": 0,
+    "filesChecked": 26,
+    "output": "Checking formatting...\nAll matched files use Prettier code style!\n"
+  },
+  "gitDiffCheck": {
+    "exitCode": 0,
+    "output": ""
+  },
+  "newFilesTrailingWhitespace": [],
+  "productVerification": "UNVERIFIED"
+}

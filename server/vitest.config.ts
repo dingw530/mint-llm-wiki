@@ -8,7 +8,7 @@ export default defineConfig({
     fileParallelism: false,
     env: {
       AI_CHAT_LOG_LEVEL: 'debug',
-      AI_CHAT_DB_PATH: '/tmp/ai-chat-vitest.db',
+      AI_CHAT_DB_PATH: process.env.AI_CHAT_DB_PATH || '/tmp/ai-chat-vitest.db',
       AI_CHAT_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef',
     },
     server: {

@@ -37,6 +37,23 @@ middleware     services/, types (request processing)
 
 **Rule:** Each layer may only import from layers to its LEFT. Never skip layers (e.g., endpoints must not import repositories directly).
 
+### Memory domain boundary (incremental migration)
+
+The existing top-level Server layer diagram describes the current broad layout. Memory migration adds a finer boundary without implying that the other Server domains have moved:
+
+```text
+server/
+  domains/memory/                 # memory policy and use cases
+  infrastructure/persistence/   # memory SQLite repositories and FTS projection
+  infrastructure/ai/            # memory extraction and gate adapters
+  bootstrap/memory.ts             # explicit service/lifecycle composition
+  services/contextProviders/      # thin request-context adapter during migration
+```
+
+Memory domain implementation imports only its own domain modules, `infrastructure/`, explicit type-only `server/types.ts` contracts, and the shared pure token estimator. Memory-specific persistence and AI adapters are composed by `bootstrap/memory.ts`; application entry points do not import those implementations directly. Infrastructure may import Memory type contracts, never Memory runtime services. Other consumers use `domains/memory/index.ts`; tests may import internal modules for focused unit coverage. Literal dynamic imports and re-exports are checked with the same rule.
+
+`server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. This rule applies while the rest of `services/api/`, `repositories/`, and the server runtime remain in their current locations. Do not treat the Memory migration as completion of the wider Server structure proposal.
+
 ## Client Layer Hierarchy
 
 ```
@@ -58,6 +75,7 @@ App            components/, features/, types (entry point)
 ## Violation Remediation
 
 When you see a violation like:
+
 ```
 VIOLATION: server/endpoints/foo.ts imports server/repositories/bar.ts
 — endpoints cannot import repositories directly. See docs/architecture/LAYERS.md

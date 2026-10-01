@@ -73,9 +73,7 @@
     "httpPath": "/memories",
     "args": [
       {
-        "from": "query",
-        "name": "category",
-        "optional": true
+        "from": "query"
       }
     ],
     "result": "direct",
@@ -123,6 +121,71 @@
       {
         "from": "path",
         "name": "id"
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
+    "id": "memories:assignScope",
+    "ipcChannel": "memories:assignScope",
+    "preloadMethod": "assignMemoryScope",
+    "method": "POST",
+    "httpPath": "/memories/assign-scope",
+    "args": [
+      {
+        "from": "body",
+        "name": ""
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
+    "id": "memory-spaces:list",
+    "ipcChannel": "memory-spaces:list",
+    "preloadMethod": "getMemorySpaces",
+    "method": "GET",
+    "httpPath": "/memory-spaces",
+    "args": [
+      {
+        "from": "query",
+        "name": "includeArchived",
+        "optional": true
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
+    "id": "memory-spaces:create",
+    "ipcChannel": "memory-spaces:create",
+    "preloadMethod": "createMemorySpace",
+    "method": "POST",
+    "httpPath": "/memory-spaces",
+    "args": [
+      {
+        "from": "body",
+        "name": ""
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
+    "id": "memory-spaces:update",
+    "ipcChannel": "memory-spaces:update",
+    "preloadMethod": "updateMemorySpace",
+    "method": "PATCH",
+    "httpPath": "/memory-spaces/:id",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      },
+      {
+        "from": "body",
+        "name": ""
       }
     ],
     "result": "direct",
@@ -446,6 +509,40 @@
     ],
     "result": "direct",
     "async": true
+  },
+  {
+    "id": "conversations:getMemorySpace",
+    "ipcChannel": "conversations:getMemorySpace",
+    "preloadMethod": "getConversationMemorySpace",
+    "method": "GET",
+    "httpPath": "/conversations/:id/memory-space",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
+    "id": "conversations:setMemorySpace",
+    "ipcChannel": "conversations:setMemorySpace",
+    "preloadMethod": "setConversationMemorySpace",
+    "method": "PUT",
+    "httpPath": "/conversations/:id/memory-space",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      },
+      {
+        "from": "body",
+        "name": ""
+      }
+    ],
+    "result": "direct",
+    "async": false
   },
   {
     "id": "conversations:listRecoverableRuns",

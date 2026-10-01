@@ -12,7 +12,7 @@ export function extractArgs(req: Request, args: ArgMapping[]): unknown[] {
         value = req.params[arg.name!];
         break;
       case 'query':
-        value = req.query[arg.name!];
+        value = arg.name === undefined ? req.query : req.query[arg.name];
         break;
       case 'body':
         value = arg.name ? req.body?.[arg.name] : req.body;

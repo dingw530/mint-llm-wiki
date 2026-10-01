@@ -8,7 +8,8 @@
 
 | 变更                                                                                                           | 日期       | 状态   |
 | -------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
-| [Server 目录与领域边界收敛](../changes/2026-09-29-server-structure/exec-plan.md)                                  | 2026-09-29 | 提案   |
+| [记忆分层、空间召回与领域收敛](../changes/2026-09-30-memory-context-optimization/exec-plan.md)                 | 2026-09-30 | 已完成 |
+| [Server 目录与领域边界收敛](../changes/2026-09-29-server-structure/exec-plan.md)                               | 2026-09-29 | 提案   |
 | [AI Chat](../changes/2026-04-27-ai-chat/exec-plan.md)                                                          | 2026-04-27 | 已完成 |
 | [Weather Agent Tool](../changes/2026-04-28-weather-agent-tool/exec-plan.md)                                    | 2026-04-28 | 已完成 |
 | [System Prompt & Thinking Mode](../changes/2026-04-28-system-prompt-thinking-mode/exec-plan.md)                | 2026-04-28 | 已完成 |
@@ -56,5 +57,5 @@
 | [SQLite 迁移失败关闭](../changes/2026-09-06-migration-fail-closed/exec-plan.md)                                | 2026-09-06 | 已完成 |
 | [http_fetch SSRF 目标校验](../changes/2026-09-06-http-fetch-ssrf-hardening/exec-plan.md)                       | 2026-09-06 | 已完成 |
 | [外部服务韧性治理](../changes/2026-09-08-external-service-resilience/exec-plan.md)                             | 2026-09-08 | 已完成 |
-| [启动与关闭生命周期整改](../changes/2026-09-11-server-lifecycle-remediation/exec-plan.md)                    | 2026-09-11 | 已完成 |
-| [Jev 实验性接入（路由与记忆分类）](../changes/2026-09-19-jev-experimental-integration/exec-plan.md) | 2026-09-19 | 已完成 |
+| [启动与关闭生命周期整改](../changes/2026-09-11-server-lifecycle-remediation/exec-plan.md)                      | 2026-09-11 | 已完成 |
+| [Jev 实验性接入（路由与记忆分类）](../changes/2026-09-19-jev-experimental-integration/exec-plan.md)            | 2026-09-19 | 已完成 |

@@ -1,4 +1,6 @@
 import { getDb } from '../db.js';
+import * as memoryScopeRepository from '../infrastructure/persistence/memoryScopeRepository.js';
+import type { MemoryScopeSnapshot } from '../domains/memory/index.js';
 import type { MessageRow, Message, HistoryMessage, CreateMessageParams } from '../types.js';
 
 // 数据库 snake_case → API camelCase 转换
@@ -36,6 +38,17 @@ export function create(params: CreateMessageParams): void {
     params.reasoning ?? null,
     params.createdAt,
   );
+}
+
+/** Persist a message and its memory scope snapshot atomically. */
+export function createWithMemoryScope(
+  params: CreateMessageParams,
+  scope: MemoryScopeSnapshot,
+): void {
+  getDb().transaction(() => {
+    create(params);
+    memoryScopeRepository.captureMessageScope(params.id, params.conversationId, scope);
+  })();
 }
 
 // 获取消息历史（精简字段，用于发送给 AI）

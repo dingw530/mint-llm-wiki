@@ -3,6 +3,7 @@ import { httpError } from '../helpers.js';
 import type { Request, Response } from 'express';
 import type { EndpointDescriptor } from '../types.js';
 import { ResSink } from '../../services/sink.js';
+import * as memorySpaceService from '../../services/api/memorySpaceService.js';
 
 /** 延迟加载摄入事件流，避免生成 endpoint manifest 时初始化摄入服务。 */
 async function streamIngestionEvents(
@@ -76,6 +77,27 @@ async function streamRecoveryAction(
 }
 
 export const conversationsEndpoints: EndpointDescriptor[] = [
+  {
+    id: 'conversations:getMemorySpace',
+    method: 'GET',
+    path: '/:id/memory-space',
+    preloadMethod: 'getConversationMemorySpace',
+    service: memorySpaceService.getConversationMemorySpace,
+    args: [{ from: 'path', name: 'id' }],
+    result: 'direct',
+  },
+  {
+    id: 'conversations:setMemorySpace',
+    method: 'PUT',
+    path: '/:id/memory-space',
+    preloadMethod: 'setConversationMemorySpace',
+    service: memorySpaceService.setConversationMemorySpace,
+    args: [
+      { from: 'path', name: 'id' },
+      { from: 'body', name: '' },
+    ],
+    result: 'direct',
+  },
   {
     id: 'conversations:listRecoverableRuns',
     method: 'GET',

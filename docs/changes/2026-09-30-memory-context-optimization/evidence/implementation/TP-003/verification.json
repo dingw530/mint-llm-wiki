@@ -1,0 +1,44 @@
+{
+  "changeId": "2026-09-30-memory-context-optimization",
+  "taskPlan": "TP-003",
+  "date": "2026-09-30",
+  "status": "passed",
+  "checks": [
+    {
+      "command": "npm run --workspace=mint-server test -- domains/memory infrastructure/persistence/__tests__ infrastructure/ai/__tests__ services/contextProviders services/__tests__/messageService.test.ts services/__tests__/react.test.ts services/jev/__tests__/questions.test.ts endpoints/__tests__/memory.test.ts migrations/__tests__/migrations.test.ts migrations/__tests__/memoryScopeMigration.test.ts",
+      "result": "passed",
+      "summary": "12 test files, 122 tests passed"
+    },
+    {
+      "command": "npm run --workspace=mint-server test:boundary",
+      "result": "passed",
+      "summary": "2 test files, 5 tests passed"
+    },
+    {
+      "command": "npm run --workspace=mint-server typecheck",
+      "result": "passed"
+    },
+    {
+      "command": "npm run --workspace=mint-server build",
+      "result": "passed",
+      "summary": "TypeScript build and 66-entry endpoint manifest generation completed"
+    },
+    {
+      "command": "npx prettier --check <modified TypeScript files> && git diff --check",
+      "result": "passed"
+    }
+  ],
+  "observedInvariants": [
+    "Legacy memory IDs, content, source, status, and timestamps are preserved with unassigned/migration policy metadata.",
+    "Legacy pending and processing jobs become failed and unassigned with an audit summary.",
+    "A to B to A bindings receive distinct revisions and jobs; transcript selection is revision- and scope-filtered.",
+    "Repeated binding is idempotent; archiving unbinds conversations while message snapshots retain their captured scope.",
+    "Conflicting batch scope assignment rolls back without partially changing memory scope.",
+    "User and assistant message persistence writes the scope snapshot in the same SQLite transaction."
+  ],
+  "limitations": [
+    "This evidence does not verify product AC status; AC-001, AC-003, AC-005, and AC-006 remain UNVERIFIED until retrieval and user entry flows are complete.",
+    "HTTP/IPC management endpoints and browser flows are scheduled for TP-007.",
+    "The GitNexus CLI impact invocation did not return output in this run; existing consumers were corroborated with source search and focused integration tests."
+  ]
+}

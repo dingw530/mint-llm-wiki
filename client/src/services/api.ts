@@ -11,6 +11,8 @@ export {
   lockAgent,
   unlockAgent,
   getMessages,
+  getConversationMemorySpace,
+  setConversationMemorySpace,
   generateTitle,
 } from './api/conversations';
 export { fetchAgents, createAgent, updateAgent, deleteAgent } from './api/agents';
@@ -21,7 +23,16 @@ export {
   deleteMcpServer,
   restartMcpServer,
 } from './api/mcpServers';
-export { getMemories, createMemory, updateMemory, deleteMemory } from './api/memories';
+export {
+  getMemories,
+  createMemory,
+  updateMemory,
+  deleteMemory,
+  assignMemoryScope,
+  getMemorySpaces,
+  createMemorySpace,
+  updateMemorySpace,
+} from './api/memories';
 export {
   getEndpoints,
   createEndpoint,

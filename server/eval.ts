@@ -14,7 +14,7 @@ import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js
 import { getWikiVectorHealth } from './services/api/wikiSearchService.js';
 import * as agentService from './services/api/agentService.js';
 import { routingService } from './services/api/routingService.js';
-import { evaluateMemoryGate } from './services/memoryGateProviders/index.js';
+import { evaluateMemoryGate } from './bootstrap/memory.js';
 import {
   createRuntimeContext,
   type FeatureConfigInput,

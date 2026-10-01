@@ -1,6 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import crypto from 'crypto';
 
+function emptyMemoryContextResult() {
+  return {
+    text: '',
+    observation: {
+      totalBudget: 0,
+      coreBudget: 0,
+      estimatedTokens: 0,
+      coreCandidateCount: 0,
+      retrievalCandidateCount: 0,
+      selectedCoreIds: [],
+      selectedRetrievalIds: [],
+      skipped: {},
+    },
+  };
+}
+
 // Ensure encryption key is set
 if (!process.env.AI_CHAT_ENCRYPTION_KEY) {
   process.env.AI_CHAT_ENCRYPTION_KEY = crypto.randomBytes(16).toString('hex');
@@ -160,7 +176,15 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       },
     }));
 
-    vi.doMock('../api/memoryService.js', () => ({
+    vi.doMock('../../domains/memory/index.js', () => ({
+      prepareMemoryContext: vi.fn(emptyMemoryContextResult),
+      MEMORY_CONTEXT_PREFIX: '<user_memory>\\nMemory facts only.',
+      MEMORY_CONTEXT_SUFFIX: '</user_memory>',
+      createMemoryJobService: vi.fn(() => ({
+        enqueueMemoryProcessing: vi.fn(),
+        startMemoryProcessing: vi.fn(),
+        stopMemoryProcessing: vi.fn(async () => undefined),
+      })),
       buildMemoryContext: vi.fn().mockReturnValue(''),
       isConversationValuable: vi.fn().mockReturnValue(false),
       performExtraction: vi.fn(),
@@ -253,7 +277,15 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       },
     }));
 
-    vi.doMock('../api/memoryService.js', () => ({
+    vi.doMock('../../domains/memory/index.js', () => ({
+      prepareMemoryContext: vi.fn(emptyMemoryContextResult),
+      MEMORY_CONTEXT_PREFIX: '<user_memory>\\nMemory facts only.',
+      MEMORY_CONTEXT_SUFFIX: '</user_memory>',
+      createMemoryJobService: vi.fn(() => ({
+        enqueueMemoryProcessing: vi.fn(),
+        startMemoryProcessing: vi.fn(),
+        stopMemoryProcessing: vi.fn(async () => undefined),
+      })),
       buildMemoryContext: vi.fn().mockReturnValue(''),
       isConversationValuable: vi.fn().mockReturnValue(false),
       performExtraction: vi.fn(),
@@ -277,16 +309,14 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       list: vi
         .fn()
         .mockReturnValue([{ id: 'custom-agent', name: 'Custom', type: 'custom', available: true }]),
-      findById: vi
-        .fn()
-        .mockReturnValue({
-          id: 'custom-agent',
-          name: 'Custom',
-          type: 'custom',
-          available: true,
-          mcpServerIds: [],
-          systemPrompt: null,
-        }),
+      findById: vi.fn().mockReturnValue({
+        id: 'custom-agent',
+        name: 'Custom',
+        type: 'custom',
+        available: true,
+        mcpServerIds: [],
+        systemPrompt: null,
+      }),
     }));
 
     vi.doMock('../../utils/logger.js', () => ({
@@ -370,7 +400,15 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       },
     }));
 
-    vi.doMock('../api/memoryService.js', () => ({
+    vi.doMock('../../domains/memory/index.js', () => ({
+      prepareMemoryContext: vi.fn(emptyMemoryContextResult),
+      MEMORY_CONTEXT_PREFIX: '<user_memory>\\nMemory facts only.',
+      MEMORY_CONTEXT_SUFFIX: '</user_memory>',
+      createMemoryJobService: vi.fn(() => ({
+        enqueueMemoryProcessing: vi.fn(),
+        startMemoryProcessing: vi.fn(),
+        stopMemoryProcessing: vi.fn(async () => undefined),
+      })),
       buildMemoryContext: vi.fn().mockReturnValue(''),
       isConversationValuable: vi.fn().mockReturnValue(false),
       performExtraction: vi.fn(),
@@ -379,16 +417,14 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
 
     vi.doMock('../api/agentService.js', () => ({
       list: vi.fn().mockReturnValue([]),
-      findById: vi
-        .fn()
-        .mockReturnValue({
-          id: 'custom-agent',
-          name: 'Custom',
-          type: 'custom',
-          available: true,
-          mcpServerIds: [],
-          systemPrompt: null,
-        }),
+      findById: vi.fn().mockReturnValue({
+        id: 'custom-agent',
+        name: 'Custom',
+        type: 'custom',
+        available: true,
+        mcpServerIds: [],
+        systemPrompt: null,
+      }),
     }));
 
     vi.doMock('../../utils/logger.js', () => ({

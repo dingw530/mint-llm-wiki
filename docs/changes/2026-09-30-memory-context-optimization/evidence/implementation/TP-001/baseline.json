@@ -1,0 +1,62 @@
+{
+  "date": "2026-09-30",
+  "repository": "/Users/wangding/WorkSpace/personal/ai-chat",
+  "head": "2fe23f45137cffdbcc229de3763001154d210207",
+  "unrelatedWorktreeFile": "docs/mint-project-interview-qa.md",
+  "node": "20.19.4",
+  "preflight": {
+    "betterSqlite3": "load ok",
+    "harnessTests": {
+      "command": "npm run harness:test",
+      "passed": 18,
+      "failed": 0
+    },
+    "memoryRegression": {
+      "command": "npm run test --workspace=mint-server -- services/api/__tests__/memoryService.test.ts repositories/__tests__/memoryP0Repository.test.ts services/api/__tests__/memoryJobService.lifecycle.test.ts services/memoryGateProviders/__tests__/jevMemoryGateProvider.test.ts services/__tests__/contextProvider.test.ts",
+      "passed": 51,
+      "failed": 0
+    },
+    "boundaryBaseline": {
+      "command": "npm run --workspace=mint-server test:boundary",
+      "passed": 2,
+      "failed": 0
+    },
+    "newBoundaryTests": {
+      "command": "npm run --workspace=mint-server test -- architecture/__tests__/memoryBoundary.test.ts architecture/__tests__/boundary.test.ts",
+      "passed": 5,
+      "failed": 0
+    },
+    "typecheck": {
+      "command": "npm run --workspace=mint-server typecheck",
+      "exitCode": 0
+    },
+    "serverBuild": {
+      "command": "npm run --workspace=mint-server build",
+      "exitCode": 0,
+      "manifestEntries": 66
+    },
+    "electronBundle": {
+      "command": "npm run --workspace=mint-server build:bundle",
+      "exitCode": 0,
+      "bytes": "9.1MB"
+    },
+    "mcpBundle": {
+      "command": "npm run --workspace=mint-server build:mcp",
+      "exitCode": 0,
+      "warnings": ["existing import.meta warnings for cjs output"]
+    },
+    "formatCheck": "PASS",
+    "gitDiffCheck": "PASS"
+  },
+  "publicConsumers": [
+    "server/services/messageService.ts",
+    "server/services/contextProvider.ts",
+    "server/services/contextProviders/memoryContextProvider.ts",
+    "server/endpoints/definitions/memories.ts",
+    "server/runtime/serverRuntime.ts",
+    "server/eval.ts",
+    "server/electron-bundle.ts",
+    "server/services/jev/questions.ts"
+  ],
+  "caveat": "Harness/unit probes establish the baseline and boundary rule; they are not implementation AC evidence. GitNexus process graph is sampled and index is behind because this SDD is untracked; source imports were also checked."
+}

@@ -65,6 +65,8 @@ describe('runMigrations', () => {
     db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(28, 'seed');
     db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(29, 'seed');
     db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(30, 'seed');
+    db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(31, 'seed');
+    db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)').run(32, 'seed');
     const warningLog = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     runMigrations(db);
@@ -73,7 +75,7 @@ describe('runMigrations', () => {
       id: number;
     }[];
     expect(appliedIds.map(({ id }) => id)).toEqual(
-      Array.from({ length: 31 }, (_, index) => index + 1),
+      Array.from({ length: 32 }, (_, index) => index + 1),
     );
     expect(warningLog).toHaveBeenCalledWith(
       '[db/migration] Skipped compatible: #1 add-reasoning-to-messages: duplicate column name: reasoning',

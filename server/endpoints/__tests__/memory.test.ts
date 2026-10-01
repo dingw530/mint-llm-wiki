@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 /**
  * Memory Service Unit Tests
@@ -11,12 +11,39 @@ import { describe, it, expect } from 'vitest';
 
 let memoryService: any;
 try {
-  memoryService = await import('../../services/api/memoryService.js');
+  memoryService = await import('../../domains/memory/index.js');
 } catch {
   memoryService = null;
 }
 
 const runIf = (condition: any) => (condition ? describe : describe.skip);
+
+vi.mock('../../infrastructure/persistence/memoryRepository.js', () => ({
+  findManaged: vi.fn((filters) => (filters?.category ? [{ category: filters.category }] : [])),
+}));
+
+const { memoriesEndpoints } = await import('../definitions/memories.js');
+const memoryRepository = await import('../../infrastructure/persistence/memoryRepository.js');
+
+describe('memories:list endpoint filters', () => {
+  it('defaults to excluding unassigned memories and only includes them when requested', () => {
+    const list = memoriesEndpoints.find((endpoint) => endpoint.id === 'memories:list');
+    expect(list).toBeDefined();
+    const callService = list!.service as (query: Record<string, unknown>) => unknown;
+    expect(callService({ scopeKind: 'space', spaceId: 'space-1' })).toEqual([]);
+    expect(callService({ category: 'preference' })).toEqual([{ category: 'preference' }]);
+
+    callService({ scopeKind: 'unassigned', includeUnassigned: true, includeInactive: true });
+    expect(memoryRepository.findManaged).toHaveBeenLastCalledWith({
+      category: undefined,
+      scopeKind: 'unassigned',
+      spaceId: undefined,
+      contextPolicy: undefined,
+      includeUnassigned: true,
+      includeInactive: true,
+    });
+  });
+});
 
 runIf(memoryService)('Memory Service — extractMemoriesFromResponse', () => {
   it('should parse valid [category] content lines', () => {
@@ -44,7 +71,7 @@ runIf(memoryService)('Memory Service — extractMemoriesFromResponse', () => {
     const text = `[personal] 有效内容
 plain text without bracket
 [invalid content here]
-[preference] 有效偏好`
+[preference] 有效偏好`;
     const result = memoryService.extractMemoriesFromResponse(text);
     expect(result).toHaveLength(2);
   });
@@ -98,7 +125,7 @@ plain text without bracket
 [general] f`;
     const result = memoryService.extractMemoriesFromResponse(text);
     expect(result).toHaveLength(6);
-    const cats = result.map(r => r.category);
+    const cats = result.map((r) => r.category);
     expect(cats).toEqual(['personal', 'preference', 'feedback', 'project', 'goal', 'general']);
   });
 });

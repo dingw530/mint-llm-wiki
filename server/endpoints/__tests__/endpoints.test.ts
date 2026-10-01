@@ -31,7 +31,7 @@ const { server, request } = await (async (): Promise<{
         const address = srv.address();
         if (!address || typeof address === 'string')
           throw new Error('Test server did not bind to a port');
-        const baseUrl = `http://localhost:${address.port}`;
+        const baseUrl = `http://127.0.0.1:${address.port}`;
         req = (url: string, options: any = {}) => {
           return fetch(`${baseUrl}${url}`, {
             headers: AUTH_HEADERS,

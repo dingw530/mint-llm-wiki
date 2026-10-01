@@ -118,8 +118,22 @@ export function buildUrlFromManifest(ep: ManifestEntry, args: unknown[]): string
     } else if (mapping.from === 'query') {
       const value = args[argIdx];
       if (value !== undefined && value !== null) {
-        const sep = url.includes('?') ? '&' : '?';
-        if (mapping.name) url += `${sep}${mapping.name}=${encodeURIComponent(String(value))}`;
+        const appendQuery = (name: string, queryValue: unknown) => {
+          const sep = url.includes('?') ? '&' : '?';
+          url += `${sep}${encodeURIComponent(name)}=${encodeURIComponent(String(queryValue))}`;
+        };
+        if (mapping.name) {
+          appendQuery(mapping.name, value);
+        } else if (typeof value === 'object' && value !== null) {
+          for (const [name, queryValue] of Object.entries(value)) {
+            if (queryValue === undefined || queryValue === null) continue;
+            if (Array.isArray(queryValue)) {
+              for (const item of queryValue) appendQuery(name, item);
+            } else {
+              appendQuery(name, queryValue);
+            }
+          }
+        }
       }
     }
     argIdx++;

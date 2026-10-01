@@ -2,9 +2,14 @@ import { v4 as uuidv4 } from 'uuid';
 import * as conversationRepo from '../repositories/conversationRepository.js';
 import * as messageRepo from '../repositories/messageRepository.js';
 import * as settingsService from './api/settingsService.js';
-import * as memoryService from './api/memoryService.js';
-import { enqueueMemoryProcessing } from './api/memoryJobService.js';
-import { evaluateMemoryGate } from './memoryGateProviders/index.js';
+import * as memoryService from '../domains/memory/index.js';
+import {
+  enqueueMemoryProcessing,
+  evaluateMemoryGate,
+  trackMemoryGate,
+} from '../bootstrap/memory.js';
+import * as memoryScopeRepository from '../infrastructure/persistence/memoryScopeRepository.js';
+import type { MemoryScopeSnapshot } from '../domains/memory/index.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
 import * as agentService from './api/agentService.js';
 import { routingService } from './api/routingService.js';
@@ -16,10 +21,15 @@ import { DeferredEndSink } from './sink.js';
 import type { Sink } from './sink.js';
 import { parseFile, isSupportedFile } from './utils/fileParseService.js';
 import { streamToolApproval } from './api/toolApprovalService.js';
+import { reserveConversationScope } from './api/conversationScopeLock.js';
 import { AI_REQUEST_TIMEOUT_MS } from './adapters/apiAdapter.js';
 import * as a2uiRepository from '../repositories/a2uiRepository.js';
 import type { PersistedUiBlock } from '../types.js';
 import { applyContextProviders } from './contextProvider.js';
+import {
+  DEFAULT_CONTEXT_TOKEN_BUDGET,
+  DEFAULT_OUTPUT_TOKEN_RESERVE,
+} from './utils/contextWindow.js';
 import { type AgentRun, agentRunRegistry } from './agentRun.js';
 import { createDurableAgentRun } from './agentRunFactory.js';
 import { ReactEventEmitter } from './reactEvents.js';
@@ -153,6 +163,23 @@ export async function sendMessage(
   files?: FileAttachment[],
   slashCommand?: SlashCommandIntent,
 ): Promise<void> {
+  const releaseScope = reserveConversationScope(conversationId);
+  try {
+    await sendMessageRequest(conversationId, content, sink, agent, regenerate, files, slashCommand);
+  } finally {
+    releaseScope();
+  }
+}
+
+async function sendMessageRequest(
+  conversationId: string,
+  content: string,
+  sink: Sink,
+  agent?: string,
+  regenerate?: boolean,
+  files?: FileAttachment[],
+  slashCommand?: SlashCommandIntent,
+): Promise<void> {
   const deferredSink = new DeferredEndSink(sink);
   const conversation = conversationRepo.findById(conversationId);
   if (!conversation) {
@@ -165,6 +192,16 @@ export async function sendMessage(
   if (slashCommand !== undefined && !validatedSlashCommand) {
     const err: HttpError = new Error('Invalid slash command or empty command input');
     err.status = 400;
+    throw err;
+  }
+
+  const settings = settingsService.getAiSettings();
+  const memoryScope = settings.memoryEnabled
+    ? memoryScopeRepository.findConversationScope(conversationId)
+    : null;
+  if (settings.memoryEnabled && !memoryScope) {
+    const err: HttpError = new Error('Conversation memory scope is unavailable');
+    err.status = 409;
     throw err;
   }
 
@@ -196,13 +233,15 @@ export async function sendMessage(
 
   // 先持久化用户消息（非重新生成场景），确保不丢失
   if (!regenerate) {
-    messageRepo.create({
+    const userMessage = {
       id: userMsgId,
       conversationId,
       role: 'user',
       content: augmentedContent,
       createdAt: now,
-    });
+    } as const;
+    if (memoryScope) messageRepo.createWithMemoryScope(userMessage, memoryScope);
+    else messageRepo.create(userMessage);
     messageRepo.updateConversationTimestamp(conversationId, now);
   }
 
@@ -237,8 +276,6 @@ export async function sendMessage(
 
   // 拼接消息历史：优先使用路由到的 Agent 的 systemPrompt，其次用全局设置
   const history = messageRepo.getHistory(conversationId);
-  const settings = settingsService.getAiSettings();
-
   let systemPrompt = settings.systemPrompt;
   if (resolvedAgent && resolvedAgent !== 'general') {
     const agentInfo = agentService.findById(resolvedAgent);
@@ -255,7 +292,14 @@ export async function sendMessage(
   const messages: HistoryMessage[] = systemPrompt
     ? [{ role: 'system', content: systemPrompt }, ...history]
     : history;
-  const requestMessages = applyContextProviders(messages, { settings, userContent: content });
+  const requestMessages = applyContextProviders(messages, {
+    settings,
+    userContent: content,
+    ...(memoryScope ? { memoryScope } : {}),
+    memoryBudget: {
+      inputBudget: DEFAULT_CONTEXT_TOKEN_BUDGET - DEFAULT_OUTPUT_TOKEN_RESERVE,
+    },
+  });
 
   try {
     // 判断是否启用 ReAct 循环：Agent 有工具 且 reactMaxIterations > 0
@@ -314,21 +358,23 @@ export async function sendMessage(
     if (fullContent) {
       const assistantMessageId = uuidv4();
       persistedAssistantMessageId = assistantMessageId;
-      messageRepo.create({
+      const assistantMessage = {
         id: assistantMessageId,
         conversationId,
         role: 'assistant',
         content: fullContent,
         reasoning: fullReasoning || null,
         createdAt: new Date().toISOString(),
-      });
+      } as const;
+      if (memoryScope) messageRepo.createWithMemoryScope(assistantMessage, memoryScope);
+      else messageRepo.create(assistantMessage);
       persistUiBlocks(assistantMessageId, fullUiBlocks);
     }
     deferredSink.flush();
 
     // 记忆门控可能发起网络调用，必须在响应结束之后异步执行，否则会延长单条消息的响应时间。
     if (persistedAssistantMessageId && settings.memoryEnabled) {
-      scheduleMemoryExtraction(content, conversationId, persistedAssistantMessageId);
+      scheduleMemoryExtraction(content, conversationId, persistedAssistantMessageId, memoryScope!);
     }
   } catch (err) {
     console.error('AI streaming error:', err);
@@ -368,11 +414,12 @@ async function runMemoryGate(
   userContent: string,
   conversationId: string,
   assistantMessageId: string,
+  scope: MemoryScopeSnapshot,
 ): Promise<void> {
   const jev = settingsService.getJevSettings();
   const resolution = await evaluateMemoryGate({ userContent, conversationId }, { jev });
-  memoryService.recordMemoryGateOutcome(resolution, conversationId, assistantMessageId);
-  if (resolution.memorize) enqueueMemoryProcessing(conversationId, assistantMessageId);
+  memoryService.recordMemoryGateOutcome(resolution, conversationId, assistantMessageId, scope);
+  if (resolution.memorize) enqueueMemoryProcessing(conversationId, assistantMessageId, scope);
 }
 
 /**
@@ -386,8 +433,14 @@ function scheduleMemoryExtraction(
   userContent: string,
   conversationId: string,
   assistantMessageId: string,
+  scope: MemoryScopeSnapshot,
 ): void {
-  void runMemoryGate(userContent, conversationId, assistantMessageId).catch((error) => {
-    console.error('[memory] gate failed', getErrorMessage(error));
-  });
+  const tracked = trackMemoryGate(() =>
+    runMemoryGate(userContent, conversationId, assistantMessageId, scope),
+  );
+  if (tracked) {
+    void tracked.catch((error) => {
+      console.error('[memory] gate failed', getErrorMessage(error));
+    });
+  }
 }
