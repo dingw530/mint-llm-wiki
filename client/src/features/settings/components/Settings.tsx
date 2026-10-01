@@ -223,7 +223,12 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
       >
         <div className="modal-header">
           <h2>设置</h2>
-          <button className="modal-close-btn" onClick={onClose} title="关闭">
+          <button
+            className="modal-close-btn"
+            data-testid="settings-close"
+            onClick={onClose}
+            title="关闭"
+          >
             <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
@@ -238,6 +243,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
               <button
                 key={tab.id}
                 className={`settings-tab${activeTab === tab.id ? ' active' : ''}`}
+                data-testid={tab.id === 'memories' ? 'settings-tab-memories' : undefined}
                 onClick={() => setActiveTab(tab.id)}
               >
                 <span className="tab-icon">{tabIcon[tab.icon]}</span>

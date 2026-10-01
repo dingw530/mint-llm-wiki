@@ -6,6 +6,7 @@
 
 | 变更                                                                                                              | 日期       | 状态   |
 | ----------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| [记忆界面默认全局](../changes/2026-10-01-memory-global-default-ui/product-spec.md)                                | 2026-10-01 | 已完成 |
 | [记忆分层、空间召回与领域收敛](../changes/2026-09-30-memory-context-optimization/product-spec.md)                 | 2026-09-30 | 已完成 |
 | [AI Chat](../changes/2026-04-27-ai-chat/product-spec.md)                                                          | 2026-04-27 | 已完成 |
 | [Weather Agent Tool](../changes/2026-04-28-weather-agent-tool/product-spec.md)                                    | 2026-04-28 | 已完成 |

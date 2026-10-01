@@ -1,0 +1,396 @@
+{
+  "changeId": "2026-10-01-memory-global-default-ui",
+  "planningStatus": "implementation-complete",
+  "scenarios": [
+    {
+      "id": "browser-memory-global-default-ui",
+      "acceptanceCriteria": ["AC-001", "AC-002"],
+      "route": "/chat",
+      "setup": {
+        "routes": [
+          {
+            "pattern": "http://localhost:5800/api/settings",
+            "method": "GET",
+            "body": {
+              "memoryEnabled": true,
+              "systemPrompt": "",
+              "thinkingMode": false,
+              "routingMode": "auto",
+              "reactMaxIterations": 0,
+              "toolMaxRetries": 0,
+              "showReactSteps": false,
+              "maxContextRounds": 10,
+              "wikiPath": "",
+              "wikiSearchMode": "keyword",
+              "embeddingApiUrl": "",
+              "embeddingModel": "",
+              "embeddingDimensions": 1024,
+              "vectorStore": "sqlite",
+              "chromaUrl": "",
+              "apiKeyMasked": "***",
+              "apiUrl": "http://fixture.invalid/v1",
+              "modelId": "fixture",
+              "jevRoutingEnabled": false,
+              "jevMemoryEnabled": false
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": [
+                {
+                  "id": "e1",
+                  "name": "Fixture",
+                  "apiUrl": "http://fixture.invalid/v1",
+                  "apiType": "openai-chat",
+                  "modelId": "fixture",
+                  "isActive": true,
+                  "verifiedAt": "2026-09-30T00:00:00.000Z",
+                  "apiKeyMasked": "***"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/agents*",
+            "method": "GET",
+            "body": {
+              "agents": []
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/conversations*",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "c1",
+                  "title": "记忆验收会话",
+                  "type": "text",
+                  "createdAt": "2026-09-30T00:00:00.000Z",
+                  "updatedAt": "2026-09-30T00:00:00.000Z",
+                  "lockedAgent": null,
+                  "routingMode": "auto",
+                  "memorySpaceId": null,
+                  "memoryBindingRevision": 1
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/conversations/c1/memory-space",
+            "method": "GET",
+            "status": 500,
+            "body": {
+              "error": "Knowledge-space UI must not request this endpoint"
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/conversations/c1/messages",
+            "method": "GET",
+            "body": {
+              "messages": []
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/conversations/c1/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": []
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/conversations/c1/ingestion-events*",
+            "method": "GET",
+            "body": "",
+            "status": 200
+          },
+          {
+            "pattern": "http://localhost:5800/api/memory-spaces*",
+            "method": "GET",
+            "status": 500,
+            "body": {
+              "error": "Knowledge-space UI must not request this endpoint"
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/settings",
+            "method": "GET",
+            "body": {
+              "memoryEnabled": false,
+              "systemPrompt": "",
+              "thinkingMode": false,
+              "routingMode": "auto",
+              "reactMaxIterations": 0,
+              "toolMaxRetries": 0,
+              "showReactSteps": false,
+              "maxContextRounds": 10,
+              "wikiPath": "",
+              "wikiSearchMode": "keyword",
+              "embeddingApiUrl": "",
+              "embeddingModel": "",
+              "embeddingDimensions": 1024,
+              "vectorStore": "sqlite",
+              "chromaUrl": "",
+              "apiKeyMasked": "***",
+              "apiUrl": "http://fixture.invalid/v1",
+              "modelId": "fixture",
+              "jevRoutingEnabled": false,
+              "jevMemoryEnabled": false
+            }
+          },
+          {
+            "pattern": "http://localhost:5800/api/memories*",
+            "method": "GET",
+            "responses": [
+              [
+                {
+                  "id": "global-memory",
+                  "content": "用户喜欢中文解释",
+                  "category": "preference",
+                  "memoryKey": "preference.response_language",
+                  "value": "中文",
+                  "memoryType": "semantic",
+                  "subject": "user",
+                  "relationship": null,
+                  "confidence": 1,
+                  "importance": 0.9,
+                  "validFrom": null,
+                  "validTo": null,
+                  "status": "active",
+                  "supersedesId": null,
+                  "sourceMessageId": null,
+                  "lastAccessedAt": null,
+                  "accessCount": 0,
+                  "sourceConversationId": null,
+                  "createdAt": "2026-09-30T00:00:00.000Z",
+                  "updatedAt": "2026-09-30T00:00:00.000Z",
+                  "contextPolicy": "retrievable",
+                  "policySource": "user",
+                  "scopeKind": "global",
+                  "spaceId": null
+                }
+              ],
+              [
+                {
+                  "id": "legacy-memory",
+                  "content": "旧版历史偏好",
+                  "category": "general",
+                  "memoryKey": "preference.response_language",
+                  "value": "中文",
+                  "memoryType": "semantic",
+                  "subject": "user",
+                  "relationship": null,
+                  "confidence": 1,
+                  "importance": 0.9,
+                  "validFrom": null,
+                  "validTo": null,
+                  "status": "active",
+                  "supersedesId": null,
+                  "sourceMessageId": null,
+                  "lastAccessedAt": null,
+                  "accessCount": 0,
+                  "sourceConversationId": null,
+                  "createdAt": "2026-09-30T00:00:00.000Z",
+                  "updatedAt": "2026-09-30T00:00:00.000Z",
+                  "contextPolicy": "retrievable",
+                  "policySource": "migration",
+                  "scopeKind": "unassigned",
+                  "spaceId": null
+                }
+              ],
+              [
+                {
+                  "id": "global-memory",
+                  "content": "用户喜欢中文解释",
+                  "category": "preference",
+                  "memoryKey": "preference.response_language",
+                  "value": "中文",
+                  "memoryType": "semantic",
+                  "subject": "user",
+                  "relationship": null,
+                  "confidence": 1,
+                  "importance": 0.9,
+                  "validFrom": null,
+                  "validTo": null,
+                  "status": "active",
+                  "supersedesId": null,
+                  "sourceMessageId": null,
+                  "lastAccessedAt": null,
+                  "accessCount": 0,
+                  "sourceConversationId": null,
+                  "createdAt": "2026-09-30T00:00:00.000Z",
+                  "updatedAt": "2026-09-30T00:00:00.000Z",
+                  "contextPolicy": "retrievable",
+                  "policySource": "user",
+                  "scopeKind": "global",
+                  "spaceId": null
+                },
+                {
+                  "id": "created-global-memory",
+                  "content": "新建的全局偏好",
+                  "category": "preference",
+                  "memoryKey": "preference.response_language",
+                  "value": "中文",
+                  "memoryType": "semantic",
+                  "subject": "user",
+                  "relationship": null,
+                  "confidence": 1,
+                  "importance": 0.9,
+                  "validFrom": null,
+                  "validTo": null,
+                  "status": "active",
+                  "supersedesId": null,
+                  "sourceMessageId": null,
+                  "lastAccessedAt": null,
+                  "accessCount": 0,
+                  "sourceConversationId": null,
+                  "createdAt": "2026-10-01T00:00:00.000Z",
+                  "updatedAt": "2026-10-01T00:00:00.000Z",
+                  "contextPolicy": "retrievable",
+                  "policySource": "user",
+                  "scopeKind": "global",
+                  "spaceId": null
+                }
+              ],
+              [
+                {
+                  "id": "legacy-memory",
+                  "content": "旧版历史偏好",
+                  "category": "general",
+                  "memoryKey": "preference.response_language",
+                  "value": "中文",
+                  "memoryType": "semantic",
+                  "subject": "user",
+                  "relationship": null,
+                  "confidence": 1,
+                  "importance": 0.9,
+                  "validFrom": null,
+                  "validTo": null,
+                  "status": "active",
+                  "supersedesId": null,
+                  "sourceMessageId": null,
+                  "lastAccessedAt": null,
+                  "accessCount": 0,
+                  "sourceConversationId": null,
+                  "createdAt": "2026-09-30T00:00:00.000Z",
+                  "updatedAt": "2026-09-30T00:00:00.000Z",
+                  "contextPolicy": "retrievable",
+                  "policySource": "migration",
+                  "scopeKind": "unassigned",
+                  "spaceId": null
+                }
+              ]
+            ]
+          },
+          {
+            "pattern": "http://localhost:5800/api/memories",
+            "method": "POST",
+            "status": 201,
+            "body": {
+              "id": "created-global-memory",
+              "content": "新建的全局偏好",
+              "category": "preference",
+              "memoryKey": "preference.response_language",
+              "value": "中文",
+              "memoryType": "semantic",
+              "subject": "user",
+              "relationship": null,
+              "confidence": 1,
+              "importance": 0.9,
+              "validFrom": null,
+              "validTo": null,
+              "status": "active",
+              "supersedesId": null,
+              "sourceMessageId": null,
+              "lastAccessedAt": null,
+              "accessCount": 0,
+              "sourceConversationId": null,
+              "createdAt": "2026-10-01T00:00:00.000Z",
+              "updatedAt": "2026-10-01T00:00:00.000Z",
+              "contextPolicy": "retrievable",
+              "policySource": "user",
+              "scopeKind": "global",
+              "spaceId": null
+            }
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "assertNotText",
+          "text": "记忆范围"
+        },
+        {
+          "action": "click",
+          "target": {
+            "testId": "settings-open"
+          }
+        },
+        {
+          "action": "click",
+          "target": {
+            "testId": "settings-tab-memories"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "testId": "memory-panel"
+          },
+          "timeoutMs": 10000
+        },
+        {
+          "action": "assertNotText",
+          "text": "知识空间"
+        },
+        {
+          "action": "assertNotText",
+          "text": "记忆归属"
+        },
+        {
+          "action": "click",
+          "target": {
+            "text": "+ 添加记忆"
+          }
+        },
+        {
+          "action": "fill",
+          "target": {
+            "placeholder": "输入记忆内容..."
+          },
+          "value": "新建的全局偏好"
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "保存"
+          }
+        },
+        {
+          "action": "waitFor",
+          "target": {
+            "testId": "memory-card-created-global-memory"
+          },
+          "timeoutMs": 10000
+        },
+        {
+          "action": "assertText",
+          "target": {
+            "testId": "memory-card-created-global-memory"
+          },
+          "text": "新建的全局偏好"
+        }
+      ],
+      "assertRequests": [
+        {
+          "contains": "/api/memories",
+          "method": "POST",
+          "status": 201
+        }
+      ]
+    }
+  ]
+}

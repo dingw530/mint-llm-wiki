@@ -1,0 +1,61 @@
+[
+  {
+    "name": "client-regression",
+    "evidenceLevel": "unit",
+    "invariants": ["regression_free"],
+    "command": "npm",
+    "args": ["run", "--workspace=mint-client", "test"],
+    "timeoutMs": 180000
+  },
+  {
+    "name": "memory-ui",
+    "evidenceLevel": "unit",
+    "invariants": [
+      "no_space_controls",
+      "manual_memory_global_default",
+      "legacy_visible",
+      "global_assignment_only"
+    ],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-client",
+      "test",
+      "--",
+      "src/features/settings/components/__tests__/MemoriesPanel.test.tsx",
+      "src/features/chat/components/__tests__/ChatHeader.test.tsx"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-scope",
+    "evidenceLevel": "integration",
+    "invariants": ["bound_scope_preserved", "unbound_global", "scope_isolation"],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/__tests__/entry.integration.test.ts",
+      "infrastructure/persistence/__tests__/memoryScopeRepository.test.ts",
+      "services/api/__tests__/conversationScopeLock.test.ts"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "browser-ac",
+    "evidenceLevel": "browser",
+    "invariants": ["no_space_controls", "no_space_ui_requests", "manual_memory_global_default"],
+    "command": "node",
+    "args": [".harness/browser-scenario.mjs", "--change", "2026-10-01-memory-global-default-ui"],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-static",
+    "evidenceLevel": "static",
+    "command": "node",
+    "args": ["scripts/memory-verification.mjs", "--static-only"],
+    "timeoutMs": 180000
+  }
+]
