@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import * as endpointRepo from '../endpointRepository.js';
 import * as graphRepo from '../graphRepository.js';
 import * as candidateRepo from '../graphCandidateRepository.js';
-import * as routingLogRepo from '../routingLogRepository.js';
+import * as routingLogRepo from '../../infrastructure/persistence/routingLogRepository.js';
 import * as endpointService from '../../services/api/endpointService.js';
 import { encrypt } from '../../services/utils/encryption.js';
 

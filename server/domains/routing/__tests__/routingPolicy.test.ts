@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { formatRoutingLogMethod, resolveRoute } from '../routingPolicy.js';
-import { DISABLED_JEV_SETTINGS } from '../../jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
 import type { Agent } from '../../../types.js';
 import type {
   AgentRoutingOutcome,

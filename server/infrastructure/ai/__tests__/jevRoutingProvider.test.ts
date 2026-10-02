@@ -45,7 +45,7 @@ function stubAnswers(answers: unknown): void {
   );
 }
 
-const provider = createJevRoutingProvider();
+const provider = createJevRoutingProvider('general');
 
 describe('jevRoutingProvider', () => {
   beforeEach(() => {

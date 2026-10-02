@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../adapters/apiAdapter.js', () => ({
+vi.mock('../../../services/adapters/apiAdapter.js', () => ({
   getAdapter: vi.fn(),
   AI_REQUEST_TIMEOUT_MS: 180_000,
 }));
 
-vi.mock('../../api/settingsService.js', () => ({
+vi.mock('../../../services/api/settingsService.js', () => ({
   getAiSettings: vi.fn(() => ({
     apiUrl: 'https://api.test',
     apiKey: 'test-key',
@@ -14,10 +14,10 @@ vi.mock('../../api/settingsService.js', () => ({
   })),
 }));
 
-import { getAdapter } from '../../adapters/apiAdapter.js';
+import { getAdapter } from '../../../services/adapters/apiAdapter.js';
 import { GENERAL_AGENT_ID, createLegacyRoutingProvider } from '../legacyRoutingProvider.js';
 import type { Agent } from '../../../types.js';
-import { DISABLED_JEV_SETTINGS } from '../../jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
 
 const CONFIG = { jev: DISABLED_JEV_SETTINGS };
 
@@ -51,7 +51,10 @@ function stubAdapter(returnValue: string | undefined): void {
   } as never);
 }
 
-const provider = createLegacyRoutingProvider();
+import { llmClassifyAgents } from '../../../infrastructure/ai/llmRoutingClassifier.js';
+const provider = createLegacyRoutingProvider((message, candidates) =>
+  llmClassifyAgents(message, candidates, GENERAL_AGENT_ID),
+);
 
 describe('legacyRoutingProvider regression lock', () => {
   beforeEach(() => {

@@ -91,7 +91,7 @@ vi.mock('../api/agentService.js', () => ({
   findById: vi.fn(),
 }));
 
-vi.mock('../api/routingService.js', () => ({
+vi.mock('../../bootstrap/routing.js', () => ({
   routingService: {
     route: vi.fn(),
   },
@@ -117,7 +117,7 @@ import * as memoryService from '../../domains/memory/index.js';
 import * as agentService from '../api/agentService.js';
 import { enqueueMemoryProcessing } from '../../bootstrap/memory.js';
 import { evaluateMemoryGate } from '../../bootstrap/memory.js';
-import { routingService } from '../api/routingService.js';
+import { routingService } from '../../bootstrap/routing.js';
 import { streamChat } from '../aiProxy.js';
 import { reactChat } from '../reactLoopCore.js';
 import { getAllToolDefinitions } from '../toolOrchestration.js';

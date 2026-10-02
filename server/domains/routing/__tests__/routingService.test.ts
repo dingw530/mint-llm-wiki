@@ -7,27 +7,42 @@ vi.mock('../../../repositories/agentRepository.js', () => ({
   findById: vi.fn(),
 }));
 
-vi.mock('../../adapters/apiAdapter.js', () => ({
+vi.mock('../../../services/adapters/apiAdapter.js', () => ({
   getAdapter: vi.fn(),
 }));
 
-import { RoutingService } from '../routingService.js';
-import { getAdapter } from '../../adapters/apiAdapter.js';
+import { RoutingService } from '../../../bootstrap/routing.js';
+import { getAdapter } from '../../../services/adapters/apiAdapter.js';
 
 describe('RoutingService', () => {
   let service: RoutingService;
 
   const agents = [
     {
-      id: 'general', name: '通用', description: 'gen', type: 'general',
-      systemPrompt: '', mcpServerIds: [], available: true, errorMessage: null,
-      triggerKeywords: [], createdAt: '', updatedAt: '',
+      id: 'general',
+      name: '通用',
+      description: 'gen',
+      type: 'general',
+      systemPrompt: '',
+      mcpServerIds: [],
+      available: true,
+      errorMessage: null,
+      triggerKeywords: [],
+      createdAt: '',
+      updatedAt: '',
     },
     {
-      id: 'research', name: '研究', description: '研究', type: 'custom',
-      systemPrompt: '', mcpServerIds: [], available: true, errorMessage: null,
+      id: 'research',
+      name: '研究',
+      description: '研究',
+      type: 'custom',
+      systemPrompt: '',
+      mcpServerIds: [],
+      available: true,
+      errorMessage: null,
       triggerKeywords: ['研究', '/^\\s*研究/'],
-      createdAt: '', updatedAt: '',
+      createdAt: '',
+      updatedAt: '',
     },
   ];
 
@@ -36,7 +51,10 @@ describe('RoutingService', () => {
     service = new RoutingService();
     vi.mocked(getAdapter).mockReturnValue({
       call: vi.fn().mockResolvedValue('research'),
-      getUrl: vi.fn(), getHeaders: vi.fn(), buildRequest: vi.fn(), parseChunk: vi.fn(),
+      getUrl: vi.fn(),
+      getHeaders: vi.fn(),
+      buildRequest: vi.fn(),
+      parseChunk: vi.fn(),
     } as any);
   });
 
@@ -71,7 +89,10 @@ describe('RoutingService', () => {
     });
 
     it('skips unavailable agents', () => {
-      const r = service.keywordMatch('研究', agents.map(a => ({ ...a, available: false })));
+      const r = service.keywordMatch(
+        '研究',
+        agents.map((a) => ({ ...a, available: false })),
+      );
       expect(r.agentId).toBeNull();
     });
   });
@@ -82,11 +103,15 @@ describe('RoutingService', () => {
     });
 
     it('uses lockedAgent', async () => {
-      expect((await service.route('hi', { agents, lockedAgent: 'research' })).agentId).toBe('research');
+      expect((await service.route('hi', { agents, lockedAgent: 'research' })).agentId).toBe(
+        'research',
+      );
     });
 
     it('skips in manual mode', async () => {
-      expect((await service.route('hi', { agents, routingMode: 'manual' })).agentId).toBe('general');
+      expect((await service.route('hi', { agents, routingMode: 'manual' })).agentId).toBe(
+        'general',
+      );
     });
   });
 
@@ -101,7 +126,9 @@ describe('RoutingService', () => {
     });
 
     it('null on API error', async () => {
-      vi.mocked(getAdapter).mockReturnValue({ call: vi.fn().mockRejectedValue(new Error('e')) } as any);
+      vi.mocked(getAdapter).mockReturnValue({
+        call: vi.fn().mockRejectedValue(new Error('e')),
+      } as any);
       expect(await service.llmClassify('a', [agents[1]])).toBeNull();
     });
 

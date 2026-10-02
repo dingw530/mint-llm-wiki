@@ -1,5 +1,15 @@
 import type { Agent, JevSettings } from '../../types.js';
-import type { JevFailureReason } from '../jev/types.js';
+/** Failure reasons shared by routing adapters; the domain owns the fallback contract. */
+export type RoutingFailureReason =
+  | 'not_configured'
+  | 'invalid_key'
+  | 'invalid_request'
+  | 'rate_limited'
+  | 'overloaded'
+  | 'timeout'
+  | 'network_error'
+  | 'malformed_response'
+  | 'unknown';
 
 /** 一次路由决策的来源，"原有实现"与"Jev 实现"在此统一。 */
 export type RouteMethod = 'keyword' | 'llm' | 'jev' | 'fallback';
@@ -31,7 +41,7 @@ export interface AgentRoutingDecision {
 export type AgentRoutingOutcome =
   | { kind: 'decision'; decision: AgentRoutingDecision }
   | { kind: 'abstain'; reason: RouteAbstainReason }
-  | { kind: 'unavailable'; reason: JevFailureReason; message: string };
+  | { kind: 'unavailable'; reason: RoutingFailureReason; message: string };
 
 /** 一个可替换的路由决策来源。实现之间不得互相引用。 */
 export interface AgentRoutingProvider {

@@ -12,7 +12,7 @@ import * as memoryScopeRepository from '../infrastructure/persistence/memoryScop
 import type { MemoryScopeSnapshot } from '../domains/memory/index.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
 import * as agentService from './api/agentService.js';
-import { routingService } from './api/routingService.js';
+import { routingService } from '../bootstrap/routing.js';
 import { streamChat } from './aiProxy.js';
 import { reactChat } from './reactLoopCore.js';
 import { getAllToolDefinitions } from './toolOrchestration.js';

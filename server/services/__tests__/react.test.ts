@@ -170,7 +170,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       findById: vi.fn().mockReturnValue(null),
     }));
 
-    vi.doMock('../api/routingService.js', () => ({
+    vi.doMock('../../bootstrap/routing.js', () => ({
       routingService: {
         route: vi.fn().mockResolvedValue({ agentId: 'general', confidence: 0, method: 'fallback' }),
       },
@@ -269,7 +269,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       findById: vi.fn().mockReturnValue(null),
     }));
 
-    vi.doMock('../api/routingService.js', () => ({
+    vi.doMock('../../bootstrap/routing.js', () => ({
       routingService: {
         route: vi
           .fn()
@@ -394,7 +394,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       findById: vi.fn().mockReturnValue(null),
     }));
 
-    vi.doMock('../api/routingService.js', () => ({
+    vi.doMock('../../bootstrap/routing.js', () => ({
       routingService: {
         route: vi.fn().mockResolvedValue({ agentId: 'general', confidence: 0, method: 'fallback' }),
       },

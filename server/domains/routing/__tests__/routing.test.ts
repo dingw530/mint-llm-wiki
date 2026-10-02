@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { RoutingService } from '../routingService.js';
+import { RoutingService } from '../../../bootstrap/routing.js';
 import { createLogger } from '../../../utils/logger.js';
 import type { Agent } from '../../../types.js';
 
@@ -196,7 +196,7 @@ describe('RoutingService.route', () => {
         mcpServerIds: [],
         available: true,
         errorMessage: null,
-        triggerKeywords: ['论文资料'],  // won't match '研究'
+        triggerKeywords: ['论文资料'], // won't match '研究'
         createdAt: '',
         updatedAt: '',
       },

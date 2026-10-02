@@ -1,12 +1,20 @@
-import type { JevSettings } from '../../types.js';
-import { createJevRoutingProvider } from './jevRoutingProvider.js';
-import { createKeywordExactProvider } from './keywordExactProvider.js';
-import { createLegacyRoutingProvider } from './legacyRoutingProvider.js';
-import type { RoutingStep } from './types.js';
+import type { Agent, JevSettings } from '../types.js';
+import { createJevRoutingProvider } from '../infrastructure/ai/jevRoutingProvider.js';
+import { llmClassifyAgents } from '../infrastructure/ai/llmRoutingClassifier.js';
+import {
+  GENERAL_AGENT_ID,
+  createKeywordExactProvider,
+  createLegacyRoutingProvider,
+} from '../domains/routing/index.js';
+import type { RoutingStep } from '../domains/routing/index.js';
+
+/** Bind the model classifier to the domain's fallback Agent id. */
+export const classify = (message: string, candidates: readonly Agent[]) =>
+  llmClassifyAgents(message, candidates, GENERAL_AGENT_ID);
 
 /** provider 是无状态单例，配置每次由调用方传入，因此每条消息零分配。 */
-const LEGACY_PROVIDER = createLegacyRoutingProvider();
-const JEV_PROVIDER = createJevRoutingProvider();
+const LEGACY_PROVIDER = createLegacyRoutingProvider(classify);
+const JEV_PROVIDER = createJevRoutingProvider(GENERAL_AGENT_ID);
 const KEYWORD_EXACT_PROVIDER = createKeywordExactProvider();
 
 /** 只含原有实现的单步列表；Jev 关闭与异常兜底都使用它。 */

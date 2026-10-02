@@ -1,11 +1,8 @@
-export { createDefaultRoutingSteps, LEGACY_ROUTING_STEPS } from './defaultRoutingSteps.js';
-export { createJevRoutingProvider } from './jevRoutingProvider.js';
 export { createKeywordExactProvider } from './keywordExactProvider.js';
 export {
   GENERAL_AGENT_ID,
   createLegacyRoutingProvider,
   keywordMatchAgents,
-  llmClassifyAgents,
 } from './legacyRoutingProvider.js';
 export { formatRoutingLogMethod, resolveRoute } from './routingPolicy.js';
 export type {
@@ -20,3 +17,12 @@ export type {
   RoutingResolution,
   RoutingStep,
 } from './types.js';
+export { RoutingService } from './routingService.js';
+export type {
+  RouteResult,
+  RoutingContext,
+  RoutingHooks,
+  RoutingStepFactory,
+  SubTask,
+} from './routingService.js';
+export type { RoutingClassifier, RoutingDependencies } from './ports.js';

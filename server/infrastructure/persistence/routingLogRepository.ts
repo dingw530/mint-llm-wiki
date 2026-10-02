@@ -1,4 +1,4 @@
-import { getDb } from '../db.js';
+import { getDb } from '../../db.js';
 
 export interface RoutingLogEntry {
   id: string;
@@ -52,10 +52,12 @@ function toCamelCase(row: RoutingLogEntry): RoutingLogResult {
 
 export function create(entry: RoutingLogEntry): void {
   const db = getDb();
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO routing_logs (id, conversation_id, message_id, agent_id, confidence, method, latency_ms, message_preview, locked_agent, routing_mode, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+  `,
+  ).run(
     entry.id,
     entry.conversation_id,
     entry.message_id,
@@ -85,9 +87,9 @@ export function findAll(filter: RoutingLogFilter = {}): RoutingLogResult[] {
   const pageSize = filter.pageSize || 20;
   const offset = (page - 1) * pageSize;
 
-  const rows = db.prepare(
-    `SELECT * FROM routing_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`
-  ).all(...params, pageSize, offset) as RoutingLogEntry[];
+  const rows = db
+    .prepare(`SELECT * FROM routing_logs ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+    .all(...params, pageSize, offset) as RoutingLogEntry[];
 
   return rows.map(toCamelCase);
 }

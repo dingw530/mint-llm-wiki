@@ -54,6 +54,22 @@ Memory domain implementation imports only its own domain modules, `infrastructur
 
 `server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. This rule applies while the rest of `services/api/`, `repositories/`, and the server runtime remain in their current locations. Do not treat the Memory migration as completion of the wider Server structure proposal.
 
+### Routing domain boundary (incremental migration)
+
+```text
+server/
+  domains/routing/                # Agent choice rules, fallback policy, hooks and runtime ports
+  infrastructure/ai/            # Jev routing provider and LLM classifier
+  infrastructure/persistence/   # routing_logs repository and writer
+  bootstrap/routing.ts           # RoutingService and audit-query composition
+  bootstrap/routingSteps.ts      # configured provider order and adapter instances
+```
+
+Routing chooses an Agent; HTTP routing remains in the existing endpoints/routes layout.
+The domain imports only its own modules, type-only `server/types.ts`, and the shared logger/error helpers. Configuration, model classification and audit writes are injected through `RoutingDependencies`. Infrastructure imports Routing type contracts through the public index; bootstrap supplies the fallback Agent id and audit method formatting. Outside domain consumers use the public index for domain APIs or `bootstrap/routing.ts` for the configured service and log queries.
+
+`server/architecture/routingBoundary.ts` resolves static imports, re-exports and literal dynamic imports with TypeScript. Its tests reject domain dependencies on settings/models/persistence, deep consumer imports, runtime domain imports from Routing infrastructure, and direct infrastructure access outside bootstrap. Focused tests may access internal modules. The file mapping, history checks and verification limits are recorded in [Routing migration evidence](routing-domain-migration.md).
+
 ## Client Layer Hierarchy
 
 ```

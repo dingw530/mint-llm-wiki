@@ -1,26 +1,11 @@
-import { v4 as uuidv4 } from 'uuid';
 import { createLogger } from '../../utils/logger.js';
 import { getErrorMessage } from '../../utils/typeGuards.js';
-import * as settingsService from './settingsService.js';
-import * as routingLogRepo from '../../repositories/routingLogRepository.js';
-import {
-  createDefaultRoutingSteps,
-  formatRoutingLogMethod,
-  keywordMatchAgents,
-  LEGACY_ROUTING_STEPS,
-  llmClassifyAgents,
-  resolveRoute,
-} from '../routingProviders/index.js';
-import type { KeywordMatchResult } from '../routingProviders/legacyRoutingProvider.js';
-import type {
-  RouteMethod,
-  RoutingAttempt,
-  RoutingResolution,
-  RoutingStep,
-} from '../routingProviders/types.js';
-import { DISABLED_JEV_SETTINGS } from '../jev/config.js';
+import { GENERAL_AGENT_ID, keywordMatchAgents } from './legacyRoutingProvider.js';
+import { resolveRoute } from './routingPolicy.js';
+import type { KeywordMatchResult } from './legacyRoutingProvider.js';
+import type { RouteMethod, RoutingAttempt, RoutingResolution, RoutingStep } from './types.js';
 import type { Agent, JevSettings } from '../../types.js';
-import type { RuntimeContext } from '../runtime/runtimeContext.js';
+import type { RoutingDependencies } from './ports.js';
 
 // ── 类型定义 ──
 
@@ -57,7 +42,7 @@ export interface RoutingContext {
   conversationId?: string;
   messageId?: string;
   messagePreview?: string | null;
-  runtimeContext?: RuntimeContext;
+  runtimeContext?: { getJevSettings(): JevSettings };
 }
 
 /** 组装本次路由 provider 步的工厂；默认交给 `createDefaultRoutingSteps`。 */
@@ -75,9 +60,6 @@ const NOOP_HOOKS: RoutingHooks = {
   decomposeTask: async () => [],
 };
 
-/** 默认步工厂：按 Jev 实验设置组装 provider 步。 */
-const defaultStepFactory: RoutingStepFactory = (jev) => createDefaultRoutingSteps(jev);
-
 // ── RoutingService ──
 
 export class RoutingService {
@@ -85,7 +67,17 @@ export class RoutingService {
   private stepFactory: RoutingStepFactory;
   private log = createLogger('routing');
 
-  constructor(hooks?: Partial<RoutingHooks>, stepFactory: RoutingStepFactory = defaultStepFactory) {
+  /**
+   * Construct a Routing use case with explicit runtime capabilities.
+   * @param dependencies Configuration, model and audit ports
+   * @param hooks Optional request hooks
+   * @param stepFactory Optional provider plan override
+   */
+  constructor(
+    private readonly dependencies: RoutingDependencies,
+    hooks?: Partial<RoutingHooks>,
+    stepFactory: RoutingStepFactory = dependencies.createDefaultSteps,
+  ) {
     this.hooks = { ...NOOP_HOOKS, ...hooks };
     this.stepFactory = stepFactory;
   }
@@ -108,7 +100,7 @@ export class RoutingService {
     const hookResult = await this.hooks.beforeRoute(message, context);
     const effectiveMessage = hookResult?.message ?? message;
     if (hookResult?.skip) {
-      return this.finalize(this.earlyResult('general', 0, Date.now() - startTime), context);
+      return this.finalize(this.earlyResult(GENERAL_AGENT_ID, 0, Date.now() - startTime), context);
     }
 
     // 锁定 Agent 检测
@@ -126,7 +118,7 @@ export class RoutingService {
     // 手动模式检测
     if (context.routingMode === 'manual') {
       this.log.info('route: manual mode, skip routing', { conversationId: context.conversationId });
-      return this.finalize(this.earlyResult('general', 0, Date.now() - startTime), context);
+      return this.finalize(this.earlyResult(GENERAL_AGENT_ID, 0, Date.now() - startTime), context);
     }
 
     const resolution = await this.resolveWithProviders(effectiveMessage, context);
@@ -168,7 +160,7 @@ export class RoutingService {
     message: string,
     candidates: Agent[],
   ): Promise<{ agentId: string; confidence: number } | null> {
-    return llmClassifyAgents(message, candidates);
+    return this.dependencies.classify(message, candidates);
   }
 
   /** 构造跳过自动路由时的结论，不带任何 provider 尝试。 */
@@ -189,14 +181,16 @@ export class RoutingService {
   ): Promise<RoutingResolution> {
     const input = { message, agents: context.agents };
     try {
-      const jev = context.runtimeContext?.getJevSettings() ?? settingsService.getJevSettings();
+      const jev = context.runtimeContext?.getJevSettings() ?? this.dependencies.getJevSettings();
       const steps = this.stepFactory(jev, message, context);
       return await resolveRoute(input, steps, { jev });
     } catch (error) {
       this.log.warn('route: provider setup failed, falling back to legacy', {
         error: getErrorMessage(error),
       });
-      return resolveRoute(input, LEGACY_ROUTING_STEPS, { jev: DISABLED_JEV_SETTINGS });
+      return resolveRoute(input, this.dependencies.legacySteps, {
+        jev: this.dependencies.disabledJevSettings,
+      });
     }
   }
 
@@ -210,19 +204,7 @@ export class RoutingService {
     // 记录到 routing_logs 表
     if (context.conversationId) {
       try {
-        routingLogRepo.create({
-          id: uuidv4(),
-          conversation_id: context.conversationId,
-          message_id: context.messageId || null,
-          agent_id: result.agentId,
-          confidence: result.confidence,
-          method: formatRoutingLogMethod(result.attempts, result.method),
-          latency_ms: result.latencyMs,
-          message_preview: context.messagePreview || null,
-          locked_agent: context.lockedAgent || null,
-          routing_mode: context.routingMode || null,
-          created_at: new Date().toISOString(),
-        });
+        this.dependencies.recordRoute(result, context);
       } catch (err) {
         this.log.error('failed to write routing log', { error: String(err) });
       }
@@ -231,6 +213,3 @@ export class RoutingService {
     return result;
   }
 }
-
-// 单例导出
-export const routingService = new RoutingService();
