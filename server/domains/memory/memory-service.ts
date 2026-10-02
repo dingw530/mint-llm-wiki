@@ -19,12 +19,12 @@ import {
   MEMORY_TOKENIZER_VERSION,
   rankMemoryCandidates,
   toMemorySearchDocument,
-} from './memoryQuery.js';
-import { canonicalMemoryKey, normalizeMemoryOperations } from './memorySemanticPolicy.js';
-import type { MemorySemanticClassifier } from './memorySemanticPolicy.js';
-import { shouldPromoteToCore } from './memoryCorePolicy.js';
-import { packMemoryContext } from './memoryContextPacking.js';
-import type { MemoryContextPackingResult, MemoryPackingBudget } from './memoryContextPacking.js';
+} from './memory-query.js';
+import { canonicalMemoryKey, normalizeMemoryOperations } from './memory-semantic-policy.js';
+import type { MemorySemanticClassifier } from './memory-semantic-policy.js';
+import { shouldPromoteToCore } from './memory-core-policy.js';
+import { packMemoryContext } from './memory-context-packing.js';
+import type { MemoryContextPackingResult, MemoryPackingBudget } from './memory-context-packing.js';
 import type { MemoryExtractionClient } from './ports.js';
 import {
   CATEGORY_LABELS,
@@ -37,7 +37,7 @@ import {
   MEMORY_CANDIDATE_LIMIT,
   MEMORY_RECALL_LIMIT,
   MEMORY_QUERY_CHARACTER_LIMIT,
-} from './memoryPolicy.js';
+} from './memory-policy.js';
 
 export { CATEGORY_LABELS, CATEGORY_ORDER };
 

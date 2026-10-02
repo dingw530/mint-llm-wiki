@@ -6,7 +6,7 @@ import {
   CATEGORY_LABELS,
   MEMORY_CONTEXT_PREFIX,
   MEMORY_CONTEXT_SUFFIX,
-} from './memoryPolicy.js';
+} from './memory-policy.js';
 import type { Memory, MemoryScopeSnapshot } from './types.js';
 
 export type MemorySkipReason =

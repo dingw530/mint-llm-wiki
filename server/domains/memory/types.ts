@@ -1,4 +1,4 @@
-import type { MemorySemanticDecision } from './memorySemanticPolicy.js';
+import type { MemorySemanticDecision } from './memory-semantic-policy.js';
 export type MemoryStatus = 'active' | 'superseded' | 'deleted';
 export type MemoryType = 'semantic' | 'episodic' | 'procedural';
 export type MemoryOperationAction = 'ADD' | 'UPDATE' | 'NOOP' | 'DELETE';

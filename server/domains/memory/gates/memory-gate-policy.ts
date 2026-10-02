@@ -1,4 +1,4 @@
-import { createLegacyMemoryGateProvider } from './legacyMemoryGateProvider.js';
+import { createLegacyMemoryGateProvider } from './legacy-memory-gate-provider.js';
 import type {
   MemoryGateAttempt,
   MemoryGateConfig,

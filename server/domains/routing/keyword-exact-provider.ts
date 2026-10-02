@@ -1,4 +1,4 @@
-import { keywordMatchAgents } from './legacyRoutingProvider.js';
+import { keywordMatchAgents } from './legacy-routing-provider.js';
 import type { AgentRoutingProvider } from './types.js';
 
 /**

@@ -9,7 +9,7 @@
       "--workspace=mint-server",
       "test",
       "--",
-      "domains/memory/__tests__/memorySemanticPolicy.test.ts",
+      "domains/memory/__tests__/memory-semantic-policy.test.ts",
       "infrastructure/ai/__tests__/memorySemanticClassifier.test.ts"
     ],
     "timeoutMs": 120000

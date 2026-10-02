@@ -29,7 +29,7 @@ vi.mock('../../../infrastructure/persistence/memorySearchRepository.js', () => (
   verifyIndex: vi.fn(),
 }));
 
-import * as memoryService from '../memoryService.js';
+import * as memoryService from '../memory-service.js';
 import * as memoryRepo from '../../../infrastructure/persistence/memoryRepository.js';
 import * as memorySearchRepo from '../../../infrastructure/persistence/memorySearchRepository.js';
 import type { MemoryGateResolution } from '../../../domains/memory/gates/types.js';

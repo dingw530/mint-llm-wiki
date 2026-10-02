@@ -1,5 +1,5 @@
 import { getErrorMessage } from '../../utils/typeGuards.js';
-import { GENERAL_AGENT_ID } from './legacyRoutingProvider.js';
+import { GENERAL_AGENT_ID } from './legacy-routing-provider.js';
 import type {
   AgentRoutingInput,
   AgentRoutingOutcome,

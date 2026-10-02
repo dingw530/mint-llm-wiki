@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AiSettings } from '../../../types.js';
 import type { MemoryExtractionMessage, MemoryJob } from '../types.js';
 import type { MemoryExtractionClient } from '../ports.js';
-import { createMemoryJobService, type MemoryJobRepositoryPort } from '../memoryJobService.js';
+import { createMemoryJobService, type MemoryJobRepositoryPort } from '../memory-job-service.js';
 
 const mocks = vi.hoisted(() => ({
   performExtraction: vi.fn(),
   recordFailure: vi.fn(),
 }));
 
-vi.mock('../memoryService.js', () => ({
+vi.mock('../memory-service.js', () => ({
   performExtractionWithClient: mocks.performExtraction,
   recordMemoryProcessingFailure: mocks.recordFailure,
 }));

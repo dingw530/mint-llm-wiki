@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { canonicalMemoryKey, normalizeMemoryOperations } from '../memorySemanticPolicy.js';
-import type { MemorySemanticDecision, MemorySemanticInput } from '../memorySemanticPolicy.js';
+import { canonicalMemoryKey, normalizeMemoryOperations } from '../memory-semantic-policy.js';
+import type { MemorySemanticDecision, MemorySemanticInput } from '../memory-semantic-policy.js';
 
 const messages = [{ id: 'u1', role: 'user', content: '请用中文回答', createdAt: '' }];
 

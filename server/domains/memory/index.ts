@@ -20,7 +20,7 @@ export type {
   MemoryType,
   UpdateMemoryParams,
 } from './types.js';
-export { createMemorySpaceService } from './memorySpaceService.js';
+export { createMemorySpaceService } from './memory-space-service.js';
 export {
   analyzeMemoryQuery,
   buildMemoryFtsExpression,
@@ -29,20 +29,20 @@ export {
   rankMemoryCandidates,
   tokenizeMemoryText,
   toMemorySearchDocument,
-} from './memoryQuery.js';
+} from './memory-query.js';
 export type {
   MemoryQueryAnalysis,
   MemorySearchCandidate,
   MemorySearchDocument,
-} from './memoryQuery.js';
-export { packMemoryContext } from './memoryContextPacking.js';
+} from './memory-query.js';
+export { packMemoryContext } from './memory-context-packing.js';
 export type {
   MemoryContextObservation,
   MemoryContextPackingResult,
   MemoryPackingBudget,
   MemorySkipReason,
-} from './memoryContextPacking.js';
-export { createMemoryJobService } from './memoryJobService.js';
+} from './memory-context-packing.js';
+export { createMemoryJobService } from './memory-job-service.js';
 export {
   DEFAULT_MEMORY_GATE_PROVIDERS,
   evaluateMemoryGate,
@@ -55,7 +55,7 @@ export {
   CATEGORY_ORDER,
   MEMORY_CONTEXT_PREFIX,
   MEMORY_CONTEXT_SUFFIX,
-} from './memoryPolicy.js';
+} from './memory-policy.js';
 export {
   applyMemoryOperations,
   buildMemoryContext,
@@ -71,7 +71,7 @@ export {
   performExtractionWithClient,
   prepareMemoryContext,
   updateMemory,
-} from './memoryService.js';
+} from './memory-service.js';
 export type { MemoryExtractionClient } from './ports.js';
 export type {
   JevFailureReason,
@@ -91,4 +91,4 @@ export type {
   MemorySemanticInput,
   MemorySemanticDecision,
   MemorySemanticKind,
-} from './memorySemanticPolicy.js';
+} from './memory-semantic-policy.js';

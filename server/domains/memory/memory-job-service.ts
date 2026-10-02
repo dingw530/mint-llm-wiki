@@ -1,8 +1,8 @@
 import type { AiSettings } from '../../types.js';
 import type { MemoryExtractionMessage, MemoryJob, MemoryScopeSnapshot } from './types.js';
-import type { MemorySemanticClassifier } from './memorySemanticPolicy.js';
+import type { MemorySemanticClassifier } from './memory-semantic-policy.js';
 import type { MemoryExtractionClient } from './ports.js';
-import * as memoryService from './memoryService.js';
+import * as memoryService from './memory-service.js';
 
 export interface MemoryJobRepositoryPort {
   enqueue(

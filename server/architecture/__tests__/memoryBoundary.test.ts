@@ -15,15 +15,15 @@ function edge(
 describe('Memory domain dependency boundary', () => {
   test('allows internal, infrastructure, type-only shared contracts and public consumers', () => {
     const dependencies = [
-      edge('domains/memory/memoryService.ts', './types.js', 'domains/memory/types.ts', true),
+      edge('domains/memory/memory-service.ts', './types.js', 'domains/memory/types.ts', true),
       edge(
-        'domains/memory/memoryService.ts',
+        'domains/memory/memory-service.ts',
         '../../infrastructure/persistence/memoryRepository.js',
         'infrastructure/persistence/memoryRepository.ts',
       ),
-      edge('domains/memory/memoryService.ts', '../../types.js', 'types.ts', true),
+      edge('domains/memory/memory-service.ts', '../../types.js', 'types.ts', true),
       edge(
-        'domains/memory/memoryService.ts',
+        'domains/memory/memory-service.ts',
         '../../services/utils/tokenEstimator.js',
         'services/utils/tokenEstimator.ts',
       ),
@@ -54,7 +54,7 @@ describe('Memory domain dependency boundary', () => {
   test('rejects domain-to-domain internals, infrastructure runtime calls and deep consumer imports', () => {
     const dependencies = [
       edge(
-        'domains/memory/memoryService.ts',
+        'domains/memory/memory-service.ts',
         '../../services/api/routingService.js',
         'services/api/routingService.ts',
       ),
@@ -65,20 +65,20 @@ describe('Memory domain dependency boundary', () => {
       ),
       edge(
         'endpoints/definitions/memories.ts',
-        '../../domains/memory/memoryService.js',
-        'domains/memory/memoryService.ts',
+        '../../domains/memory/memory-service.js',
+        'domains/memory/memory-service.ts',
       ),
       edge(
         'services/api/memoryService.ts',
         '../../infrastructure/ai/memoryExtractionClient.js',
         'infrastructure/ai/memoryExtractionClient.ts',
       ),
-      edge('domains/memory/memoryService.ts', './missing.js', 'unresolved:./missing.js'),
+      edge('domains/memory/memory-service.ts', './missing.js', 'unresolved:./missing.js'),
     ];
 
     expect(findMemoryBoundaryViolations(dependencies, SERVER_ROOT)).toEqual([
       expect.objectContaining({
-        importer: 'domains/memory/memoryService.ts',
+        importer: 'domains/memory/memory-service.ts',
         target: 'services/api/routingService.ts',
       }),
       expect.objectContaining({
@@ -87,14 +87,14 @@ describe('Memory domain dependency boundary', () => {
       }),
       expect.objectContaining({
         importer: 'endpoints/definitions/memories.ts',
-        target: 'domains/memory/memoryService.ts',
+        target: 'domains/memory/memory-service.ts',
       }),
       expect.objectContaining({
         importer: 'services/api/memoryService.ts',
         target: 'infrastructure/ai/memoryExtractionClient.ts',
       }),
       expect.objectContaining({
-        importer: 'domains/memory/memoryService.ts',
+        importer: 'domains/memory/memory-service.ts',
         reason: 'Memory contains an unresolved relative import',
       }),
     ]);

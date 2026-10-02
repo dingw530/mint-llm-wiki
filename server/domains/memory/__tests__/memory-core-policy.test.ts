@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shouldPromoteToCore } from '../memoryCorePolicy.js';
+import { shouldPromoteToCore } from '../memory-core-policy.js';
 
 const BASE_CANDIDATE = {
   memoryKey: 'preference.response_language',

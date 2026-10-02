@@ -1,5 +1,5 @@
 import type { Memory } from './types.js';
-import { MEMORY_MINIMUM_QUERY_COVERAGE } from './memoryPolicy.js';
+import { MEMORY_MINIMUM_QUERY_COVERAGE } from './memory-policy.js';
 
 export const MEMORY_TOKENIZER_VERSION = 1;
 export const MEMORY_QUERY_TOKEN_LIMIT = 32;

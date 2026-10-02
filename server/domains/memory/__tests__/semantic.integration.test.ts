@@ -15,10 +15,10 @@ import * as settingsService from '../../../services/api/settingsService.js';
 import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
 import { createMemorySemanticClassifier } from '../../../infrastructure/ai/memorySemanticClassifier.js';
 import { performMemoryExtraction } from '../../../bootstrap/memory.js';
-import { createMemoryJobService } from '../memoryJobService.js';
-import { performExtractionWithClient, prepareMemoryContext } from '../memoryService.js';
+import { createMemoryJobService } from '../memory-job-service.js';
+import { performExtractionWithClient, prepareMemoryContext } from '../memory-service.js';
 import type { MemoryOperation, MemoryScopeSnapshot } from '../types.js';
-import type { MemorySemanticDecision } from '../memorySemanticPolicy.js';
+import type { MemorySemanticDecision } from '../memory-semantic-policy.js';
 import type { MemoryCompletionMessage, MemoryCompletionOptions } from '../ports.js';
 
 const conversationId = 'semantic-integration-conversation';

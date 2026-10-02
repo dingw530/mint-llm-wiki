@@ -15,7 +15,7 @@ vi.mock('../../../services/api/settingsService.js', () => ({
 }));
 
 import { getAdapter } from '../../../services/adapters/apiAdapter.js';
-import { GENERAL_AGENT_ID, createLegacyRoutingProvider } from '../legacyRoutingProvider.js';
+import { GENERAL_AGENT_ID, createLegacyRoutingProvider } from '../legacy-routing-provider.js';
 import type { Agent } from '../../../types.js';
 import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
 

@@ -1,9 +1,9 @@
-export { DEFAULT_MEMORY_GATE_PROVIDERS, evaluateMemoryGate } from './memoryGatePolicy.js';
+export { DEFAULT_MEMORY_GATE_PROVIDERS, evaluateMemoryGate } from './memory-gate-policy.js';
 export {
   createLegacyMemoryGateProvider,
   describeLegacySkipReason,
   isConversationValuable,
-} from './legacyMemoryGateProvider.js';
+} from './legacy-memory-gate-provider.js';
 export type {
   JevFailureReason,
   JevMemoryGateSettings,

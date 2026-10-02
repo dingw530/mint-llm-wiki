@@ -5,7 +5,7 @@ import recallFixture from './fixtures/recall-cases.json';
 import { getDb } from '../../../db.js';
 import * as memoryRepository from '../../../infrastructure/persistence/memoryRepository.js';
 import { initializeMemorySearchIndex, prepareMemoryContext } from '../index.js';
-import { MEMORY_RETRIEVAL_POLICY_VERSION } from '../memoryPolicy.js';
+import { MEMORY_RETRIEVAL_POLICY_VERSION } from '../memory-policy.js';
 
 interface RecallCase {
   caseId: string;

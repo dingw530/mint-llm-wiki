@@ -4,8 +4,8 @@ import {
   buildMemoryFtsExpression,
   rankMemoryCandidates,
   tokenizeMemoryText,
-} from '../memoryQuery.js';
-import type { MemorySearchCandidate } from '../memoryQuery.js';
+} from '../memory-query.js';
+import type { MemorySearchCandidate } from '../memory-query.js';
 
 function candidate(
   id: string,

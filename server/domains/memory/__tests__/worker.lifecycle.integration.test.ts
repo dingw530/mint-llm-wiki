@@ -7,7 +7,7 @@ import * as messageRepository from '../../../repositories/messageRepository.js';
 import type { AiSettings } from '../../../types.js';
 import type { MemoryExtractionMessage } from '../types.js';
 import type { MemoryExtractionClient } from '../ports.js';
-import { createMemoryJobService } from '../memoryJobService.js';
+import { createMemoryJobService } from '../memory-job-service.js';
 
 const conversationId = 'memory-lifecycle-integration-conversation';
 const userMessageId = 'memory-lifecycle-integration-user';

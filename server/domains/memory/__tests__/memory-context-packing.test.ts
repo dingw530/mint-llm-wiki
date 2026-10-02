@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Memory, MemoryScopeSnapshot } from '../types.js';
-import { packMemoryContext } from '../memoryContextPacking.js';
+import { packMemoryContext } from '../memory-context-packing.js';
 
 const GLOBAL_SCOPE: MemoryScopeSnapshot = {
   scopeKind: 'global',

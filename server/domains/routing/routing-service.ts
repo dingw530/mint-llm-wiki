@@ -1,8 +1,8 @@
 import { createLogger } from '../../utils/logger.js';
 import { getErrorMessage } from '../../utils/typeGuards.js';
-import { GENERAL_AGENT_ID, keywordMatchAgents } from './legacyRoutingProvider.js';
-import { resolveRoute } from './routingPolicy.js';
-import type { KeywordMatchResult } from './legacyRoutingProvider.js';
+import { GENERAL_AGENT_ID, keywordMatchAgents } from './legacy-routing-provider.js';
+import { resolveRoute } from './routing-policy.js';
+import type { KeywordMatchResult } from './legacy-routing-provider.js';
 import type { RouteMethod, RoutingAttempt, RoutingResolution, RoutingStep } from './types.js';
 import type { Agent, JevSettings } from '../../types.js';
 import type { RoutingDependencies } from './ports.js';

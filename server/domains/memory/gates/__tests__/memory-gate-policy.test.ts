@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { evaluateMemoryGate } from '../memoryGatePolicy.js';
+import { evaluateMemoryGate } from '../memory-gate-policy.js';
 import type { MemoryGateProvider } from '../types.js';
 import type { JevSettings } from '../../../../types.js';
 

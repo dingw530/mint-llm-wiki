@@ -32,10 +32,10 @@
       "--workspace=mint-server",
       "test",
       "--",
-      "domains/memory/__tests__/memoryQuery.test.ts",
-      "domains/memory/__tests__/memoryCorePolicy.test.ts",
-      "domains/memory/__tests__/memoryContextPacking.test.ts",
-      "domains/memory/__tests__/memoryService.test.ts"
+      "domains/memory/__tests__/memory-query.test.ts",
+      "domains/memory/__tests__/memory-core-policy.test.ts",
+      "domains/memory/__tests__/memory-context-packing.test.ts",
+      "domains/memory/__tests__/memory-service.test.ts"
     ],
     "timeoutMs": 120000
   },

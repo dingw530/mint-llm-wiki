@@ -1,5 +1,5 @@
-import { AUTO_CORE_MEMORY_KEYS } from './memoryPolicy.js';
-import { tokenizeMemoryText } from './memoryQuery.js';
+import { AUTO_CORE_MEMORY_KEYS } from './memory-policy.js';
+import { tokenizeMemoryText } from './memory-query.js';
 import type { MemoryScopeSnapshot, MemoryType } from './types.js';
 
 export interface AutomaticCoreCandidate {

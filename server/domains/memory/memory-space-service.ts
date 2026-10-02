@@ -2,7 +2,7 @@ import type { MemoryScopeRepositoryPort } from './ports.js';
 import type { MemoryScopeSnapshot } from './types.js';
 import * as memoryRepository from '../../infrastructure/persistence/memoryRepository.js';
 import * as memorySearchRepository from '../../infrastructure/persistence/memorySearchRepository.js';
-import { MEMORY_TOKENIZER_VERSION, toMemorySearchDocument } from './memoryQuery.js';
+import { MEMORY_TOKENIZER_VERSION, toMemorySearchDocument } from './memory-query.js';
 
 /** Build validated knowledge-space and conversation-scope use cases. */
 export function createMemorySpaceService(repository: MemoryScopeRepositoryPort) {

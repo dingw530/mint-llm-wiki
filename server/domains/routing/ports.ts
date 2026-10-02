@@ -1,5 +1,5 @@
 import type { Agent, JevSettings } from '../../types.js';
-import type { RouteResult, RoutingContext, RoutingStepFactory } from './routingService.js';
+import type { RouteResult, RoutingContext, RoutingStepFactory } from './routing-service.js';
 import type { RoutingStep } from './types.js';
 
 /** Classify candidates with an external model, returning null when unavailable. */

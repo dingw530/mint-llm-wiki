@@ -10,16 +10,16 @@ describe('Routing domain boundary', () => {
   });
 
   it.each([
-    ['domains/routing/routingService.ts', 'services/api/settingsService.ts', false],
-    ['domains/routing/routingService.ts', 'infrastructure/ai/llmRoutingClassifier.ts', false],
-    ['services/messageService.ts', 'domains/routing/routingService.ts', false],
+    ['domains/routing/routing-service.ts', 'services/api/settingsService.ts', false],
+    ['domains/routing/routing-service.ts', 'infrastructure/ai/llmRoutingClassifier.ts', false],
+    ['services/messageService.ts', 'domains/routing/routing-service.ts', false],
     ['infrastructure/ai/jevRoutingProvider.ts', 'domains/routing/index.ts', false],
     [
       'endpoints/definitions/routingLogs.ts',
       'infrastructure/persistence/routingLogRepository.ts',
       false,
     ],
-    ['domains/routing/routingService.ts', 'unresolved:./missing.js', true],
+    ['domains/routing/routing-service.ts', 'unresolved:./missing.js', true],
   ])('rejects %s -> %s', (importer, target, typeOnly) => {
     expect(routingBoundaryViolation({ importer, target, typeOnly })).toBeTruthy();
   });
