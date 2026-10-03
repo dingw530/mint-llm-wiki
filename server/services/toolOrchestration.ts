@@ -1,6 +1,6 @@
 import type { ToolCall, ToolDefinition } from '../types.js';
 import { mcpService } from './api/mcpService.js';
-import * as agentRepo from '../repositories/agentRepository.js';
+import * as agentService from '../domains/agents/index.js';
 import {
   McpToolAdapter,
   toolRegistry as runtimeRegistry,
@@ -43,7 +43,7 @@ export async function getAllToolDefinitions(agentId?: string): Promise<ToolDefin
   }
 
   // 自定义 Agent：根据 mcp_server_ids 加载其全部工具
-  const agent = agentRepo.findById(agentId);
+  const agent = agentService.findById(agentId);
   if (!agent || !agent.available) return tools;
 
   // 加载 Agent 绑定的 MCP Server 的全部工具

@@ -6,7 +6,7 @@ vi.mock('../../../infrastructure/ai/memory-extraction-client.js', () => ({
 }));
 
 import { getDb } from '../../../db.js';
-import * as conversationRepository from '../../../repositories/conversationRepository.js';
+import * as conversationRepository from '../../../infrastructure/persistence/conversation-repository.js';
 import * as messageRepository from '../../../repositories/messageRepository.js';
 import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
 import * as memoryJobRepository from '../../../infrastructure/persistence/memory-job-repository.js';

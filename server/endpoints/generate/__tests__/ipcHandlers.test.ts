@@ -6,7 +6,7 @@ process.env.NODE_ENV = 'test';
 process.env.AI_CHAT_DB_PATH = TEST_DB_PATH;
 process.env.AI_CHAT_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef';
 
-vi.mock('../../../services/api/agentService.js', () => ({
+vi.mock('../../../domains/agents/index.js', () => ({
   list: vi.fn(() => []),
   findById: vi.fn(() => null),
   create: vi.fn(),

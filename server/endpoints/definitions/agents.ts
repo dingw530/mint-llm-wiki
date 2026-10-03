@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as agentService from '../../services/api/agentService.js';
+import * as agentService from '../../domains/agents/index.js';
 import { httpError } from '../helpers.js';
 import type { EndpointDescriptor } from '../types.js';
 
@@ -57,7 +57,15 @@ export const agentsEndpoints: EndpointDescriptor[] = [
       const existing = agentService.findById(id);
       if (!existing) throw httpError(404, 'Agent not found');
       const fields: Record<string, unknown> = {};
-      for (const key of ['name', 'description', 'type', 'systemPrompt', 'mcpServerIds', 'available', 'triggerKeywords']) {
+      for (const key of [
+        'name',
+        'description',
+        'type',
+        'systemPrompt',
+        'mcpServerIds',
+        'available',
+        'triggerKeywords',
+      ]) {
         if (data[key] !== undefined) fields[key] = data[key];
       }
       // 不允许修改内置 Agent 的 type
@@ -67,10 +75,7 @@ export const agentsEndpoints: EndpointDescriptor[] = [
       const updated = agentService.update(id, fields);
       return { agent: updated };
     },
-    args: [
-      { from: 'path', name: 'id' },
-      { from: 'body' },
-    ],
+    args: [{ from: 'path', name: 'id' }, { from: 'body' }],
     result: 'direct',
   },
   {

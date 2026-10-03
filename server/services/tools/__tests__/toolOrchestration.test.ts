@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // Must mock before importing
-vi.mock('../../../repositories/agentRepository.js', () => ({
+vi.mock('../../../domains/agents/index.js', () => ({
   findById: vi.fn(),
 }));
 
@@ -30,7 +30,8 @@ vi.mock('../index.js', () => {
       has: (name: string) => toolMap.has(name),
       get: (name: string) => toolMap.get(name),
       getCallSummary: (name: string, input: unknown) => toolMap.get(name)?.getCallSummary?.(input),
-      getResultSummary: (name: string, result: unknown) => toolMap.get(name)?.getResultSummary?.(result),
+      getResultSummary: (name: string, result: unknown) =>
+        toolMap.get(name)?.getResultSummary?.(result),
       getAllEnabled: () => Array.from(toolMap.values()),
     },
     toolExecutor: {
@@ -44,11 +45,12 @@ vi.mock('../index.js', () => {
   };
 });
 
-import * as agentRepo from '../../../repositories/agentRepository.js';
+import * as agentRepo from '../../../domains/agents/index.js';
 import { mcpService } from '../../api/mcpService.js';
 import { toolExecutor } from '../index.js';
 
-const { getAllToolDefinitions, executeTool, getToolCallSummary, getToolResultSummary } = await import('../../toolOrchestration.js');
+const { getAllToolDefinitions, executeTool, getToolCallSummary, getToolResultSummary } =
+  await import('../../toolOrchestration.js');
 
 describe('toolRegistry', () => {
   beforeEach(() => {
@@ -69,14 +71,14 @@ describe('toolRegistry', () => {
       ]);
       const tools = await getAllToolDefinitions('general');
       expect(tools.length).toBeGreaterThan(0);
-      const names = tools.map(t => t.function.name);
+      const names = tools.map((t) => t.function.name);
       expect(names).toContain('http_fetch');
       expect(names).not.toContain('remote__search');
     });
 
     it('returns global tools when no agent id', async () => {
       const tools = await getAllToolDefinitions();
-      const names = tools.map(t => t.function.name);
+      const names = tools.map((t) => t.function.name);
       expect(names).toContain('http_fetch');
     });
 
@@ -107,28 +109,34 @@ describe('toolRegistry', () => {
       ]);
 
       const tools = await getAllToolDefinitions('custom-agent');
-      const names = tools.map(t => t.function.name);
+      const names = tools.map((t) => t.function.name);
       expect(names).not.toContain('my-tools__read_file');
     });
 
     it('returns global tools when custom agent not found', async () => {
       vi.mocked(agentRepo.findById).mockReturnValue(null);
       const tools = await getAllToolDefinitions('nonexistent');
-      const names = tools.map(t => t.function.name);
+      const names = tools.map((t) => t.function.name);
     });
   });
 
   describe('executeTool', () => {
     it('executes builtin tools', async () => {
-      const result = await executeTool({
-        id: 'call-1',
-        type: 'function',
-        function: { name: 'http_fetch', arguments: '{"url":"https://example.com"}' },
-      }, 'conv-1');
+      const result = await executeTool(
+        {
+          id: 'call-1',
+          type: 'function',
+          function: { name: 'http_fetch', arguments: '{"url":"https://example.com"}' },
+        },
+        'conv-1',
+      );
       expect(result).toBe('done');
       expect(toolExecutor.executeFromToolCall).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'call-1' }),
-        expect.objectContaining({ conversationId: 'conv-1', requestApproval: expect.any(Function) }),
+        expect.objectContaining({
+          conversationId: 'conv-1',
+          requestApproval: expect.any(Function),
+        }),
       );
     });
 
@@ -161,7 +169,6 @@ describe('toolRegistry', () => {
       });
       expect((result as any).error).toContain('未知工具');
     });
-
   });
 
   describe('summary', () => {
@@ -173,7 +180,12 @@ describe('toolRegistry', () => {
 
     it('returns undefined for unknown tools and invalid arguments', () => {
       expect(getToolCallSummary(unknownCall)).toBeUndefined();
-      expect(getToolCallSummary({ ...unknownCall, function: { ...unknownCall.function, arguments: '{' } })).toBeUndefined();
+      expect(
+        getToolCallSummary({
+          ...unknownCall,
+          function: { ...unknownCall.function, arguments: '{' },
+        }),
+      ).toBeUndefined();
       expect(getToolResultSummary(unknownCall, {})).toBeUndefined();
     });
   });

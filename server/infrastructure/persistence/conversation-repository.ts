@@ -1,5 +1,5 @@
-import { getDb } from '../db.js';
-import type { ConversationRow, Conversation } from '../types.js';
+import { getDb } from '../../db.js';
+import type { ConversationRow, Conversation } from '../../types.js';
 
 // 数据库 snake_case → API camelCase 转换
 function toCamelCase(row: ConversationRow): Conversation {

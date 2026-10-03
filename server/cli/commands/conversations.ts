@@ -2,7 +2,7 @@
 // 管理会话：列出、删除
 
 import chalk from 'chalk';
-import * as conversationService from '../../services/api/conversationService.js';
+import * as conversationService from '../../domains/conversations/index.js';
 
 export async function handleConversations(action: string, id?: string): Promise<void> {
   switch (action) {
@@ -16,7 +16,9 @@ export async function handleConversations(action: string, id?: string): Promise<
       for (const c of convs) {
         const shortId = c.id.substring(0, 8);
         const title = c.title.length > 30 ? c.title.substring(0, 30) + '...' : c.title;
-        console.log(`  ${chalk.cyan(shortId)}  ${chalk.white(title)}  ${chalk.dim(c.type)}  ${chalk.dim(new Date(c.updatedAt).toLocaleString())}`);
+        console.log(
+          `  ${chalk.cyan(shortId)}  ${chalk.white(title)}  ${chalk.dim(c.type)}  ${chalk.dim(new Date(c.updatedAt).toLocaleString())}`,
+        );
       }
       break;
     }

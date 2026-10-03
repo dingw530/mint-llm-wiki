@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // ── Mocks ──
 
-vi.mock('../../api/agentService.js', () => ({
+vi.mock('../../../domains/agents/index.js', () => ({
   list: vi.fn(),
   findById: vi.fn(),
 }));
@@ -15,7 +15,7 @@ vi.mock('../../reactLoopCore.js', () => ({
   reactChat: vi.fn(),
 }));
 
-import * as agentService from '../../api/agentService.js';
+import * as agentService from '../../../domains/agents/index.js';
 import * as settingsService from '../../api/settingsService.js';
 import { reactChat } from '../../reactLoopCore.js';
 import { InvokeAgentTool } from '../InvokeAgentTool.js';
@@ -97,8 +97,13 @@ describe('InvokeAgentTool', () => {
       available: true,
     } as any);
     vi.mocked(settingsService.getAiSettings).mockReturnValue({
-      apiUrl: '', apiKey: '', modelId: '', systemPrompt: '',
-      thinkingMode: false, memoryEnabled: false, wikiPath: '',
+      apiUrl: '',
+      apiKey: '',
+      modelId: '',
+      systemPrompt: '',
+      thinkingMode: false,
+      memoryEnabled: false,
+      wikiPath: '',
       wikiMaxFileSize: 0,
     } as any);
 

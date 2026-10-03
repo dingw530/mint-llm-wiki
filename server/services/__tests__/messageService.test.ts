@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-vi.mock('../../repositories/conversationRepository.js', () => ({
+vi.mock('../../domains/conversations/index.js', () => ({
   findById: vi.fn(),
   updateTimestamp: vi.fn(),
 }));
@@ -86,7 +86,7 @@ vi.mock('../../bootstrap/memory.js', () => ({
   })),
 }));
 
-vi.mock('../api/agentService.js', () => ({
+vi.mock('../../domains/agents/index.js', () => ({
   list: vi.fn(() => []),
   findById: vi.fn(),
 }));
@@ -109,12 +109,12 @@ vi.mock('../toolOrchestration.js', () => ({
   getAllToolDefinitions: vi.fn().mockResolvedValue([]),
 }));
 
-import * as conversationRepo from '../../repositories/conversationRepository.js';
+import * as conversationRepo from '../../domains/conversations/index.js';
 import * as messageRepo from '../../repositories/messageRepository.js';
 import * as a2uiRepository from '../../repositories/a2uiRepository.js';
 import * as settingsService from '../api/settingsService.js';
 import * as memoryService from '../../domains/memory/index.js';
-import * as agentService from '../api/agentService.js';
+import * as agentService from '../../domains/agents/index.js';
 import { enqueueMemoryProcessing } from '../../bootstrap/memory.js';
 import { evaluateMemoryGate } from '../../bootstrap/memory.js';
 import { routingService } from '../../bootstrap/routing.js';

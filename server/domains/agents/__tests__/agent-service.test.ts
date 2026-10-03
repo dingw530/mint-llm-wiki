@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 // ── Mocks ──
 
-vi.mock('../../../repositories/agentRepository.js', () => ({
+vi.mock('../../../infrastructure/persistence/agent-repository.js', () => ({
   findAll: vi.fn(),
   findById: vi.fn(),
   create: vi.fn(),
@@ -10,8 +10,8 @@ vi.mock('../../../repositories/agentRepository.js', () => ({
   deleteById: vi.fn(),
 }));
 
-import * as agentRepo from '../../../repositories/agentRepository.js';
-import * as agentService from '../agentService.js';
+import * as agentRepo from '../../../infrastructure/persistence/agent-repository.js';
+import * as agentService from '../agent-service.js';
 import type { Agent } from '../../../types.js';
 
 // ── Fixtures ──

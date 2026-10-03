@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext } from './BaseTool.js';
 import { reactChat } from '../reactLoopCore.js';
-import * as agentService from '../api/agentService.js';
+import * as agentService from '../../domains/agents/index.js';
 import * as settingsService from '../api/settingsService.js';
 import { AccumulatingSink } from '../sink.js';
 
@@ -18,10 +18,19 @@ import { AccumulatingSink } from '../sink.js';
 const InvokeAgentInputSchema = z.object({
   agent_id: z.string().min(1, 'agent_id is required').describe('目标 Agent ID'),
   task: z.string().min(1, 'task is required').describe('要委派给该 Agent 的子任务描述'),
-  timeout_ms: z.coerce.number().int().min(5000).max(120000)
-    .optional().default(60000).describe('超时时间（毫秒），默认 60000'),
-  inherit_context: z.coerce.boolean()
-    .optional().default(false).describe('是否继承父对话的上下文历史，默认 false'),
+  timeout_ms: z.coerce
+    .number()
+    .int()
+    .min(5000)
+    .max(120000)
+    .optional()
+    .default(60000)
+    .describe('超时时间（毫秒），默认 60000'),
+  inherit_context: z.coerce
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('是否继承父对话的上下文历史，默认 false'),
 });
 
 type InvokeAgentInput = z.infer<typeof InvokeAgentInputSchema>;
@@ -45,9 +54,10 @@ export class InvokeAgentTool extends BaseTool<InvokeAgentInput, AgentResult> {
   readonly name = 'invoke_agent';
 
   get description(): string {
-    const agents = agentService.list()
-      .filter(a => a.available !== false && a.id !== 'orchestrator' && a.id !== 'general')
-      .map(a => `- ${a.id}: ${a.description || a.name}`)
+    const agents = agentService
+      .list()
+      .filter((a) => a.available !== false && a.id !== 'orchestrator' && a.id !== 'general')
+      .map((a) => `- ${a.id}: ${a.description || a.name}`)
       .join('\n');
 
     return `将子任务委派给指定的专业 Agent 执行，等待结果返回。
@@ -76,16 +86,26 @@ ${agents || '(暂无可用 Worker)'}
     const agent = agentService.findById(agentId);
     if (!agent) {
       return {
-        success: false, content: '', agentId, task,
+        success: false,
+        content: '',
+        agentId,
+        task,
         error: `Agent "${agentId}" not found`,
-        duration: Date.now() - startTime, toolCalls: 0, iterations: 0,
+        duration: Date.now() - startTime,
+        toolCalls: 0,
+        iterations: 0,
       };
     }
     if (agent.available === false) {
       return {
-        success: false, content: '', agentId, task,
+        success: false,
+        content: '',
+        agentId,
+        task,
         error: `Agent "${agentId}" is not available`,
-        duration: Date.now() - startTime, toolCalls: 0, iterations: 0,
+        duration: Date.now() - startTime,
+        toolCalls: 0,
+        iterations: 0,
       };
     }
 
@@ -93,9 +113,14 @@ ${agents || '(暂无可用 Worker)'}
     const settings = settingsService.getAiSettings();
     if (!settings.apiUrl || !settings.apiKey) {
       return {
-        success: false, content: '', agentId, task,
+        success: false,
+        content: '',
+        agentId,
+        task,
         error: 'AI API not configured',
-        duration: Date.now() - startTime, toolCalls: 0, iterations: 0,
+        duration: Date.now() - startTime,
+        toolCalls: 0,
+        iterations: 0,
       };
     }
 
@@ -115,7 +140,14 @@ ${agents || '(暂无可用 Worker)'}
     const sink = new AccumulatingSink();
 
     try {
-      const result = await reactChat(messages, settings, sink, agentId, signal, context.conversationId);
+      const result = await reactChat(
+        messages,
+        settings,
+        sink,
+        agentId,
+        signal,
+        context.conversationId,
+      );
 
       return {
         success: true,
@@ -130,7 +162,8 @@ ${agents || '(暂无可用 Worker)'}
       return {
         success: false,
         content: '',
-        agentId, task,
+        agentId,
+        task,
         error: `Agent execution failed: ${(err as Error).message}`,
         duration: Date.now() - startTime,
         toolCalls: 0,

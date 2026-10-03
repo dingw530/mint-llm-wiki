@@ -2,8 +2,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 // Uses the shared DB from vitest config
 
-import * as agentRepo from '../agentRepository.js';
-import type { Agent } from '../../types.js';
+import * as agentRepo from '../agent-repository.js';
+import type { Agent } from '../../../types.js';
 
 describe('agentRepository', () => {
   afterAll(() => {

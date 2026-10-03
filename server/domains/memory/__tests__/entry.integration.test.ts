@@ -29,7 +29,7 @@ import * as memoryService from '../index.js';
 import * as memoryScopeRepository from '../../../infrastructure/persistence/memory-scope-repository.js';
 import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
 import * as settingsRepository from '../../../repositories/settingsRepository.js';
-import * as conversationRepository from '../../../repositories/conversationRepository.js';
+import * as conversationRepository from '../../../infrastructure/persistence/conversation-repository.js';
 import { agentRunRegistry } from '../../../services/agentRun.js';
 import type { AiSettings, HistoryMessage, StreamResult } from '../../../types.js';
 import type { Sink } from '../../../services/sink.js';

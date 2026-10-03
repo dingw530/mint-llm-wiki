@@ -155,7 +155,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       }),
     }));
 
-    vi.doMock('../../repositories/conversationRepository.js', () => ({
+    vi.doMock('../../domains/conversations/index.js', () => ({
       findById: vi.fn().mockReturnValue({ id: 'conv-1', title: 'Test', routingMode: 'auto' }),
       updateTimestamp: vi.fn(),
     }));
@@ -166,7 +166,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       updateConversationTimestamp: vi.fn(),
     }));
 
-    vi.doMock('../../repositories/agentRepository.js', () => ({
+    vi.doMock('../../infrastructure/persistence/agent-repository.js', () => ({
       findById: vi.fn().mockReturnValue(null),
     }));
 
@@ -191,7 +191,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       recordMemoryGateOutcome: vi.fn(),
     }));
 
-    vi.doMock('../api/agentService.js', () => ({
+    vi.doMock('../../domains/agents/index.js', () => ({
       list: vi.fn().mockReturnValue([]),
       findById: vi.fn().mockReturnValue(null),
     }));
@@ -254,7 +254,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       }),
     }));
 
-    vi.doMock('../../repositories/conversationRepository.js', () => ({
+    vi.doMock('../../domains/conversations/index.js', () => ({
       findById: vi.fn().mockReturnValue({ id: 'conv-1', title: 'Test', routingMode: 'auto' }),
       updateTimestamp: vi.fn(),
     }));
@@ -265,7 +265,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       updateConversationTimestamp: vi.fn(),
     }));
 
-    vi.doMock('../../repositories/agentRepository.js', () => ({
+    vi.doMock('../../infrastructure/persistence/agent-repository.js', () => ({
       findById: vi.fn().mockReturnValue(null),
     }));
 
@@ -293,7 +293,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     }));
 
     // Mock agentRepo.findById to return an agent with type != 'orchestrator'
-    vi.doMock('../../repositories/agentRepository.js', () => ({
+    vi.doMock('../../infrastructure/persistence/agent-repository.js', () => ({
       findById: vi.fn().mockReturnValue({
         id: 'custom-agent',
         name: 'Custom',
@@ -305,7 +305,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       findAll: vi.fn().mockReturnValue([]),
     }));
 
-    vi.doMock('../api/agentService.js', () => ({
+    vi.doMock('../../domains/agents/index.js', () => ({
       list: vi
         .fn()
         .mockReturnValue([{ id: 'custom-agent', name: 'Custom', type: 'custom', available: true }]),
@@ -379,7 +379,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       }),
     }));
 
-    vi.doMock('../../repositories/conversationRepository.js', () => ({
+    vi.doMock('../../domains/conversations/index.js', () => ({
       findById: vi.fn().mockReturnValue({ id: 'conv-1', title: 'Test', routingMode: 'auto' }),
       updateTimestamp: vi.fn(),
     }));
@@ -390,7 +390,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       updateConversationTimestamp: vi.fn(),
     }));
 
-    vi.doMock('../../repositories/agentRepository.js', () => ({
+    vi.doMock('../../infrastructure/persistence/agent-repository.js', () => ({
       findById: vi.fn().mockReturnValue(null),
     }));
 
@@ -415,7 +415,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       recordMemoryGateOutcome: vi.fn(),
     }));
 
-    vi.doMock('../api/agentService.js', () => ({
+    vi.doMock('../../domains/agents/index.js', () => ({
       list: vi.fn().mockReturnValue([]),
       findById: vi.fn().mockReturnValue({
         id: 'custom-agent',

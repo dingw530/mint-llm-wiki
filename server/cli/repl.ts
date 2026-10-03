@@ -3,7 +3,7 @@
 
 import * as readline from 'node:readline';
 import chalk from 'chalk';
-import * as conversationService from '../services/api/conversationService.js';
+import * as conversationService from '../domains/conversations/index.js';
 import * as messageService from '../services/messageService.js';
 import { TerminalSink } from '../services/sink.js';
 
@@ -33,12 +33,14 @@ export async function runRepl(startConvId?: string): Promise<void> {
       return;
     }
     if (cmd === '/help') {
-      console.log(chalk.dim(`
+      console.log(
+        chalk.dim(`
   /exit, /quit   退出
   /clear         清屏
   /new           新建对话
   /help          显示帮助
-      `));
+      `),
+      );
       rl.prompt();
       return;
     }

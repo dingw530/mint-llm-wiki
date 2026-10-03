@@ -1,4 +1,4 @@
-import * as agentRepo from '../../repositories/agentRepository.js';
+import * as agentRepo from '../../infrastructure/persistence/agent-repository.js';
 import type { Agent } from '../../types.js';
 
 // 编排 Agent 的默认系统提示词后缀

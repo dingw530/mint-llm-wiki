@@ -100,7 +100,7 @@ async function seedDatabase() {
   const dbModule = await import('../server/dist/db.js');
   const settingsRepository = await import('../server/dist/repositories/settingsRepository.js');
   const conversationRepository =
-    await import('../server/dist/repositories/conversationRepository.js');
+    await import('../server/dist/infrastructure/persistence/conversation-repository.js');
   const memoryService = await import('../server/dist/domains/memory/index.js');
   const conversation = conversationRepository.create({
     id: 'memory-process-conversation',

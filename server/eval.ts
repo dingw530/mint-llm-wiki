@@ -12,7 +12,7 @@ import { agentRunRegistry } from './services/agentRun.js';
 import { createDurableAgentRun } from './services/agentRunFactory.js';
 import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
 import { getWikiVectorHealth } from './services/api/wikiSearchService.js';
-import * as agentService from './services/api/agentService.js';
+import * as agentService from './domains/agents/index.js';
 import { routingService } from './bootstrap/routing.js';
 import { evaluateMemoryGate } from './bootstrap/memory.js';
 import {

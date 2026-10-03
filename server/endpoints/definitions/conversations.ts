@@ -1,4 +1,4 @@
-import * as conversationService from '../../services/api/conversationService.js';
+import * as conversationService from '../../domains/conversations/index.js';
 import { httpError } from '../helpers.js';
 import type { Request, Response } from 'express';
 import type { EndpointDescriptor } from '../types.js';

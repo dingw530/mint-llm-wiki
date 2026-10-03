@@ -1,5 +1,5 @@
-import { getDb } from '../db.js';
-import type { AgentRow, Agent } from '../types.js';
+import { getDb } from '../../db.js';
+import type { AgentRow, Agent } from '../../types.js';
 
 function toCamelCase(row: AgentRow): Agent {
   return {

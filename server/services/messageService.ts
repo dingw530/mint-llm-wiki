@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as conversationRepo from '../repositories/conversationRepository.js';
+import * as conversationRepo from '../domains/conversations/index.js';
 import * as messageRepo from '../repositories/messageRepository.js';
 import * as settingsService from './api/settingsService.js';
 import * as memoryService from '../domains/memory/index.js';
@@ -11,7 +11,7 @@ import {
 import * as memoryScopeRepository from '../infrastructure/persistence/memory-scope-repository.js';
 import type { MemoryScopeSnapshot } from '../domains/memory/index.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
-import * as agentService from './api/agentService.js';
+import * as agentService from '../domains/agents/index.js';
 import { routingService } from '../bootstrap/routing.js';
 import { streamChat } from './aiProxy.js';
 import { reactChat } from './reactLoopCore.js';

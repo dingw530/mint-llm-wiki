@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as conversationRepo from '../../repositories/conversationRepository.js';
+import * as conversationRepo from '../../infrastructure/persistence/conversation-repository.js';
 import { getConversationRoutingMode } from '../../infrastructure/config/conversation-defaults.js';
 import type { Conversation, HttpError } from '../../types.js';
 

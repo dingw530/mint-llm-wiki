@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 process.env.AI_CHAT_ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef';
 
-vi.mock('../../../repositories/agentRepository.js', () => ({
+vi.mock('../../../infrastructure/persistence/agent-repository.js', () => ({
   findAll: vi.fn(),
   findById: vi.fn(),
 }));
