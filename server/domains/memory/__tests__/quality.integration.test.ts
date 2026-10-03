@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import recallFixture from './fixtures/recall-cases.json';
 import { getDb } from '../../../db.js';
-import * as memoryRepository from '../../../infrastructure/persistence/memoryRepository.js';
+import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
 import { initializeMemorySearchIndex, prepareMemoryContext } from '../index.js';
 import { MEMORY_RETRIEVAL_POLICY_VERSION } from '../memory-policy.js';
 

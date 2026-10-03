@@ -1,5 +1,5 @@
 import { getDb } from '../db.js';
-import * as memoryScopeRepository from '../infrastructure/persistence/memoryScopeRepository.js';
+import * as memoryScopeRepository from '../infrastructure/persistence/memory-scope-repository.js';
 import type { MemoryScopeSnapshot } from '../domains/memory/index.js';
 import type { MessageRow, Message, HistoryMessage, CreateMessageParams } from '../types.js';
 

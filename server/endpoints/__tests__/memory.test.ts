@@ -18,12 +18,12 @@ try {
 
 const runIf = (condition: any) => (condition ? describe : describe.skip);
 
-vi.mock('../../infrastructure/persistence/memoryRepository.js', () => ({
+vi.mock('../../infrastructure/persistence/memory-repository.js', () => ({
   findManaged: vi.fn((filters) => (filters?.category ? [{ category: filters.category }] : [])),
 }));
 
 const { memoriesEndpoints } = await import('../definitions/memories.js');
-const memoryRepository = await import('../../infrastructure/persistence/memoryRepository.js');
+const memoryRepository = await import('../../infrastructure/persistence/memory-repository.js');
 
 describe('memories:list endpoint filters', () => {
   it('defaults to excluding unassigned memories and only includes them when requested', () => {

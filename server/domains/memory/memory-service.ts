@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import * as memoryRepo from '../../infrastructure/persistence/memoryRepository.js';
-import * as memorySearchRepo from '../../infrastructure/persistence/memorySearchRepository.js';
+import * as memoryRepo from '../../infrastructure/persistence/memory-repository.js';
+import * as memorySearchRepo from '../../infrastructure/persistence/memory-search-repository.js';
 import type { AiSettings } from '../../types.js';
 import type {
   CreateMemoryParams,

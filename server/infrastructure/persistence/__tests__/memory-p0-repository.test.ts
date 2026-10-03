@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getDb } from '../../../db.js';
-import * as memoryJobRepo from '../memoryJobRepository.js';
-import * as memoryRepo from '../memoryRepository.js';
+import * as memoryJobRepo from '../memory-job-repository.js';
+import * as memoryRepo from '../memory-repository.js';
 import * as memoryService from '../../../domains/memory/index.js';
-import * as memoryScopeRepository from '../memoryScopeRepository.js';
+import * as memoryScopeRepository from '../memory-scope-repository.js';
 
 const conversationId = 'memory-p0-conversation';
 

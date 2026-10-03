@@ -51,7 +51,7 @@ function stubAdapter(returnValue: string | undefined): void {
   } as never);
 }
 
-import { llmClassifyAgents } from '../../../infrastructure/ai/llmRoutingClassifier.js';
+import { llmClassifyAgents } from '../../../infrastructure/ai/llm-routing-classifier.js';
 const provider = createLegacyRoutingProvider((message, candidates) =>
   llmClassifyAgents(message, candidates, GENERAL_AGENT_ID),
 );

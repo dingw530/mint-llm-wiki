@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { getDb } from '../../../db.js';
-import * as memoryRepository from '../../../infrastructure/persistence/memoryRepository.js';
+import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
 import * as memorySpaceService from '../memorySpaceService.js';
 import { reserveConversationScope } from '../conversationScopeLock.js';
 import { initializeMemorySearchIndex } from '../../../domains/memory/index.js';

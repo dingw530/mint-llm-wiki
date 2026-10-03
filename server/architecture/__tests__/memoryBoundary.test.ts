@@ -18,8 +18,8 @@ describe('Memory domain dependency boundary', () => {
       edge('domains/memory/memory-service.ts', './types.js', 'domains/memory/types.ts', true),
       edge(
         'domains/memory/memory-service.ts',
-        '../../infrastructure/persistence/memoryRepository.js',
-        'infrastructure/persistence/memoryRepository.ts',
+        '../../infrastructure/persistence/memory-repository.js',
+        'infrastructure/persistence/memory-repository.ts',
       ),
       edge('domains/memory/memory-service.ts', '../../types.js', 'types.ts', true),
       edge(
@@ -28,13 +28,13 @@ describe('Memory domain dependency boundary', () => {
         'services/utils/tokenEstimator.ts',
       ),
       edge(
-        'infrastructure/persistence/memoryRepository.ts',
+        'infrastructure/persistence/memory-repository.ts',
         '../../domains/memory/types.js',
         'domains/memory/types.ts',
         true,
       ),
       edge(
-        'infrastructure/ai/jevMemoryGateProvider.ts',
+        'infrastructure/ai/jev-memory-gate-provider.ts',
         '../../domains/memory/index.js',
         'domains/memory/index.ts',
         true,
@@ -42,8 +42,8 @@ describe('Memory domain dependency boundary', () => {
       edge('types.ts', './domains/memory/types.js', 'domains/memory/types.ts', true),
       edge(
         'bootstrap/memory.ts',
-        '../infrastructure/ai/memoryExtractionClient.js',
-        'infrastructure/ai/memoryExtractionClient.ts',
+        '../infrastructure/ai/memory-extraction-client.js',
+        'infrastructure/ai/memory-extraction-client.ts',
       ),
       edge('services/messageService.ts', '../domains/memory/index.js', 'domains/memory/index.ts'),
     ];
@@ -70,8 +70,8 @@ describe('Memory domain dependency boundary', () => {
       ),
       edge(
         'services/api/memoryService.ts',
-        '../../infrastructure/ai/memoryExtractionClient.js',
-        'infrastructure/ai/memoryExtractionClient.ts',
+        '../../infrastructure/ai/memory-extraction-client.js',
+        'infrastructure/ai/memory-extraction-client.ts',
       ),
       edge('domains/memory/memory-service.ts', './missing.js', 'unresolved:./missing.js'),
     ];
@@ -91,7 +91,7 @@ describe('Memory domain dependency boundary', () => {
       }),
       expect.objectContaining({
         importer: 'services/api/memoryService.ts',
-        target: 'infrastructure/ai/memoryExtractionClient.ts',
+        target: 'infrastructure/ai/memory-extraction-client.ts',
       }),
       expect.objectContaining({
         importer: 'domains/memory/memory-service.ts',

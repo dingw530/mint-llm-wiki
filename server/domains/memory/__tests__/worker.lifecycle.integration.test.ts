@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import { closeDb, getDb } from '../../../db.js';
-import * as memoryJobRepository from '../../../infrastructure/persistence/memoryJobRepository.js';
-import * as memoryScopeRepository from '../../../infrastructure/persistence/memoryScopeRepository.js';
+import * as memoryJobRepository from '../../../infrastructure/persistence/memory-job-repository.js';
+import * as memoryScopeRepository from '../../../infrastructure/persistence/memory-scope-repository.js';
 import * as messageRepository from '../../../repositories/messageRepository.js';
 import type { AiSettings } from '../../../types.js';
 import type { MemoryExtractionMessage } from '../types.js';

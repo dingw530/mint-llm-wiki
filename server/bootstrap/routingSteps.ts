@@ -1,6 +1,6 @@
 import type { Agent, JevSettings } from '../types.js';
-import { createJevRoutingProvider } from '../infrastructure/ai/jevRoutingProvider.js';
-import { llmClassifyAgents } from '../infrastructure/ai/llmRoutingClassifier.js';
+import { createJevRoutingProvider } from '../infrastructure/ai/jev-routing-provider.js';
+import { llmClassifyAgents } from '../infrastructure/ai/llm-routing-classifier.js';
 import {
   GENERAL_AGENT_ID,
   createKeywordExactProvider,

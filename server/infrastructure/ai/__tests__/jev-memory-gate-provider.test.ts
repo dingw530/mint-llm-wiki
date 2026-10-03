@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createJevMemoryGateProvider } from '../jevMemoryGateProvider.js';
+import { createJevMemoryGateProvider } from '../jev-memory-gate-provider.js';
 import type { JevSettings } from '../../../types.js';
 
 const JEV: JevSettings = {

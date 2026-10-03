@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const transport = vi.hoisted(() => ({ complete: vi.fn() }));
-vi.mock('../../../infrastructure/ai/memoryExtractionClient.js', () => ({
+vi.mock('../../../infrastructure/ai/memory-extraction-client.js', () => ({
   memoryExtractionClient: { complete: transport.complete },
 }));
 
 import { getDb } from '../../../db.js';
 import * as conversationRepository from '../../../repositories/conversationRepository.js';
 import * as messageRepository from '../../../repositories/messageRepository.js';
-import * as memoryRepository from '../../../infrastructure/persistence/memoryRepository.js';
-import * as memoryJobRepository from '../../../infrastructure/persistence/memoryJobRepository.js';
-import * as memoryScopeRepository from '../../../infrastructure/persistence/memoryScopeRepository.js';
+import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
+import * as memoryJobRepository from '../../../infrastructure/persistence/memory-job-repository.js';
+import * as memoryScopeRepository from '../../../infrastructure/persistence/memory-scope-repository.js';
 import * as settingsService from '../../../services/api/settingsService.js';
 import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
-import { createMemorySemanticClassifier } from '../../../infrastructure/ai/memorySemanticClassifier.js';
+import { createMemorySemanticClassifier } from '../../../infrastructure/ai/memory-semantic-classifier.js';
 import { performMemoryExtraction } from '../../../bootstrap/memory.js';
 import { createMemoryJobService } from '../memory-job-service.js';
 import { performExtractionWithClient, prepareMemoryContext } from '../memory-service.js';

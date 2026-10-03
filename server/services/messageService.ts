@@ -8,7 +8,7 @@ import {
   evaluateMemoryGate,
   trackMemoryGate,
 } from '../bootstrap/memory.js';
-import * as memoryScopeRepository from '../infrastructure/persistence/memoryScopeRepository.js';
+import * as memoryScopeRepository from '../infrastructure/persistence/memory-scope-repository.js';
 import type { MemoryScopeSnapshot } from '../domains/memory/index.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
 import * as agentService from './api/agentService.js';

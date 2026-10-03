@@ -1,8 +1,8 @@
-import { createMemorySemanticClassifier } from '../infrastructure/ai/memorySemanticClassifier.js';
-import * as memoryJobRepository from '../infrastructure/persistence/memoryJobRepository.js';
-import * as memoryScopeRepository from '../infrastructure/persistence/memoryScopeRepository.js';
+import { createMemorySemanticClassifier } from '../infrastructure/ai/memory-semantic-classifier.js';
+import * as memoryJobRepository from '../infrastructure/persistence/memory-job-repository.js';
+import * as memoryScopeRepository from '../infrastructure/persistence/memory-scope-repository.js';
 import * as settingsService from '../services/api/settingsService.js';
-import { memoryExtractionClient } from '../infrastructure/ai/memoryExtractionClient.js';
+import { memoryExtractionClient } from '../infrastructure/ai/memory-extraction-client.js';
 import {
   createMemoryJobService,
   evaluateMemoryGate as evaluateDomainMemoryGate,
@@ -10,7 +10,7 @@ import {
 } from '../domains/memory/index.js';
 import * as memoryDomain from '../domains/memory/index.js';
 import type { MemoryExtractionMessage } from '../domains/memory/index.js';
-import { createJevMemoryGateProvider } from '../infrastructure/ai/jevMemoryGateProvider.js';
+import { createJevMemoryGateProvider } from '../infrastructure/ai/jev-memory-gate-provider.js';
 import type { MemoryGateConfig, MemoryGateInput } from '../domains/memory/index.js';
 import type { AiSettings } from '../types.js';
 

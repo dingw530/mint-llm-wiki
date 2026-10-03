@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { getDb } from '../../../db.js';
-import * as memoryScopeRepository from '../memoryScopeRepository.js';
-import * as memoryJobRepository from '../memoryJobRepository.js';
-import * as memoryRepository from '../memoryRepository.js';
+import * as memoryScopeRepository from '../memory-scope-repository.js';
+import * as memoryJobRepository from '../memory-job-repository.js';
+import * as memoryRepository from '../memory-repository.js';
 
 const conversationId = 'memory-scope-conversation-test';
 const messageId = 'memory-scope-message-test';

@@ -13,7 +13,7 @@ vi.mock('../../repositories/messageRepository.js', () => ({
   updateConversationTimestamp: vi.fn(),
 }));
 
-vi.mock('../../infrastructure/persistence/memoryScopeRepository.js', () => ({
+vi.mock('../../infrastructure/persistence/memory-scope-repository.js', () => ({
   findConversationScope: vi.fn(() => ({
     scopeKind: 'global',
     spaceId: null,

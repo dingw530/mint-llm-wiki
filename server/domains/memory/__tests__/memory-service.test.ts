@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-vi.mock('../../../infrastructure/persistence/memoryRepository.js', () => ({
+vi.mock('../../../infrastructure/persistence/memory-repository.js', () => ({
   findAll: vi.fn(),
   findById: vi.fn(),
   findCoreCandidates: vi.fn(() => []),
@@ -20,7 +20,7 @@ vi.mock('../../../infrastructure/persistence/memoryRepository.js', () => ({
   createEvent: vi.fn(),
 }));
 
-vi.mock('../../../infrastructure/persistence/memorySearchRepository.js', () => ({
+vi.mock('../../../infrastructure/persistence/memory-search-repository.js', () => ({
   deleteDocument: vi.fn(),
   getTokenizerVersion: vi.fn(() => 1),
   replaceAll: vi.fn(),
@@ -30,8 +30,8 @@ vi.mock('../../../infrastructure/persistence/memorySearchRepository.js', () => (
 }));
 
 import * as memoryService from '../memory-service.js';
-import * as memoryRepo from '../../../infrastructure/persistence/memoryRepository.js';
-import * as memorySearchRepo from '../../../infrastructure/persistence/memorySearchRepository.js';
+import * as memoryRepo from '../../../infrastructure/persistence/memory-repository.js';
+import * as memorySearchRepo from '../../../infrastructure/persistence/memory-search-repository.js';
 import type { MemoryGateResolution } from '../../../domains/memory/gates/types.js';
 import type { Memory } from '../../../types.js';
 import type { AiSettings } from '../../../types.js';

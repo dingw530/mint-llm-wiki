@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import type { RouteResult, RoutingContext } from '../../domains/routing/index.js';
-import { create } from './routingLogRepository.js';
+import { create } from './routing-log-repository.js';
 
 /** Persist a completed route using the existing routing_logs schema and audit method. */
 export function recordRoute(result: RouteResult, context: RoutingContext, method: string): void {

@@ -9,10 +9,10 @@ export interface RoutingDependency {
 
 const DOMAIN = 'domains/routing/';
 const INFRASTRUCTURE = new Set([
-  'infrastructure/ai/jevRoutingProvider.ts',
-  'infrastructure/ai/llmRoutingClassifier.ts',
-  'infrastructure/persistence/routingLogRepository.ts',
-  'infrastructure/persistence/routingLogWriter.ts',
+  'infrastructure/ai/jev-routing-provider.ts',
+  'infrastructure/ai/llm-routing-classifier.ts',
+  'infrastructure/persistence/routing-log-repository.ts',
+  'infrastructure/persistence/routing-log-writer.ts',
 ]);
 
 /** Evaluate resolved edges against the Routing domain and composition boundaries. */

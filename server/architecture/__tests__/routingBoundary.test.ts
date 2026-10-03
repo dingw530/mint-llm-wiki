@@ -11,12 +11,12 @@ describe('Routing domain boundary', () => {
 
   it.each([
     ['domains/routing/routing-service.ts', 'services/api/settingsService.ts', false],
-    ['domains/routing/routing-service.ts', 'infrastructure/ai/llmRoutingClassifier.ts', false],
+    ['domains/routing/routing-service.ts', 'infrastructure/ai/llm-routing-classifier.ts', false],
     ['services/messageService.ts', 'domains/routing/routing-service.ts', false],
-    ['infrastructure/ai/jevRoutingProvider.ts', 'domains/routing/index.ts', false],
+    ['infrastructure/ai/jev-routing-provider.ts', 'domains/routing/index.ts', false],
     [
       'endpoints/definitions/routingLogs.ts',
-      'infrastructure/persistence/routingLogRepository.ts',
+      'infrastructure/persistence/routing-log-repository.ts',
       false,
     ],
     ['domains/routing/routing-service.ts', 'unresolved:./missing.js', true],
@@ -27,7 +27,7 @@ describe('Routing domain boundary', () => {
   it('allows infrastructure to reference public domain type contracts', () => {
     expect(
       routingBoundaryViolation({
-        importer: 'infrastructure/ai/jevRoutingProvider.ts',
+        importer: 'infrastructure/ai/jev-routing-provider.ts',
         target: 'domains/routing/index.ts',
         typeOnly: true,
       }),

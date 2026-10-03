@@ -3,8 +3,8 @@ import {
   formatRoutingLogMethod,
 } from '../domains/routing/index.js';
 import type { RoutingHooks, RoutingStepFactory } from '../domains/routing/index.js';
-import * as routingLogRepository from '../infrastructure/persistence/routingLogRepository.js';
-import { recordRoute } from '../infrastructure/persistence/routingLogWriter.js';
+import * as routingLogRepository from '../infrastructure/persistence/routing-log-repository.js';
+import { recordRoute } from '../infrastructure/persistence/routing-log-writer.js';
 import * as settingsService from '../services/api/settingsService.js';
 import { DISABLED_JEV_SETTINGS } from '../services/jev/config.js';
 

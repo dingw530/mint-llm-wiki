@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getDb } from '../../../db.js';
 import * as memoryService from '../../../domains/memory/index.js';
 import { createMemorySpaceService } from '../../../domains/memory/index.js';
-import * as memoryScopeRepository from '../memoryScopeRepository.js';
-import * as memoryRepository from '../memoryRepository.js';
-import * as memorySearchRepository from '../memorySearchRepository.js';
+import * as memoryScopeRepository from '../memory-scope-repository.js';
+import * as memoryRepository from '../memory-repository.js';
+import * as memorySearchRepository from '../memory-search-repository.js';
 
 const memoryIds = [
   'memory-search-global',

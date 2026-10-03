@@ -1,6 +1,6 @@
 import { createMemorySpaceService } from '../../domains/memory/index.js';
 import type { MemoryScopeKind } from '../../domains/memory/index.js';
-import * as memoryScopeRepository from '../../infrastructure/persistence/memoryScopeRepository.js';
+import * as memoryScopeRepository from '../../infrastructure/persistence/memory-scope-repository.js';
 import { isConversationScopeBusy, reserveConversationScope } from './conversationScopeLock.js';
 
 const memorySpaces = createMemorySpaceService(memoryScopeRepository);

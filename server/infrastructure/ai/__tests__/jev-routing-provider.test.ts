@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createJevRoutingProvider } from '../jevRoutingProvider.js';
+import { createJevRoutingProvider } from '../jev-routing-provider.js';
 import type { Agent, JevSettings } from '../../../types.js';
 
 const JEV: JevSettings = {
