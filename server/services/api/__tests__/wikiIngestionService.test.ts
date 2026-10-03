@@ -26,9 +26,6 @@ vi.mock('../../graphBuilder.js', () => ({
 
 vi.mock('../../../domains/wiki/index.js', () => ({
   registerCompiledKnowledge: vi.fn(),
-}));
-
-vi.mock('../wikiSearchService.js', () => ({
   rebuildWikiSearchIndex: vi.fn(),
 }));
 
@@ -39,7 +36,7 @@ vi.mock('../crossBatchSemanticService.js', () => ({
 import * as wikiIngestionService from '../wikiIngestionService.js';
 import { compileSource } from '../../utils/wikiCompiler.js';
 import { stageWikiRawFile } from '../wikiFileService.js';
-import { rebuildWikiSearchIndex } from '../wikiSearchService.js';
+import { rebuildWikiSearchIndex } from '../../../domains/wiki/index.js';
 import type { AiSettings } from '../../../types.js';
 import * as jobStore from '../../jobs/adapters/sqliteJobStore.js';
 import * as commitRepository from '../../../repositories/wikiIngestionCommitRepository.js';

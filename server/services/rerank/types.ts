@@ -1,5 +1,5 @@
 import type { JevSettings } from '../../types.js';
-import type { WikiSearchDocumentInput } from '../../repositories/wikiSearchRepository.js';
+import type { WikiSearchDocumentInput } from '../../infrastructure/persistence/wiki-search-repository.js';
 
 /** 一个已经由关键词或向量检索召回的 Wiki 候选。 */
 export interface RerankCandidate {

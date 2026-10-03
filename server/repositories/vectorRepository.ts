@@ -1,5 +1,8 @@
 import { getDb } from '../db.js';
-import type { WikiSearchDocument, WikiSearchDocumentInput } from './wikiSearchRepository.js';
+import type {
+  WikiSearchDocument,
+  WikiSearchDocumentInput,
+} from '../infrastructure/persistence/wiki-search-repository.js';
 import type { VectorStore } from '../services/vector/ports.js';
 import type {
   VectorEmbeddingState,

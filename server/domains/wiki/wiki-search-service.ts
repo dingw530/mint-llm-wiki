@@ -1,21 +1,31 @@
-import * as fs from 'node:fs';
+import * as fs from '../../infrastructure/filesystem/wiki-files.js';
 import * as path from 'node:path';
 import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
-import * as searchRepo from '../../repositories/wikiSearchRepository.js';
-import { getAiSettings, getJevSettings } from './settingsService.js';
-import { createWikiVectorService, pruneWikiVectorOrphans } from '../vector/index.js';
-import { baseRrfScore } from '../rerank/legacyRerankProvider.js';
-import { rerankCandidates } from '../rerank/index.js';
+import * as searchRepo from '../../infrastructure/persistence/wiki-search-repository.js';
+import {
+  getAiSettings,
+  getJevSettings,
+  createWikiVectorService,
+  pruneWikiVectorOrphans,
+  baseRrfScore,
+  rerankCandidates,
+  ExternalServiceError,
+} from '../../infrastructure/search/wiki-search-runtime.js';
 import type {
   OpenAICompatibleEmbeddingConfig,
   VectorHealth,
   VectorSearchHit,
-} from '../vector/types.js';
-import type { RerankCandidate, RerankedCandidate } from '../rerank/types.js';
-import { isSystemWikiPath, parseWikiPage } from '../utils/wikiShared.js';
+  RerankCandidate,
+  RerankedCandidate,
+} from '../../infrastructure/search/wiki-search-runtime.js';
+import { isSystemWikiPath, parseWikiPage } from '../../infrastructure/filesystem/wiki-files.js';
 import { createLogger } from '../../utils/logger.js';
-import { ExternalServiceError } from '../resilience/index.js';
-import type { RuntimeContext } from '../runtime/runtimeContext.js';
+import type { JevSettings } from '../../types.js';
+
+/** Search only needs this per-run configuration capability, not the Agent runtime. */
+export interface WikiSearchRuntimeContext {
+  getJevSettings(): JevSettings;
+}
 
 const log = createLogger('wiki-search');
 
@@ -159,35 +169,7 @@ export async function rebuildWikiSearchIndex(
     const activeSourcePaths = new Set<string>();
     const vectorService = config ? createWikiVectorService(config, documentText) : null;
     for (const absolute of listMarkdownFiles(wikiPath)) {
-      const relative = path.relative(wikiPath, absolute).replaceAll(path.sep, '/');
-      if (isSystemWikiPath(relative)) continue;
-      let content: string;
-      try {
-        content = fs.readFileSync(absolute, 'utf8');
-      } catch {
-        continue;
-      }
-      const parsed = parseWikiPage(relative, content);
-      const page = lifecycleRepo.findPageByPath(relative);
-      if (page && ['deleted', 'superseded'].includes(page.status)) continue;
-      activeSourcePaths.add(relative);
-      const documents = buildDocuments(relative, content);
-      documents.forEach((document) => {
-        document.pageId = page?.id ?? null;
-      });
-      addClaims(relative, documents, page, parsed.title);
-      const indexChange = searchRepo.replacePageDocuments(relative, documents);
-      await vectorService?.removeDocuments(indexChange.removedDocumentIds);
-      if (vectorService) {
-        try {
-          await vectorService.syncDocuments(documents);
-        } catch (error) {
-          log.warn('wiki vector indexing unavailable; FTS index retained', {
-            sourcePath: relative,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
+      await indexWikiPage(absolute, wikiPath, activeSourcePaths, vectorService);
     }
     const removed = searchRepo.removeStaleSearchDocuments([...activeSourcePaths]);
     const pruned = await pruneWikiVectorOrphans();
@@ -203,6 +185,44 @@ export async function rebuildWikiSearchIndex(
       embeddingModel: config?.model,
       embeddingDimensions: config?.dimensions,
     });
+  }
+}
+
+/** Index one eligible page while retaining lexical data on vector sync failure. */
+async function indexWikiPage(
+  absolute: string,
+  wikiPath: string,
+  activeSourcePaths: Set<string>,
+  vectorService: ReturnType<typeof createWikiVectorService> | null,
+): Promise<void> {
+  const relative = path.relative(wikiPath, absolute).replaceAll(path.sep, '/');
+  if (isSystemWikiPath(relative)) return;
+  let content: string;
+  try {
+    content = fs.readFileSync(absolute, 'utf8');
+  } catch {
+    return;
+  }
+  const parsed = parseWikiPage(relative, content);
+  const page = lifecycleRepo.findPageByPath(relative);
+  if (page && ['deleted', 'superseded'].includes(page.status)) return;
+  activeSourcePaths.add(relative);
+  const documents = buildDocuments(relative, content);
+  documents.forEach((document) => {
+    document.pageId = page?.id ?? null;
+  });
+  addClaims(relative, documents, page, parsed.title);
+  const indexChange = searchRepo.replacePageDocuments(relative, documents);
+  await vectorService?.removeDocuments(indexChange.removedDocumentIds);
+  if (vectorService) {
+    try {
+      await vectorService.syncDocuments(documents);
+    } catch (error) {
+      log.warn('wiki vector indexing unavailable; FTS index retained', {
+        sourcePath: relative,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 }
 
@@ -297,35 +317,44 @@ function aggregatePageCandidates(
       });
       continue;
     }
-    existing.lexicalRank = Math.min(
-      existing.lexicalRank ?? Number.POSITIVE_INFINITY,
-      candidate.lexicalRank ?? Number.POSITIVE_INFINITY,
-    );
-    existing.vectorRank = Math.min(
-      existing.vectorRank ?? Number.POSITIVE_INFINITY,
-      candidate.vectorRank ?? Number.POSITIVE_INFINITY,
-    );
-    existing.lexicalRank = Number.isFinite(existing.lexicalRank) ? existing.lexicalRank : null;
-    existing.vectorRank = Number.isFinite(existing.vectorRank) ? existing.vectorRank : null;
-    existing.aggregateMatchTypes = [
-      ...new Set([
-        ...(existing.aggregateMatchTypes || []),
-        ...resultMatchTypes(candidate.document, terms, candidate, false),
-      ]),
-    ];
-    const existingRank = effectiveRankScore(existing) + evidenceBoost(existing.document, terms);
-    const candidateRank = effectiveRankScore(candidate) + evidenceBoost(candidate.document, terms);
-    if (candidateRank > existingRank) {
-      existing.document = candidate.document;
-      existing.vectorDistance = candidate.vectorDistance;
-      existing.rankScore = candidate.rankScore;
-      existing.semanticScore = candidate.semanticScore;
-    }
+    mergePageCandidate(existing, candidate, terms);
   }
   return [...pages.values()].map((page) => ({
     ...page,
     rankScore: effectiveRankScore(page),
   }));
+}
+
+/** Merge another chunk into the existing page while preserving evidence selection order. */
+function mergePageCandidate(
+  existing: RankedDocument,
+  candidate: RerankedCandidate,
+  terms: string[],
+): void {
+  existing.lexicalRank = Math.min(
+    existing.lexicalRank ?? Number.POSITIVE_INFINITY,
+    candidate.lexicalRank ?? Number.POSITIVE_INFINITY,
+  );
+  existing.vectorRank = Math.min(
+    existing.vectorRank ?? Number.POSITIVE_INFINITY,
+    candidate.vectorRank ?? Number.POSITIVE_INFINITY,
+  );
+  existing.lexicalRank = Number.isFinite(existing.lexicalRank) ? existing.lexicalRank : null;
+  existing.vectorRank = Number.isFinite(existing.vectorRank) ? existing.vectorRank : null;
+  existing.aggregateMatchTypes = [
+    ...new Set([
+      ...(existing.aggregateMatchTypes || []),
+      ...resultMatchTypes(candidate.document, terms, candidate, false),
+    ]),
+  ];
+  const existingRank = effectiveRankScore(existing) + evidenceBoost(existing.document, terms);
+  const candidateRank = effectiveRankScore(candidate) + evidenceBoost(candidate.document, terms);
+  if (candidateRank > existingRank) {
+    existing.document = candidate.document;
+    existing.vectorDistance = candidate.vectorDistance;
+    existing.rankScore = candidate.rankScore;
+    existing.semanticScore = candidate.semanticScore;
+  }
 }
 
 function extractTerms(question: string): string[] {
@@ -438,37 +467,50 @@ function expandSourceFamilyResults(
     if (results.length >= maxResults) break;
     const file = path.relative(wikiPath, absolute).replaceAll(path.sep, '/');
     if (existing.has(file)) continue;
-    let content: string;
-    let page: ReturnType<typeof parseWikiPage>;
-    try {
-      content = fs.readFileSync(absolute, 'utf8');
-      page = parseWikiPage(file, content);
-    } catch {
-      continue;
-    }
-    if (page.source !== source) continue;
-    const lifecycle = lifecycleRepo.findPageByPath(file);
-    if (lifecycle && ['deleted', 'superseded', 'archived'].includes(lifecycle.status)) continue;
-    results.push({
-      chunkId: `${file}#source-family`,
-      file,
-      title: page.title,
-      heading: '',
-      content: includeContent ? content : '',
-      snippet: `同源资料：${source}`,
-      granularity: 'source-family',
-      score: Math.max(0, results[0].score - results.length * 0.01),
-      matchTypes: ['source-family'],
-      pageStatus: lifecycle?.status ?? null,
-      lastVerifiedAt: lifecycle?.lastConfirmedAt ?? null,
-      claimId: null,
-      lexicalRank: null,
-      vectorRank: null,
-      distance: null,
-    });
+    const sibling = sourceFamilyResult(absolute, file, source, results, includeContent);
+    if (!sibling) continue;
+    results.push(sibling);
     existing.add(file);
   }
   return results;
+}
+
+/** Read a same-source sibling, preserving lifecycle filtering and score calculation. */
+function sourceFamilyResult(
+  absolute: string,
+  file: string,
+  source: string,
+  results: WikiSearchResult[],
+  includeContent: boolean,
+): WikiSearchResult | null {
+  let content: string;
+  let page: ReturnType<typeof parseWikiPage>;
+  try {
+    content = fs.readFileSync(absolute, 'utf8');
+    page = parseWikiPage(file, content);
+  } catch {
+    return null;
+  }
+  if (page.source !== source) return null;
+  const lifecycle = lifecycleRepo.findPageByPath(file);
+  if (lifecycle && ['deleted', 'superseded', 'archived'].includes(lifecycle.status)) return null;
+  return {
+    chunkId: `${file}#source-family`,
+    file,
+    title: page.title,
+    heading: '',
+    content: includeContent ? content : '',
+    snippet: `同源资料：${source}`,
+    granularity: 'source-family',
+    score: Math.max(0, results[0].score - results.length * 0.01),
+    matchTypes: ['source-family'],
+    pageStatus: lifecycle?.status ?? null,
+    lastVerifiedAt: lifecycle?.lastConfirmedAt ?? null,
+    claimId: null,
+    lexicalRank: null,
+    vectorRank: null,
+    distance: null,
+  };
 }
 
 /** 为指定搜索文档逐项回填向量，单项失败不会阻断后续页面。 */
@@ -486,13 +528,61 @@ export async function backfillWikiEmbeddings(
   return createWikiVectorService(config, documentText).backfill(documents, onProgress);
 }
 
+/** Execute optional vector retrieval and preserve the existing FTS fallback audit. */
+async function queryVectors(
+  config: OpenAICompatibleEmbeddingConfig | undefined,
+  question: string,
+  maxResults: number,
+): Promise<{ vector: VectorSearchHit<searchRepo.WikiSearchDocumentInput>[]; fallback: boolean }> {
+  let vector: VectorSearchHit<searchRepo.WikiSearchDocumentInput>[] = [];
+  let fallback = false;
+  if (!config) return { vector, fallback };
+
+  try {
+    const vectorService = createWikiVectorService(config, documentText);
+    vector = await vectorService.search(question, Math.max(maxResults * 8, 30));
+    log.info('wiki vector candidates ready', {
+      count: vector.length,
+      model: config.model,
+      dimensions: config.dimensions,
+    });
+    log.info('wiki vector search results', {
+      totalCandidates: vector.length,
+      results: vector.slice(0, maxResults).map((hit, index) => ({
+        rank: index + 1,
+        chunkId: hit.document.id,
+        sourcePath: hit.document.sourcePath,
+        title: hit.document.title,
+        heading: hit.document.heading,
+        distance: hit.distance,
+      })),
+    });
+  } catch (error) {
+    fallback = true;
+    const fallbackReason =
+      error instanceof ExternalServiceError
+        ? error.circuitState === 'open'
+          ? 'circuit-open'
+          : error.category
+        : 'service-unavailable';
+    log.warn('wiki vector query failed; using FTS fallback', {
+      model: config.model,
+      dimensions: config.dimensions,
+      fallbackReason,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return { vector, fallback };
+}
+
 /** 构建或复用 Wiki 索引，并执行 FTS + 向量 RRF 融合。 */
 export async function searchWiki(
   wikiPath: string,
   question: string,
   maxResults: number,
   includeContent: boolean,
-  runtimeContext?: RuntimeContext,
+  runtimeContext?: WikiSearchRuntimeContext,
 ): Promise<WikiSearchOutput> {
   const startedAt = performance.now();
   const terms = extractTerms(question);
@@ -522,44 +612,7 @@ export async function searchWiki(
 
   const lexical = searchRepo.searchDocuments(question, Math.max(maxResults * 8, 30));
   log.debug('wiki lexical candidates ready', { count: lexical.length });
-  let vector: VectorSearchHit<searchRepo.WikiSearchDocumentInput>[] = [];
-  let fallback = false;
-  if (config) {
-    try {
-      const vectorService = createWikiVectorService(config, documentText);
-      vector = await vectorService.search(question, Math.max(maxResults * 8, 30));
-      log.info('wiki vector candidates ready', {
-        count: vector.length,
-        model: config.model,
-        dimensions: config.dimensions,
-      });
-      log.info('wiki vector search results', {
-        totalCandidates: vector.length,
-        results: vector.slice(0, maxResults).map((hit, index) => ({
-          rank: index + 1,
-          chunkId: hit.document.id,
-          sourcePath: hit.document.sourcePath,
-          title: hit.document.title,
-          heading: hit.document.heading,
-          distance: hit.distance,
-        })),
-      });
-    } catch (error) {
-      fallback = true;
-      const fallbackReason =
-        error instanceof ExternalServiceError
-          ? error.circuitState === 'open'
-            ? 'circuit-open'
-            : error.category
-          : 'service-unavailable';
-      log.warn('wiki vector query failed; using FTS fallback', {
-        model: config.model,
-        dimensions: config.dimensions,
-        fallbackReason,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
+  const { vector, fallback } = await queryVectors(config, question, maxResults);
 
   const retrievedCandidates = mergeCandidates(lexical, vector);
   const fusedCandidateCount = retrievedCandidates.length;

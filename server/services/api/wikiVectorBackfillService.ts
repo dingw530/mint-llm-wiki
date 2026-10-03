@@ -1,11 +1,11 @@
-import * as searchRepo from '../../repositories/wikiSearchRepository.js';
+import * as searchRepo from '../../infrastructure/persistence/wiki-search-repository.js';
 import * as backfillRepo from '../../repositories/wikiVectorBackfillRepository.js';
 import { getAiSettings } from './settingsService.js';
 import {
   rebuildWikiSearchIndex,
   backfillWikiEmbeddings,
   getWikiVectorHealth,
-} from './wikiSearchService.js';
+} from '../../domains/wiki/index.js';
 import type { OpenAICompatibleEmbeddingConfig, VectorHealth } from '../vector/types.js';
 
 export interface WikiVectorBackfillInput {

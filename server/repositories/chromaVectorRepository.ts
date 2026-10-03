@@ -5,7 +5,7 @@
  * separately managed Chroma Server and is intended for evaluation only.
  */
 import { ChromaClient, type Collection, type EmbeddingFunction } from 'chromadb';
-import type { WikiSearchDocumentInput } from './wikiSearchRepository.js';
+import type { WikiSearchDocumentInput } from '../infrastructure/persistence/wiki-search-repository.js';
 import type { VectorStore } from '../services/vector/ports.js';
 import type { OpenAICompatibleEmbeddingConfig } from '../services/vector/types.js';
 import type {

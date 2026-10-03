@@ -3,21 +3,28 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getDb } from '../../../db.js';
-import { searchWiki } from '../wikiSearchService.js';
+import { searchWiki } from '../wiki-search-service.js';
 
 const tempDirs: string[] = [];
 
 describe('wikiSearchService', () => {
   afterEach(() => {
-    for (const directory of tempDirs.splice(0)) fs.rmSync(directory, { recursive: true, force: true });
+    for (const directory of tempDirs.splice(0))
+      fs.rmSync(directory, { recursive: true, force: true });
   });
 
   it('returns a section-level evidence snippet and prioritizes title matches', async () => {
     const wikiPath = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-search-'));
     tempDirs.push(wikiPath);
     fs.mkdirSync(path.join(wikiPath, 'pages', 'guides'), { recursive: true });
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'guides', 'mcp.md'), '---\ntitle: MCP 配置\n---\n# MCP 配置\n\n服务需要配置 URL 和认证信息。\n\n## 排错\n\n启动失败时检查端口。');
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'guides', 'misc.md'), '---\ntitle: 其他说明\n---\n# 其他说明\n\n这里提到 MCP 服务作为背景。');
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'guides', 'mcp.md'),
+      '---\ntitle: MCP 配置\n---\n# MCP 配置\n\n服务需要配置 URL 和认证信息。\n\n## 排错\n\n启动失败时检查端口。',
+    );
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'guides', 'misc.md'),
+      '---\ntitle: 其他说明\n---\n# 其他说明\n\n这里提到 MCP 服务作为背景。',
+    );
     const result = await searchWiki(wikiPath, 'MCP 配置', 5, false);
 
     expect(result.results[0]).toMatchObject({
@@ -37,9 +44,13 @@ describe('wikiSearchService', () => {
     fs.writeFileSync(path.join(wikiPath, 'pages', 'one.md'), '# One\n\nSQLite database.');
 
     const first = await searchWiki(wikiPath, 'SQLite', 5, false);
-    const firstCount = getDb().prepare('SELECT COUNT(*) AS count FROM wiki_search_documents').get() as { count: number };
+    const firstCount = getDb()
+      .prepare('SELECT COUNT(*) AS count FROM wiki_search_documents')
+      .get() as { count: number };
     const second = await searchWiki(wikiPath, 'SQLite', 5, false);
-    const secondCount = getDb().prepare('SELECT COUNT(*) AS count FROM wiki_search_documents').get() as { count: number };
+    const secondCount = getDb()
+      .prepare('SELECT COUNT(*) AS count FROM wiki_search_documents')
+      .get() as { count: number };
 
     expect(first.results).toHaveLength(1);
     expect(second.results).toHaveLength(1);
@@ -68,7 +79,10 @@ describe('wikiSearchService', () => {
     const wikiPath = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-search-page-'));
     tempDirs.push(wikiPath);
     fs.mkdirSync(path.join(wikiPath, 'pages'), { recursive: true });
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'same.md'), '# 概览\n\nSQLite 是默认数据库。\n\n## 运维\n\nSQLite 需要定期备份。');
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'same.md'),
+      '# 概览\n\nSQLite 是默认数据库。\n\n## 运维\n\nSQLite 需要定期备份。',
+    );
 
     const result = await searchWiki(wikiPath, 'SQLite', 5, false);
 
@@ -82,25 +96,40 @@ describe('wikiSearchService', () => {
     const wikiPath = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-search-source-family-'));
     tempDirs.push(wikiPath);
     fs.mkdirSync(path.join(wikiPath, 'pages', 'medical'), { recursive: true });
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'medical', 'research.md'), '---\ntitle: 医疗 Agent 研发\nsource: medical.md\n---\n医疗 Agent 需要持续评测。');
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'medical', 'safety.md'), '---\ntitle: 隐私与合规\nsource: medical.md\n---\n医疗数据需要审计和隐私合规。');
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'medical', 'other.md'), '---\ntitle: 无关页面\nsource: other.md\n---\n其他领域内容。');
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'medical', 'research.md'),
+      '---\ntitle: 医疗 Agent 研发\nsource: medical.md\n---\n医疗 Agent 需要持续评测。',
+    );
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'medical', 'safety.md'),
+      '---\ntitle: 隐私与合规\nsource: medical.md\n---\n医疗数据需要审计和隐私合规。',
+    );
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'medical', 'other.md'),
+      '---\ntitle: 无关页面\nsource: other.md\n---\n其他领域内容。',
+    );
 
     const result = await searchWiki(wikiPath, '医疗 Agent 工程化问题', 3, true);
 
-    expect(result.results.map((item) => item.file)).toEqual(expect.arrayContaining([
-      'pages/medical/research.md',
-      'pages/medical/safety.md',
-    ]));
-    expect(result.results.find((item) => item.file.endsWith('safety.md'))?.matchTypes).toContain('source-family');
-    expect(result.results.find((item) => item.file.endsWith('safety.md'))?.granularity).toBe('source-family');
+    expect(result.results.map((item) => item.file)).toEqual(
+      expect.arrayContaining(['pages/medical/research.md', 'pages/medical/safety.md']),
+    );
+    expect(result.results.find((item) => item.file.endsWith('safety.md'))?.matchTypes).toContain(
+      'source-family',
+    );
+    expect(result.results.find((item) => item.file.endsWith('safety.md'))?.granularity).toBe(
+      'source-family',
+    );
   });
 
   it('returns model content at chunk granularity when full evidence is requested', async () => {
     const wikiPath = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-search-granularity-'));
     tempDirs.push(wikiPath);
     fs.mkdirSync(path.join(wikiPath, 'pages'), { recursive: true });
-    fs.writeFileSync(path.join(wikiPath, 'pages', 'sections.md'), '# Overview\n\nSQLite is the default database.\n\n## Operations\n\nSQLite needs regular backups.');
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'sections.md'),
+      '# Overview\n\nSQLite is the default database.\n\n## Operations\n\nSQLite needs regular backups.',
+    );
 
     const result = await searchWiki(wikiPath, 'SQLite default database', 5, true);
 

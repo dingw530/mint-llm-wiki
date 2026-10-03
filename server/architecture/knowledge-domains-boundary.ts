@@ -10,6 +10,8 @@ const DOMAIN_INFRASTRUCTURE: Readonly<Record<string, readonly string[]>> = {
     'infrastructure/persistence/wiki-lifecycle-repository.ts',
     'infrastructure/filesystem/wiki-files.ts',
     'infrastructure/config/wiki-settings.ts',
+    'infrastructure/persistence/wiki-search-repository.ts',
+    'infrastructure/search/wiki-search-runtime.ts',
   ],
 };
 
@@ -22,10 +24,10 @@ const LEGACY_BRIDGES: Readonly<Record<string, readonly string[]>> = {
   'infrastructure/persistence/graph-candidate-repository.ts': [
     'services/api/crossBatchSemanticService.ts',
   ],
-  'infrastructure/persistence/wiki-lifecycle-repository.ts': [
-    'services/api/wikiSearchService.ts',
-    'services/tools/WikiSearchTool.ts',
+  'infrastructure/persistence/wiki-search-repository.ts': [
+    'services/api/wikiVectorBackfillService.ts',
   ],
+  'infrastructure/persistence/wiki-lifecycle-repository.ts': ['services/tools/WikiSearchTool.ts'],
 };
 
 /** Return the owner of a migrated domain source or its domain-specific infrastructure. */

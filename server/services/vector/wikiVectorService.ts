@@ -1,6 +1,6 @@
 import { createChromaVectorStore } from '../../repositories/chromaVectorRepository.js';
 import { pruneOrphans, sqliteVectorStore } from '../../repositories/vectorRepository.js';
-import type { WikiSearchDocumentInput } from '../../repositories/wikiSearchRepository.js';
+import type { WikiSearchDocumentInput } from '../../infrastructure/persistence/wiki-search-repository.js';
 import { OpenAICompatibleEmbeddingProvider } from './providers/openaiCompatibleEmbeddingProvider.js';
 import { createVectorService, type VectorService } from './vectorService.js';
 import type { VectorStore } from './ports.js';

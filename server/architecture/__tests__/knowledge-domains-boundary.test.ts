@@ -32,7 +32,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ).toBeNull();
     expect(
       knowledgeDomainsBoundaryViolation({
-        importer: 'services/api/wikiSearchService.ts',
+        importer: 'domains/wiki/wiki-search-service.ts',
         target: 'infrastructure/persistence/wiki-lifecycle-repository.ts',
         typeOnly: false,
       }),

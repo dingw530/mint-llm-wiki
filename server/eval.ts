@@ -11,7 +11,7 @@ import type { ReactExecutionPolicy } from './services/reactLoopCore.js';
 import { agentRunRegistry } from './services/agentRun.js';
 import { createDurableAgentRun } from './services/agentRunFactory.js';
 import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
-import { getWikiVectorHealth } from './services/api/wikiSearchService.js';
+import { getWikiVectorHealth } from './domains/wiki/index.js';
 import * as agentService from './domains/agents/index.js';
 import { routingService } from './bootstrap/routing.js';
 import { evaluateMemoryGate } from './bootstrap/memory.js';

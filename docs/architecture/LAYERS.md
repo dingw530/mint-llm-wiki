@@ -119,9 +119,17 @@ Consumers use each domain's public `index.ts`. Domain rules access only their ow
 
 The low-frequency lifecycle timer is composed by bootstrap and remains owned/drained by ServerRuntime. Importing the Wiki domain does not start a timer.
 
-`knowledge-domains-boundary.ts` resolves imports, re-exports and literal dynamic dependencies using the existing Server dependency inventory. It records only these legacy runtime bridges: graphBuilder and crossBatchSemanticService access graph storage; crossBatchSemanticService accesses candidate storage; wikiSearchService and WikiSearchTool access lifecycle storage. These exceptions end when graph generation and Wiki search migrate. Other production modules must use public APIs, and infrastructure may import only domain type contracts.
+`knowledge-domains-boundary.ts` resolves imports, re-exports and literal dynamic dependencies using the existing Server dependency inventory. It records only these legacy runtime bridges: graphBuilder and crossBatchSemanticService access graph storage; crossBatchSemanticService accesses candidate storage; WikiSearchTool accesses lifecycle storage; wikiVectorBackfillService accesses search storage. These exceptions end when graph generation and Wiki search migrate. Other production modules must use public APIs, and infrastructure may import only domain type contracts.
 
 [Three-domain migration evidence](skills-graph-wiki-migration.md) records scope, compatibility, tests and history-preserving commit preparation. Wiki search, ingestion jobs, compiler and cross-batch LLM generation remain outside these domain rules in this batch.
+
+### Wiki search application boundary
+
+`domains/wiki/wiki-search-service.ts` owns index orchestration, lexical/vector candidate fusion, page aggregation, evidence/snippet construction, source-family expansion and access feedback. Its public functions are exported through the existing Wiki index. Search state uses only the per-run `getJevSettings` capability instead of importing Agent runtime types.
+
+`infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. `infrastructure/search/wiki-search-runtime.ts` composes the existing settings, embedding/vector, rerank and resilience implementations as an explicit transitional adapter; those provider implementations are not relocated in this batch. Wiki file primitives remain in its filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
+
+The old wikiSearchService persistence bridge is removed. The independent vector backfill job retains an explicit search-storage bridge until its own migration; vector/rerank modules may reference storage contracts through type-only imports. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
 
 ## Client Layer Hierarchy
 

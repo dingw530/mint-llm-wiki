@@ -6,9 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const getAiSettings = vi.hoisted(() => vi.fn());
 const getJevSettings = vi.hoisted(() => vi.fn());
 
-vi.mock('../settingsService.js', () => ({ getAiSettings, getJevSettings }));
+vi.mock('../../../services/api/settingsService.js', () => ({ getAiSettings, getJevSettings }));
 
-import { searchWiki } from '../wikiSearchService.js';
+import { searchWiki } from '../wiki-search-service.js';
 
 const tempDirs: string[] = [];
 

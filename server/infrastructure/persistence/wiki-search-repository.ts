@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { getDb } from '../db.js';
+import { getDb } from '../../db.js';
 
 export interface WikiSearchDocumentInput {
   id: string;
@@ -75,8 +75,10 @@ export function replacePageDocuments(
   const db = getDb();
   const replace = db.transaction(() => {
     const oldRows = db
-      .prepare('SELECT id, content_hash FROM wiki_search_documents WHERE source_path = ?')
-      .all(path) as ExistingSearchDocument[];
+      .prepare<unknown[], ExistingSearchDocument>(
+        'SELECT id, content_hash FROM wiki_search_documents WHERE source_path = ?',
+      )
+      .all(path);
     const oldById = new Map(oldRows.map((row) => [row.id, row]));
     const incomingIds = new Set(documents.map((document) => document.id));
     const removedDocumentIds = oldRows
@@ -87,22 +89,48 @@ export function replacePageDocuments(
       db.prepare('DELETE FROM wiki_search_documents WHERE id = ?').run(documentId);
     }
 
-    const update = db.prepare(`UPDATE wiki_search_documents SET
-      page_id = ?, source_path = ?, title = ?, heading = ?, body = ?, document_type = ?, content_hash = ?, updated_at = ?
-      WHERE id = ?`);
-    const insert = db.prepare(`INSERT INTO wiki_search_documents
-      (id, page_id, source_path, title, heading, body, document_type, content_hash, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    const deleteFts = db.prepare('DELETE FROM wiki_search_documents_fts WHERE document_id = ?');
-    const insertFts = db.prepare(`INSERT INTO wiki_search_documents_fts
-      (title, heading, body, source_path, document_id)
-      VALUES (?, ?, ?, ?, ?)`);
+    const writeDocument = createDocumentWriter(db);
     const changedDocuments: WikiSearchDocumentInput[] = [];
     for (const document of documents) {
       if (oldById.get(document.id)?.content_hash !== document.contentHash)
         changedDocuments.push(document);
-      deleteFts.run(document.id);
-      const updated = update.run(
+      writeDocument(document);
+    }
+    return { changedDocuments, removedDocumentIds };
+  });
+  return replace();
+}
+
+/** Bind one document writer inside the caller-owned replacement transaction. */
+function createDocumentWriter(
+  db: ReturnType<typeof getDb>,
+): (document: WikiSearchDocumentInput) => void {
+  const update = db.prepare(`UPDATE wiki_search_documents SET
+    page_id = ?, source_path = ?, title = ?, heading = ?, body = ?, document_type = ?, content_hash = ?, updated_at = ?
+    WHERE id = ?`);
+  const insert = db.prepare(`INSERT INTO wiki_search_documents
+    (id, page_id, source_path, title, heading, body, document_type, content_hash, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+  const deleteFts = db.prepare('DELETE FROM wiki_search_documents_fts WHERE document_id = ?');
+  const insertFts = db.prepare(`INSERT INTO wiki_search_documents_fts
+    (title, heading, body, source_path, document_id)
+    VALUES (?, ?, ?, ?, ?)`);
+  return function writeDocument(document: WikiSearchDocumentInput): void {
+    deleteFts.run(document.id);
+    const updated = update.run(
+      document.pageId,
+      document.sourcePath,
+      document.title,
+      document.heading,
+      document.body,
+      document.documentType,
+      document.contentHash,
+      now(),
+      document.id,
+    );
+    if (updated.changes === 0) {
+      insert.run(
+        document.id,
         document.pageId,
         document.sourcePath,
         document.title,
@@ -111,32 +139,16 @@ export function replacePageDocuments(
         document.documentType,
         document.contentHash,
         now(),
-        document.id,
-      );
-      if (updated.changes === 0) {
-        insert.run(
-          document.id,
-          document.pageId,
-          document.sourcePath,
-          document.title,
-          document.heading,
-          document.body,
-          document.documentType,
-          document.contentHash,
-          now(),
-        );
-      }
-      insertFts.run(
-        document.title,
-        document.heading,
-        document.body,
-        document.sourcePath,
-        document.id,
       );
     }
-    return { changedDocuments, removedDocumentIds };
-  });
-  return replace();
+    insertFts.run(
+      document.title,
+      document.heading,
+      document.body,
+      document.sourcePath,
+      document.id,
+    );
+  };
 }
 
 /** 清理全量重建后已不存在于当前 Wiki 文件集的搜索文档和向量。 */
@@ -144,8 +156,10 @@ export function removeStaleSearchDocuments(activeSourcePaths: string[]): number 
   const active = new Set(activeSourcePaths);
   const db = getDb();
   const stale = db
-    .prepare('SELECT id, source_path AS sourcePath FROM wiki_search_documents')
-    .all() as Array<{ id: string; sourcePath: string }>;
+    .prepare<unknown[], { id: string; sourcePath: string }>(
+      'SELECT id, source_path AS sourcePath FROM wiki_search_documents',
+    )
+    .all();
   const staleIds = stale.filter((row) => !active.has(row.sourcePath)).map((row) => row.id);
   if (staleIds.length === 0) return 0;
   const remove = db.transaction(() => {
@@ -176,16 +190,16 @@ export function listSearchDocuments(sourcePaths?: string[]): WikiSearchDocument[
   const rows =
     sourcePaths && sourcePaths.length > 0
       ? db
-          .prepare(
+          .prepare<unknown[], WikiSearchDocumentRow>(
             `SELECT d.*, 0 AS rank FROM wiki_search_documents d WHERE d.source_path IN (${sourcePaths.map(() => '?').join(',')}) ORDER BY d.source_path, d.id`,
           )
           .all(...sourcePaths)
       : db
-          .prepare(
+          .prepare<unknown[], WikiSearchDocumentRow>(
             'SELECT d.*, 0 AS rank FROM wiki_search_documents d ORDER BY d.source_path, d.id',
           )
           .all();
-  return (rows as WikiSearchDocumentRow[]).map(mapDocument);
+  return rows.map(mapDocument);
 }
 
 /** 对 FTS 查询执行安全的 OR 召回。 */
@@ -195,7 +209,7 @@ export function searchDocuments(query: string, limit: number): WikiSearchDocumen
   if (uniqueTerms.length === 0) return [];
   const match = uniqueTerms.map((term) => `"${term.replaceAll('"', '""')}"`).join(' OR ');
   const rows = getDb()
-    .prepare(
+    .prepare<unknown[], WikiSearchDocumentRow>(
       `
     SELECT d.*, bm25(wiki_search_documents_fts, 8.0, 6.0, 2.0, 1.0, 0.0) AS rank
     FROM wiki_search_documents_fts f
@@ -205,6 +219,6 @@ export function searchDocuments(query: string, limit: number): WikiSearchDocumen
     LIMIT ?
   `,
     )
-    .all(match, Math.max(1, Math.min(limit, 100))) as WikiSearchDocumentRow[];
+    .all(match, Math.max(1, Math.min(limit, 100)));
   return rows.map(mapDocument);
 }

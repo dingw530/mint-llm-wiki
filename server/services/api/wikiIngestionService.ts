@@ -13,7 +13,7 @@ import {
   stageWikiSourceText,
 } from './wikiFileService.js';
 import { registerCompiledKnowledge } from '../../domains/wiki/index.js';
-import { rebuildWikiSearchIndex } from './wikiSearchService.js';
+import { rebuildWikiSearchIndex } from '../../domains/wiki/index.js';
 import type { OpenAICompatibleEmbeddingConfig } from '../vector/types.js';
 import type { WikiPageSummary } from './wikiIngestionTypes.js';
 import type { CompiledPage, Relationship } from '../utils/wikiShared.js';

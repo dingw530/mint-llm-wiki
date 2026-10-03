@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getDb } from '../../db.js';
-import * as repository from '../wikiSearchRepository.js';
-import * as vectorRepository from '../vectorRepository.js';
+import { getDb } from '../../../db.js';
+import * as repository from '../wiki-search-repository.js';
+import * as vectorRepository from '../../../repositories/vectorRepository.js';
 
 const documentIds = ['vector-test-a', 'vector-test-b'];
 const config = { apiUrl: 'http://127.0.0.1:11434/v1', model: 'bge-m3', dimensions: 1024 };
