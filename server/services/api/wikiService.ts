@@ -1,7 +1,8 @@
-import * as fs from 'fs';
+import * as fs from '../../infrastructure/filesystem/wiki-files.js';
 import * as path from 'path';
-import * as settingsService from './settingsService.js';
-import { normalizeWikiSchema, type WikiCategory, type WikiSchema } from '../utils/wikiShared.js';
+import { getConfiguredWikiPath } from '../../infrastructure/config/wiki-settings.js';
+import { normalizeWikiSchema } from '../../infrastructure/filesystem/wiki-files.js';
+import type { WikiCategory, WikiSchema } from '../utils/wikiShared.js';
 import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
 import { calculateWikiRetentionScore } from '../utils/wikiRetention.js';
 
@@ -50,9 +51,9 @@ export interface WikiHeatResponse {
 }
 
 function getRootPath(): string {
-  const settings = settingsService.get();
-  if (!settings.wikiPath) throw new Error('Wiki 路径未配置');
-  return settings.wikiPath;
+  const wikiPath = getConfiguredWikiPath();
+  if (!wikiPath) throw new Error('Wiki 路径未配置');
+  return wikiPath;
 }
 
 function isPathSafe(root: string, target: string): boolean {
@@ -68,8 +69,11 @@ function isPathSafe(root: string, target: string): boolean {
  * @returns 忽略连字符、空白和大小写后的比较键
  */
 function getWikiFileNameKey(fileName: string): string {
-  const name = fileName.normalize('NFC').replace(/[\s-]+/g, '').toLocaleLowerCase();
-  return name
+  const name = fileName
+    .normalize('NFC')
+    .replace(/[\s-]+/g, '')
+    .toLocaleLowerCase();
+  return name;
 }
 
 /**
@@ -84,7 +88,8 @@ function resolveNormalizedWikiFilePath(requestedPath: string): string | null {
   if (!fs.existsSync(directory)) return null;
 
   const requestedKey = getWikiFileNameKey(requestedName);
-  const candidates = fs.readdirSync(directory, { withFileTypes: true })
+  const candidates = fs
+    .readdirSync(directory, { withFileTypes: true })
     .filter((entry) => getWikiFileNameKey(entry.name) === requestedKey)
     .map((entry) => path.join(directory, entry.name));
   return candidates.length === 1 ? candidates[0] : null;
@@ -159,24 +164,37 @@ function buildFileTree(rootDir: string, currentDir: string): FileTreeNode[] {
   const items = fs.readdirSync(currentDir);
 
   for (const item of items.sort()) {
-    const fullPath = path.join(currentDir, item);
-    const stat = fs.statSync(fullPath);
-    const relativePath = path.relative(rootDir, fullPath);
-
-    if (stat.isDirectory()) {
-      const children = buildFileTree(rootDir, fullPath);
-      entries.push({ name: item, type: 'directory', path: relativePath, modifiedAt: stat.mtimeMs, children });
-    } else if (
-      (item.endsWith('.md') ||
-        item === '_schema.json' ||
-        item === '_manifest.json' ||
-        /\.(html?|txt|pdf)$/i.test(item)) &&
-      item !== '.gitkeep'
-    ) {
-      entries.push({ name: item, type: 'file', path: relativePath, modifiedAt: stat.mtimeMs });
-    }
+    const entry = buildFileEntry(rootDir, currentDir, item);
+    if (entry) entries.push(entry);
   }
   return entries;
+}
+
+/** Build one visible entry using the existing directory and supported-file rules. */
+function buildFileEntry(rootDir: string, currentDir: string, item: string): FileTreeNode | null {
+  const fullPath = path.join(currentDir, item);
+  const stat = fs.statSync(fullPath);
+  const relativePath = path.relative(rootDir, fullPath);
+
+  if (stat.isDirectory()) {
+    const children = buildFileTree(rootDir, fullPath);
+    return {
+      name: item,
+      type: 'directory',
+      path: relativePath,
+      modifiedAt: stat.mtimeMs,
+      children,
+    };
+  } else if (
+    (item.endsWith('.md') ||
+      item === '_schema.json' ||
+      item === '_manifest.json' ||
+      /\.(html?|txt|pdf)$/i.test(item)) &&
+    item !== '.gitkeep'
+  ) {
+    return { name: item, type: 'file', path: relativePath, modifiedAt: stat.mtimeMs };
+  }
+  return null;
 }
 
 function countFiles(tree: FileTreeNode[]): number {

@@ -1,11 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as conversationRepo from '../../repositories/conversationRepository.js';
-import * as settingsRepo from '../../repositories/settingsRepository.js';
-import type { HttpError } from '../../types.js';
+import { getConversationRoutingMode } from '../../infrastructure/config/conversation-defaults.js';
+import type { Conversation, HttpError } from '../../types.js';
+
+const DEFAULT_ROUTING_MODE = 'auto';
+const DEFAULT_TITLE = 'New Chat';
 
 function getSettingsRoutingMode(): string {
-  const raw = settingsRepo.getAll();
-  return raw.routingMode || 'auto';
+  return getConversationRoutingMode() || DEFAULT_ROUTING_MODE;
 }
 
 export function list(type?: string) {
@@ -15,7 +17,7 @@ export function list(type?: string) {
 export function create({ title, type }: { title?: string; type?: string } = {}) {
   const id = uuidv4();
   const routingMode = getSettingsRoutingMode();
-  return conversationRepo.create({ id, title: title || 'New Chat', type, routingMode });
+  return conversationRepo.create({ id, title: title || DEFAULT_TITLE, type, routingMode });
 }
 
 // 清空所有会话
@@ -59,4 +61,13 @@ export function setLockedAgent(id: string, lockedAgent: string | null) {
     throw err;
   }
   return updated;
+}
+
+/**
+ * Read conversation metadata for request setup, preserving nullable lookup semantics.
+ * @param id Conversation identifier
+ * @returns Stored conversation, or null when it no longer exists
+ */
+export function findById(id: string): Conversation | null {
+  return conversationRepo.findById(id);
 }

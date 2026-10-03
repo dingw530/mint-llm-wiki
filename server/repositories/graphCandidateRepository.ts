@@ -18,9 +18,19 @@ export interface GraphEdgeCandidate {
   reviewedAt: string | null;
 }
 interface GraphEdgeCandidateRow {
-  id: string; source_id: string; target_id: string; relation: string; evidence: string;
-  confidence: number; candidate_score: number; source_page: string; target_page: string;
-  status: CandidateStatus; review_note: string | null; created_at: string; reviewed_at: string | null;
+  id: string;
+  source_id: string;
+  target_id: string;
+  relation: string;
+  evidence: string;
+  confidence: number;
+  candidate_score: number;
+  source_page: string;
+  target_page: string;
+  status: CandidateStatus;
+  review_note: string | null;
+  created_at: string;
+  reviewed_at: string | null;
 }
 const map = (r: GraphEdgeCandidateRow): GraphEdgeCandidate => ({
   id: r.id,
@@ -48,13 +58,15 @@ export function list(status?: CandidateStatus): GraphEdgeCandidate[] {
   expirePending();
   const rows: GraphEdgeCandidateRow[] = status
     ? getDb()
-        .prepare(
+        .prepare<unknown[], GraphEdgeCandidateRow>(
           'SELECT * FROM graph_edge_candidates WHERE status=? ORDER BY confidence DESC, created_at DESC',
         )
-        .all(status) as GraphEdgeCandidateRow[]
+        .all(status)
     : getDb()
-        .prepare('SELECT * FROM graph_edge_candidates ORDER BY confidence DESC, created_at DESC')
-        .all() as GraphEdgeCandidateRow[];
+        .prepare<unknown[], GraphEdgeCandidateRow>(
+          'SELECT * FROM graph_edge_candidates ORDER BY confidence DESC, created_at DESC',
+        )
+        .all();
   return rows.map(map);
 }
 export function create(
@@ -82,7 +94,9 @@ export function create(
   return { id, ...input, status: 'pending', reviewNote: null, createdAt: now, reviewedAt: null };
 }
 export function get(id: string): GraphEdgeCandidate | null {
-  const row = getDb().prepare('SELECT * FROM graph_edge_candidates WHERE id=?').get(id) as GraphEdgeCandidateRow | undefined;
+  const row = getDb()
+    .prepare<unknown[], GraphEdgeCandidateRow>('SELECT * FROM graph_edge_candidates WHERE id=?')
+    .get(id);
   return row ? map(row) : null;
 }
 export function review(id: string, status: 'accepted' | 'rejected', note?: string): void {

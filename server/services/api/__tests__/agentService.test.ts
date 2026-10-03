@@ -65,15 +65,12 @@ describe('agentService', () => {
 
   describe('list', () => {
     it('returns all agents with correct availability', () => {
-      vi.mocked(agentRepo.findAll).mockReturnValue([
-        { ...GENERAL_AGENT },
-        { ...CUSTOM_AGENT },
-      ]);
+      vi.mocked(agentRepo.findAll).mockReturnValue([{ ...GENERAL_AGENT }, { ...CUSTOM_AGENT }]);
 
       const result = agentService.list();
 
       expect(result).toHaveLength(2);
-      expect(result.map(a => a.id)).toEqual(['general', 'my-custom']);
+      expect(result.map((a) => a.id)).toEqual(['general', 'my-custom']);
     });
   });
 

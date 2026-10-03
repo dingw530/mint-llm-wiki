@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import fs from 'node:fs';
+import * as fs from '../../infrastructure/filesystem/wiki-files.js';
 import path from 'node:path';
 import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
-import { parseWikiPage } from '../utils/wikiShared.js';
+import { parseWikiPage } from '../../infrastructure/filesystem/wiki-files.js';
 import type { CompiledPage } from '../utils/wikiShared.js';
 import type { WikiCompiledClaim } from '../utils/wikiCompiler.js';
 
@@ -69,88 +69,111 @@ export function registerCompiledKnowledge(
     const registeredPages: lifecycleRepo.WikiPage[] = [];
     const registeredClaims: lifecycleRepo.WikiClaim[] = [];
     for (const page of pages) {
-      const registeredPage = lifecycleRepo.createPage({
-        path: page.filename,
-        title: page.title,
-        contentHash: hashWikiContent(page.content),
-        sourceId: source.id,
-        status: 'active',
-        confidence: 0.7,
-        importance: 0.6,
-      });
-      registeredPages.push(registeredPage);
-      lifecycleRepo.recordEvent(
-        'page',
-        registeredPage.id,
-        'created',
-        null,
-        source.id,
-        page.filename,
-        options.pageEventReason ?? 'compiled page registered',
-      );
-
-      const pageClaims = claims.filter((claim) => claim.pageTitle === page.title);
-      const effectiveClaims =
-        pageClaims.length > 0
-          ? pageClaims
-          : [
-              {
-                pageTitle: page.title,
-                text: page.title,
-                normalizedKey: `page:${normalizeClaimKey(page.title)}`,
-                confidence: 0.45,
-                importance: 0.4,
-              },
-            ];
-      for (const claimInput of effectiveClaims) {
-        const claimText = claimInput.text.trim();
-        if (!claimText) continue;
-        const normalizedKey = claimInput.normalizedKey?.trim() || normalizeClaimKey(claimText);
-        const active = lifecycleRepo.findActiveClaims(normalizedKey);
-        const same = active.find((claim) => claim.claimText === claimText);
-        if (same) {
-          const nextConfidence = Math.min(1, same.confidence + (1 - same.confidence) * 0.12);
-          const reinforced = lifecycleRepo.reinforceClaim(same.id, nextConfidence);
-          lifecycleRepo.recordEvent(
-            'claim',
-            same.id,
-            'reinforced',
-            nextConfidence - same.confidence,
-            source.id,
-            page.filename,
-            claimInput.evidence || 'same claim supported by a new compilation',
-          );
-          registeredClaims.push(reinforced);
-          continue;
-        }
-        const claim = lifecycleRepo.createClaim({
-          pageId: registeredPage.id,
-          claimText,
-          normalizedKey,
-          status:
-            active.length > 0
-              ? 'contested'
-              : clamp(claimInput.confidence, 0.5) >= 0.8
-                ? 'verified'
-                : 'proposed',
-          confidence: clamp(claimInput.confidence, 0.5),
-          importance: clamp(claimInput.importance, 0.5),
-        });
-        lifecycleRepo.recordEvent(
-          'claim',
-          claim.id,
-          active.length > 0 ? 'contradicted' : 'created',
-          null,
-          source.id,
-          page.filename,
-          claimInput.evidence || null,
-        );
-        registeredClaims.push(claim);
-      }
+      const registration = registerCompiledPage(source, page, claims, options);
+      registeredPages.push(registration.page);
+      registeredClaims.push(...registration.claims);
     }
     const compiledSource = lifecycleRepo.markSourceCompiled(source.id);
     return { source: compiledSource, pages: registeredPages, claims: registeredClaims };
   });
+}
+
+/** Register one compiled page and its claims within the caller-owned transaction. */
+function registerCompiledPage(
+  source: lifecycleRepo.WikiSource,
+  page: CompiledPage,
+  claims: WikiCompiledClaim[],
+  options: { pageEventReason?: string },
+): { page: lifecycleRepo.WikiPage; claims: lifecycleRepo.WikiClaim[] } {
+  const registeredPage = lifecycleRepo.createPage({
+    path: page.filename,
+    title: page.title,
+    contentHash: hashWikiContent(page.content),
+    sourceId: source.id,
+    status: 'active',
+    confidence: 0.7,
+    importance: 0.6,
+  });
+  lifecycleRepo.recordEvent(
+    'page',
+    registeredPage.id,
+    'created',
+    null,
+    source.id,
+    page.filename,
+    options.pageEventReason ?? 'compiled page registered',
+  );
+
+  const pageClaims = claims.filter((claim) => claim.pageTitle === page.title);
+  const effectiveClaims =
+    pageClaims.length > 0
+      ? pageClaims
+      : [
+          {
+            pageTitle: page.title,
+            text: page.title,
+            normalizedKey: `page:${normalizeClaimKey(page.title)}`,
+            confidence: 0.45,
+            importance: 0.4,
+          },
+        ];
+  const registeredClaims: lifecycleRepo.WikiClaim[] = [];
+  for (const claimInput of effectiveClaims) {
+    const claim = registerCompiledClaim(source, page, registeredPage, claimInput);
+    if (claim) registeredClaims.push(claim);
+  }
+  return { page: registeredPage, claims: registeredClaims };
+}
+
+/** Preserve reinforcement, conflict and confidence rules for one compiled claim. */
+function registerCompiledClaim(
+  source: lifecycleRepo.WikiSource,
+  page: CompiledPage,
+  registeredPage: lifecycleRepo.WikiPage,
+  claimInput: WikiCompiledClaim,
+): lifecycleRepo.WikiClaim | null {
+  const claimText = claimInput.text.trim();
+  if (!claimText) return null;
+  const normalizedKey = claimInput.normalizedKey?.trim() || normalizeClaimKey(claimText);
+  const active = lifecycleRepo.findActiveClaims(normalizedKey);
+  const same = active.find((claim) => claim.claimText === claimText);
+  if (same) {
+    const nextConfidence = Math.min(1, same.confidence + (1 - same.confidence) * 0.12);
+    const reinforced = lifecycleRepo.reinforceClaim(same.id, nextConfidence);
+    lifecycleRepo.recordEvent(
+      'claim',
+      same.id,
+      'reinforced',
+      nextConfidence - same.confidence,
+      source.id,
+      page.filename,
+      claimInput.evidence || 'same claim supported by a new compilation',
+    );
+    return reinforced;
+  }
+  const claim = lifecycleRepo.createClaim({
+    pageId: registeredPage.id,
+    claimText,
+    normalizedKey,
+    status:
+      active.length > 0
+        ? 'contested'
+        : clamp(claimInput.confidence, 0.5) >= 0.8
+          ? 'verified'
+          : 'proposed',
+    confidence: clamp(claimInput.confidence, 0.5),
+    importance: clamp(claimInput.importance, 0.5),
+  });
+  lifecycleRepo.recordEvent(
+    'claim',
+    claim.id,
+    active.length > 0 ? 'contradicted' : 'created',
+    null,
+    source.id,
+    page.filename,
+    claimInput.evidence || null,
+  );
+  return claim;
 }
 
 function findExistingRegistration(
@@ -239,37 +262,46 @@ export function migrateExistingWikiPages(wikiPath: string): WikiLifecycleMigrati
 
   for (const relativePath of scanWikiMarkdownPages(absoluteWikiPath)) {
     result.scanned++;
-    try {
-      const pageContent = fs.readFileSync(path.join(absoluteWikiPath, relativePath), 'utf-8');
-      const parsed = parseWikiPage(relativePath, pageContent);
-      const sourcePath = findWikiSourcePath(absoluteWikiPath, relativePath, parsed.source);
-      const sourceAbsolutePath = path.join(absoluteWikiPath, sourcePath);
-      const sourceText =
-        sourcePath.startsWith('legacy/') || !fs.existsSync(sourceAbsolutePath)
-          ? pageContent
-          : fs.readFileSync(sourceAbsolutePath, 'utf-8');
-      const before = lifecycleRepo.findPageByPath(relativePath);
-      const registered = registerCompiledKnowledge(
-        sourcePath,
-        sourceText,
-        [{ filename: relativePath, title: parsed.title, tags: parsed.tags, content: pageContent }],
-        [],
-        { sourceType: 'legacy-migration', pageEventReason: 'legacy page migrated' },
-      );
-      const page = registered.pages[0];
-      if (before && before.contentHash === page.contentHash) {
-        result.unchanged++;
-      } else {
-        result.migrated++;
-      }
-      result.claimsCreated += registered.claims.filter((claim) => claim.pageId === page.id).length;
-    } catch (error) {
-      result.skipped++;
-      result.errors.push({
-        path: relativePath,
-        message: error instanceof Error ? error.message : String(error),
-      });
-    }
+    migrateWikiPage(absoluteWikiPath, relativePath, result);
   }
   return result;
+}
+
+/** Migrate one legacy page and retain per-page error isolation and accounting. */
+function migrateWikiPage(
+  absoluteWikiPath: string,
+  relativePath: string,
+  result: WikiLifecycleMigrationResult,
+): void {
+  try {
+    const pageContent = fs.readFileSync(path.join(absoluteWikiPath, relativePath), 'utf-8');
+    const parsed = parseWikiPage(relativePath, pageContent);
+    const sourcePath = findWikiSourcePath(absoluteWikiPath, relativePath, parsed.source);
+    const sourceAbsolutePath = path.join(absoluteWikiPath, sourcePath);
+    const sourceText =
+      sourcePath.startsWith('legacy/') || !fs.existsSync(sourceAbsolutePath)
+        ? pageContent
+        : fs.readFileSync(sourceAbsolutePath, 'utf-8');
+    const before = lifecycleRepo.findPageByPath(relativePath);
+    const registered = registerCompiledKnowledge(
+      sourcePath,
+      sourceText,
+      [{ filename: relativePath, title: parsed.title, tags: parsed.tags, content: pageContent }],
+      [],
+      { sourceType: 'legacy-migration', pageEventReason: 'legacy page migrated' },
+    );
+    const page = registered.pages[0];
+    if (before && before.contentHash === page.contentHash) {
+      result.unchanged++;
+    } else {
+      result.migrated++;
+    }
+    result.claimsCreated += registered.claims.filter((claim) => claim.pageId === page.id).length;
+  } catch (error) {
+    result.skipped++;
+    result.errors.push({
+      path: relativePath,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
 }

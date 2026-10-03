@@ -8,8 +8,11 @@ import { migrateExistingWikiPages } from '../wikiKnowledgeLifecycleService.js';
 const tempDirs: string[] = [];
 
 afterEach(() => {
-  getDb().exec('DELETE FROM wiki_knowledge_events; DELETE FROM wiki_claims; DELETE FROM wiki_pages; DELETE FROM wiki_sources;');
-  for (const directory of tempDirs.splice(0)) fs.rmSync(directory, { recursive: true, force: true });
+  getDb().exec(
+    'DELETE FROM wiki_knowledge_events; DELETE FROM wiki_claims; DELETE FROM wiki_pages; DELETE FROM wiki_sources;',
+  );
+  for (const directory of tempDirs.splice(0))
+    fs.rmSync(directory, { recursive: true, force: true });
 });
 
 describe('migrateExistingWikiPages', () => {
@@ -25,10 +28,32 @@ describe('migrateExistingWikiPages', () => {
     const first = migrateExistingWikiPages(wikiPath);
     const second = migrateExistingWikiPages(wikiPath);
 
-    expect(first).toMatchObject({ scanned: 1, migrated: 1, unchanged: 0, skipped: 0, claimsCreated: 1 });
-    expect(second).toMatchObject({ scanned: 1, migrated: 0, unchanged: 1, skipped: 0, claimsCreated: 1 });
-    expect(getDb().prepare("SELECT COUNT(*) AS count FROM wiki_pages WHERE path='pages/concept/database.md'").get()).toMatchObject({ count: 1 });
-    expect(getDb().prepare("SELECT COUNT(*) AS count FROM wiki_sources WHERE path='legacy/pages/concept/database.md'").get()).toMatchObject({ count: 1 });
+    expect(first).toMatchObject({
+      scanned: 1,
+      migrated: 1,
+      unchanged: 0,
+      skipped: 0,
+      claimsCreated: 1,
+    });
+    expect(second).toMatchObject({
+      scanned: 1,
+      migrated: 0,
+      unchanged: 1,
+      skipped: 0,
+      claimsCreated: 1,
+    });
+    expect(
+      getDb()
+        .prepare("SELECT COUNT(*) AS count FROM wiki_pages WHERE path='pages/concept/database.md'")
+        .get(),
+    ).toMatchObject({ count: 1 });
+    expect(
+      getDb()
+        .prepare(
+          "SELECT COUNT(*) AS count FROM wiki_sources WHERE path='legacy/pages/concept/database.md'",
+        )
+        .get(),
+    ).toMatchObject({ count: 1 });
     expect(fs.existsSync(path.join(wikiPath, 'pages', 'concept', 'database.md'))).toBe(true);
   });
 });

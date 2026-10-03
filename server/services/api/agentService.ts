@@ -43,16 +43,19 @@ export function create(data: {
   return agentRepo.create(data);
 }
 
-export function update(id: string, fields: Partial<{
-  name: string;
-  description: string;
-  type: string;
-  systemPrompt: string | null;
-  mcpServerIds: string[];
-  available: boolean;
-  errorMessage: string | null;
-  triggerKeywords: string[];
-}>): Agent | null {
+export function update(
+  id: string,
+  fields: Partial<{
+    name: string;
+    description: string;
+    type: string;
+    systemPrompt: string | null;
+    mcpServerIds: string[];
+    available: boolean;
+    errorMessage: string | null;
+    triggerKeywords: string[];
+  }>,
+): Agent | null {
   return agentRepo.update(id, fields);
 }
 

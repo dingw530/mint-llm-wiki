@@ -8,8 +8,12 @@ import type { Agent } from '../../types.js';
 describe('agentRepository', () => {
   afterAll(() => {
     // Clean up custom agents
-    try { agentRepo.deleteById('test-agent-1'); } catch {}
-    try { agentRepo.deleteById('test-agent-2'); } catch {}
+    try {
+      agentRepo.deleteById('test-agent-1');
+    } catch {}
+    try {
+      agentRepo.deleteById('test-agent-2');
+    } catch {}
   });
 
   describe('findAll', () => {
@@ -17,8 +21,8 @@ describe('agentRepository', () => {
       const agents = agentRepo.findAll();
       // general is seeded in db.ts
       expect(agents.length).toBeGreaterThanOrEqual(1);
-      expect(agents.find(a => a.id === 'general')).toBeDefined();
-      expect(agents.find(a => a.id === 'weather')).toBeUndefined();
+      expect(agents.find((a) => a.id === 'general')).toBeDefined();
+      expect(agents.find((a) => a.id === 'weather')).toBeUndefined();
     });
   });
 

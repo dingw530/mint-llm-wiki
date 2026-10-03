@@ -17,15 +17,21 @@ describe('wikiService', () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'wiki-test-'));
     fs.mkdirSync(path.join(tmpDir, 'pages'), { recursive: true });
     fs.mkdirSync(path.join(tmpDir, 'sources'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, '_schema.json'), JSON.stringify({
-      version: 1, categories: [{ name: 'concept', description: 'Concepts' }],
-    }));
+    fs.writeFileSync(
+      path.join(tmpDir, '_schema.json'),
+      JSON.stringify({
+        version: 1,
+        categories: [{ name: 'concept', description: 'Concepts' }],
+      }),
+    );
     fs.writeFileSync(path.join(tmpDir, 'pages', 'hello.md'), '# Hello Page\nContent here.');
     vi.mocked(settingsService.get).mockReturnValue({ wikiPath: tmpDir } as any);
   });
 
   afterEach(() => {
-    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+    try {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    } catch {}
     vi.clearAllMocks();
   });
 
@@ -81,7 +87,7 @@ describe('wikiService', () => {
   describe('addCategory', () => {
     it('adds new category', () => {
       const schema = wikiService.addCategory('new-category');
-      expect(schema.categories.find(c => c.name === 'new-category')).toBeDefined();
+      expect(schema.categories.find((c) => c.name === 'new-category')).toBeDefined();
     });
 
     it('throws on duplicate', () => {
@@ -97,9 +103,9 @@ describe('wikiService', () => {
     it('removes existing', () => {
       wikiService.addCategory('extra-cat');
       const schema = wikiService.removeCategory('extra-cat');
-      expect(schema.categories.find(c => c.name === 'extra-cat')).toBeUndefined();
+      expect(schema.categories.find((c) => c.name === 'extra-cat')).toBeUndefined();
       // Original category should remain
-      expect(schema.categories.find(c => c.name === 'concept')).toBeDefined();
+      expect(schema.categories.find((c) => c.name === 'concept')).toBeDefined();
     });
 
     it('non-existent is a no-op', () => {
@@ -111,19 +117,19 @@ describe('wikiService', () => {
 
   describe('updateSchema', () => {
     it('rejects duplicates', () => {
-      expect(() => wikiService.updateSchema({
-        categories: [
-          { name: 'a', description: '', include: [], exclude: [] },
-          { name: 'a', description: '', include: [], exclude: [] },
-        ],
-      })).toThrow('已存在');
+      expect(() =>
+        wikiService.updateSchema({
+          categories: [
+            { name: 'a', description: '', include: [], exclude: [] },
+            { name: 'a', description: '', include: [], exclude: [] },
+          ],
+        }),
+      ).toThrow('已存在');
     });
 
     it('saves valid schema', () => {
       const schema = wikiService.updateSchema({
-        categories: [
-          { name: 'updated-cat', description: 'Updated', include: [], exclude: [] },
-        ],
+        categories: [{ name: 'updated-cat', description: 'Updated', include: [], exclude: [] }],
       });
       expect(schema.categories).toHaveLength(1);
       expect(schema.categories[0].name).toBe('updated-cat');

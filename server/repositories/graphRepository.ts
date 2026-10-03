@@ -103,15 +103,15 @@ function parseJson(raw: string): Record<string, unknown> {
 export function getGraphData(): GraphData {
   const db = getDb();
   const nodes = db
-    .prepare(
+    .prepare<unknown[], GraphNodeRow>(
       'SELECT id, label, type, source_file, properties, created_at, updated_at FROM graph_nodes ORDER BY label',
     )
-    .all() as GraphNodeRow[];
+    .all();
   const edges = db
-    .prepare(
+    .prepare<unknown[], GraphEdgeRow>(
       'SELECT id, source_id, relation, target_id, properties, source, created_at FROM graph_edges ORDER BY created_at',
     )
-    .all() as GraphEdgeRow[];
+    .all();
   return {
     nodes: nodes.map(toCamelCaseNode),
     edges: edges.map(toCamelCaseEdge),
@@ -121,28 +121,28 @@ export function getGraphData(): GraphData {
 export function getNode(id: string): GraphNode | null {
   const db = getDb();
   const row = db
-    .prepare(
+    .prepare<unknown[], GraphNodeRow>(
       'SELECT id, label, type, source_file, properties, created_at, updated_at FROM graph_nodes WHERE id = ?',
     )
-    .get(id) as GraphNodeRow | undefined;
+    .get(id);
   return row ? toCamelCaseNode(row) : null;
 }
 
 export function getNodeNeighbors(id: string): { node: GraphNode; edges: GraphEdge[] } | null {
   const db = getDb();
   const row = db
-    .prepare(
+    .prepare<unknown[], GraphNodeRow>(
       'SELECT id, label, type, source_file, properties, created_at, updated_at FROM graph_nodes WHERE id = ?',
     )
-    .get(id) as GraphNodeRow | undefined;
+    .get(id);
   if (!row) return null;
 
   const edges = db
-    .prepare(
+    .prepare<unknown[], GraphEdgeRow>(
       `SELECT id, source_id, relation, target_id, properties, source, created_at
      FROM graph_edges WHERE source_id = ? OR target_id = ?`,
     )
-    .all(id, id) as GraphEdgeRow[];
+    .all(id, id);
 
   return { node: toCamelCaseNode(row), edges: edges.map(toCamelCaseEdge) };
 }
@@ -150,10 +150,10 @@ export function getNodeNeighbors(id: string): { node: GraphNode; edges: GraphEdg
 export function searchNodes(query: string): GraphNode[] {
   const db = getDb();
   const rows = db
-    .prepare(
+    .prepare<unknown[], GraphNodeRow>(
       'SELECT id, label, type, source_file, properties, created_at, updated_at FROM graph_nodes WHERE label LIKE ? ORDER BY label',
     )
-    .all(`%${query}%`) as GraphNodeRow[];
+    .all(`%${query}%`);
   return rows.map(toCamelCaseNode);
 }
 
@@ -164,10 +164,10 @@ export function searchNodes(query: string): GraphNode[] {
 export function getAllNodesWithSource(): GraphNode[] {
   const db = getDb();
   const rows = db
-    .prepare(
+    .prepare<unknown[], GraphNodeRow>(
       'SELECT id, label, type, source_file, properties, created_at, updated_at FROM graph_nodes WHERE source_file IS NOT NULL ORDER BY label',
     )
-    .all() as GraphNodeRow[];
+    .all();
   return rows.map(toCamelCaseNode);
 }
 
@@ -178,10 +178,10 @@ export function getAllNodesWithSource(): GraphNode[] {
 export function getAllEdges(): GraphEdge[] {
   const db = getDb();
   const rows = db
-    .prepare(
+    .prepare<unknown[], GraphEdgeRow>(
       'SELECT id, source_id, relation, target_id, properties, source, created_at FROM graph_edges ORDER BY created_at',
     )
-    .all() as GraphEdgeRow[];
+    .all();
   return rows.map(toCamelCaseEdge);
 }
 
@@ -275,10 +275,10 @@ export function findEdgeByTriple(
 ): GraphEdge | null {
   const db = getDb();
   const row = db
-    .prepare(
+    .prepare<unknown[], GraphEdgeRow>(
       'SELECT id, source_id, relation, target_id, properties, source, created_at FROM graph_edges WHERE source_id = ? AND relation = ? AND target_id = ?',
     )
-    .get(sourceId, relation, targetId) as GraphEdgeRow | undefined;
+    .get(sourceId, relation, targetId);
   return row ? toCamelCaseEdge(row) : null;
 }
 

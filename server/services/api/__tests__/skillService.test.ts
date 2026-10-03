@@ -7,8 +7,8 @@ const skillsDir = '/tmp/mint-test-skills';
 vi.mock('fs/promises', () => ({
   readdir: vi.fn(async (dir: string) => {
     const keys = Object.keys(mockFiles)
-      .map(k => k.replace(/^.*[\\/]/, ''))
-      .filter(k => k !== '.gitkeep');
+      .map((k) => k.replace(/^.*[\\/]/, ''))
+      .filter((k) => k !== '.gitkeep');
     return keys;
   }),
   readFile: vi.fn(async (path: string) => mockFiles[path] || ''),
@@ -28,8 +28,8 @@ describe('skillService', () => {
   beforeEach(() => {
     process.env.AI_CHAT_SKILLS_DIR = skillsDir;
     vi.clearAllMocks();
-    Object.keys(mockFiles).forEach(k => delete mockFiles[k]);
-    Object.keys(mockExists).forEach(k => delete mockExists[k]);
+    Object.keys(mockFiles).forEach((k) => delete mockFiles[k]);
+    Object.keys(mockExists).forEach((k) => delete mockExists[k]);
     skillService.clearSkillCache();
   });
 

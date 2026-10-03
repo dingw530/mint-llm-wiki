@@ -1,6 +1,12 @@
 import * as graphRepo from '../../repositories/graphRepository.js';
 import * as candidateService from './graphCandidateService.js';
-import type { GraphNode, GraphEdge, GraphData, CreateNodeParams, CreateEdgeParams } from '../../repositories/graphRepository.js';
+import type {
+  GraphNode,
+  GraphEdge,
+  GraphData,
+  CreateNodeParams,
+  CreateEdgeParams,
+} from '../../repositories/graphRepository.js';
 
 // ── CRUD ──
 
@@ -39,3 +45,6 @@ export function deleteEdge(id: string): void {
 export const listCandidates = candidateService.listCandidates;
 export const acceptCandidate = candidateService.acceptCandidate;
 export const rejectCandidate = candidateService.rejectCandidate;
+
+/** Look up an existing edge for idempotent tool-driven graph updates. */
+export const findEdgeByTriple = graphRepo.findEdgeByTriple;
