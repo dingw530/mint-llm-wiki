@@ -1,7 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
-import * as candidateRepo from '../../infrastructure/persistence/graph-candidate-repository.js';
+import {
+  getNodesWithSource,
+  findNodeByLabel,
+  createGraphCandidate,
+} from '../../domains/knowledge-graph/index.js';
 import { getAdapter } from '../adapters/apiAdapter.js';
 import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 import type { AiSettings } from '../../types.js';
@@ -32,9 +35,9 @@ export async function generateCrossBatchCandidates(
   pages: CompiledPage[],
 ): Promise<void> {
   const current = new Set(pages.map((page) => page.filename));
-  const existing = graphRepo
-    .getAllNodesWithSource()
-    .filter((node) => node.sourceFile && !current.has(node.sourceFile));
+  const existing = getNodesWithSource().filter(
+    (node) => node.sourceFile && !current.has(node.sourceFile),
+  );
   const pairs = pages
     .flatMap((page) =>
       existing
@@ -84,9 +87,9 @@ export async function generateCrossBatchCandidates(
       confidence > 1
     )
       continue;
-    const source = graphRepo.searchNodes(pair.page.title).find((n) => n.label === pair.page.title);
+    const source = findNodeByLabel(pair.page.title);
     if (!source) continue;
-    candidateRepo.create({
+    createGraphCandidate({
       sourceId: source.id,
       targetId: pair.node.id,
       relation,

@@ -4,8 +4,8 @@ import type {
   WikiJobListFilter,
   WikiJobStatus,
   WikiJobUpdate,
-} from '../api/wikiIngestionTypes.js';
-import * as sqliteStore from './adapters/sqliteJobStore.js';
+} from '../../domains/wiki/index.js';
+import * as sqliteStore from './sqlite-job-store.js';
 
 /**
  * 摄入任务的事实存储端口。
@@ -77,7 +77,8 @@ export function createJobStoreAdapter(overrides: Partial<JobStore> = {}): JobSto
   return {
     create: overrides.create || sqliteJobStore.create.bind(sqliteJobStore),
     get: overrides.get || sqliteJobStore.get.bind(sqliteJobStore),
-    getByIdempotencyKey: overrides.getByIdempotencyKey || sqliteJobStore.getByIdempotencyKey.bind(sqliteJobStore),
+    getByIdempotencyKey:
+      overrides.getByIdempotencyKey || sqliteJobStore.getByIdempotencyKey.bind(sqliteJobStore),
     list: overrides.list || sqliteJobStore.list.bind(sqliteJobStore),
     count: overrides.count || sqliteJobStore.count.bind(sqliteJobStore),
     update: overrides.update || sqliteJobStore.update.bind(sqliteJobStore),

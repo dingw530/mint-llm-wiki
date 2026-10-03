@@ -17,25 +17,90 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ['endpoints/definitions/wiki.ts', 'domains/wiki/wiki-service.ts', false],
     ['services/tools/SkillTool.ts', 'infrastructure/filesystem/skills-directory.ts', false],
     ['services/messageService.ts', 'infrastructure/persistence/graph-repository.ts', false],
+    [
+      'services/tools/KnowledgeGraphTool.ts',
+      'infrastructure/persistence/graph-repository.ts',
+      false,
+    ],
     ['infrastructure/filesystem/wiki-files.ts', 'domains/wiki/index.ts', false],
   ])('rejects %s -> %s', (importer, target, typeOnly) => {
     expect(knowledgeDomainsBoundaryViolation({ importer, target, typeOnly })).toBeTruthy();
   });
 
-  it('keeps the existing ingestion/search bridges explicit', () => {
+  it('routes Graph API clients through their public domain index', () => {
+    expect(
+      knowledgeDomainsBoundaryViolation({
+        importer: 'services/tools/KnowledgeGraphTool.ts',
+        target: 'domains/knowledge-graph/index.ts',
+        typeOnly: false,
+      }),
+    ).toBeNull();
     expect(
       knowledgeDomainsBoundaryViolation({
         importer: 'services/api/crossBatchSemanticService.ts',
-        target: 'infrastructure/persistence/graph-repository.ts',
+        target: 'domains/knowledge-graph/index.ts',
         typeOnly: false,
       }),
     ).toBeNull();
     expect(
       knowledgeDomainsBoundaryViolation({
-        importer: 'domains/wiki/wiki-search-service.ts',
-        target: 'infrastructure/persistence/wiki-lifecycle-repository.ts',
+        importer: 'services/api/wikiVectorBackfillService.ts',
+        target: 'domains/wiki/index.ts',
         typeOnly: false,
       }),
     ).toBeNull();
+    expect(
+      knowledgeDomainsBoundaryViolation({
+        importer: 'services/tools/WikiSearchTool.ts',
+        target: 'domains/wiki/index.ts',
+        typeOnly: false,
+      }),
+    ).toBeNull();
+  });
+
+  it.each([
+    [
+      'domains/wiki/wiki-ingestion-service.ts',
+      'infrastructure/filesystem/wiki-ingestion-files.ts',
+      false,
+    ],
+    [
+      'domains/wiki/wiki-ingestion-service.ts',
+      'infrastructure/persistence/wiki-ingestion-commit-repository.ts',
+      false,
+    ],
+    ['domains/wiki/wiki-ingestion-job-service.ts', 'infrastructure/jobs/job-queue.ts', false],
+    ['domains/wiki/wiki-ingestion-service.ts', 'domains/knowledge-graph/index.ts', false],
+    ['domains/wiki/wiki-ingestion-service.ts', 'services/utils/wikiCompiler.ts', false],
+    ['services/api/wikiIngestionJobService.ts', 'infrastructure/jobs/sqlite-job-store.ts', false],
+    ['infrastructure/jobs/job-store.ts', 'infrastructure/jobs/sqlite-job-store.ts', false],
+  ])('allows ingestion boundary %s -> %s', (importer, target, typeOnly) => {
+    expect(knowledgeDomainsBoundaryViolation({ importer, target, typeOnly })).toBeNull();
+  });
+
+  it.each([
+    ['services/graphBuilder.ts', 'infrastructure/persistence/graph-repository.ts', false],
+    [
+      'services/api/crossBatchSemanticService.ts',
+      'infrastructure/persistence/graph-repository.ts',
+      false,
+    ],
+    [
+      'services/api/crossBatchSemanticService.ts',
+      'infrastructure/persistence/graph-candidate-repository.ts',
+      false,
+    ],
+    [
+      'services/api/wikiVectorBackfillService.ts',
+      'infrastructure/persistence/wiki-search-repository.ts',
+      false,
+    ],
+    [
+      'services/tools/WikiSearchTool.ts',
+      'infrastructure/persistence/wiki-lifecycle-repository.ts',
+      false,
+    ],
+  ])('rejects retired bridge %s -> %s', (importer, target, typeOnly) => {
+    expect(knowledgeDomainsBoundaryViolation({ importer, target, typeOnly })).toBeTruthy();
   });
 });

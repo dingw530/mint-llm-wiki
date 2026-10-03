@@ -1,4 +1,4 @@
-import type { WikiJob } from './wikiIngestionTypes.js';
+import type { WikiJob } from '../../domains/wiki/index.js';
 
 export interface IngestionTaskCardModel {
   jobId: string;
@@ -14,8 +14,17 @@ export interface IngestionTaskCardModel {
 
 export type A2uiEnvelope =
   | { version: 'v0.9'; createSurface: { surfaceId: string; catalogId: string } }
-  | { version: 'v0.9'; updateComponents: { surfaceId: string; components: Array<{ id: string; component: string; data: { path: string } }> } }
-  | { version: 'v0.9'; updateDataModel: { surfaceId: string; path: string; value: IngestionTaskCardModel } }
+  | {
+      version: 'v0.9';
+      updateComponents: {
+        surfaceId: string;
+        components: Array<{ id: string; component: string; data: { path: string } }>;
+      };
+    }
+  | {
+      version: 'v0.9';
+      updateDataModel: { surfaceId: string; path: string; value: IngestionTaskCardModel };
+    }
   | { version: 'v0.9'; deleteSurface: { surfaceId: string } };
 
 export function surfaceIdForJob(jobId: string): string {
@@ -33,16 +42,23 @@ export function toIngestionTaskCardModel(job: WikiJob): IngestionTaskCardModel {
     step: job.step,
     fileCount: job.fileCount || 1,
     canRetry: job.canRetry,
-    result: job.error ? { error: job.error } : job.result ? {
-      sourceFile: job.result.sourceFile,
-      pageCount: job.result.pages?.length || 0,
-      hasWarnings: Boolean(job.result.graphErrors?.length || job.result.failedItems?.length),
-    } : null,
+    result: job.error
+      ? { error: job.error }
+      : job.result
+        ? {
+            sourceFile: job.result.sourceFile,
+            pageCount: job.result.pages?.length || 0,
+            hasWarnings: Boolean(job.result.graphErrors?.length || job.result.failedItems?.length),
+          }
+        : null,
   };
 }
 
 export function createSurface(job: WikiJob): A2uiEnvelope {
-  return { version: 'v0.9', createSurface: { surfaceId: surfaceIdForJob(job.id), catalogId: 'mint' } };
+  return {
+    version: 'v0.9',
+    createSurface: { surfaceId: surfaceIdForJob(job.id), catalogId: 'mint' },
+  };
 }
 
 export function updateComponents(job: WikiJob): A2uiEnvelope {
@@ -56,5 +72,12 @@ export function updateComponents(job: WikiJob): A2uiEnvelope {
 }
 
 export function updateDataModel(job: WikiJob): A2uiEnvelope {
-  return { version: 'v0.9', updateDataModel: { surfaceId: surfaceIdForJob(job.id), path: '/job', value: toIngestionTaskCardModel(job) } };
+  return {
+    version: 'v0.9',
+    updateDataModel: {
+      surfaceId: surfaceIdForJob(job.id),
+      path: '/job',
+      value: toIngestionTaskCardModel(job),
+    },
+  };
 }

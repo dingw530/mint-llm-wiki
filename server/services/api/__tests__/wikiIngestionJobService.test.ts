@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWikiIngestionJobService } from '../wikiIngestionJobService.js';
-import type { WikiJob, WikiUploadInput, WikiChatIngestionInput } from '../wikiIngestionTypes.js';
-import type { JobStore } from '../../jobs/jobStore.js';
-import type { JobQueue } from '../../jobs/jobQueue.js';
+import type {
+  WikiJob,
+  WikiUploadInput,
+  WikiChatIngestionInput,
+} from '../../../domains/wiki/index.js';
+import type { JobStore } from '../../../infrastructure/jobs/job-store.js';
+import type { JobQueue } from '../../../infrastructure/jobs/job-queue.js';
 import type { AiSettings } from '../../../types.js';
 
 const settings = {

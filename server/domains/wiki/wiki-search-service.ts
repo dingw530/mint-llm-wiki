@@ -153,6 +153,16 @@ function addClaims(
   );
 }
 
+/** Expose the persisted documents to the separately managed vector backfill job. */
+export function listWikiSearchDocuments(sourcePaths?: string[]): searchRepo.WikiSearchDocument[] {
+  return searchRepo.listSearchDocuments(sourcePaths);
+}
+
+/** Report whether lexical search documents exist before starting a backfill job. */
+export function hasWikiSearchDocuments(): boolean {
+  return searchRepo.hasSearchDocuments();
+}
+
 /** 全量重建 Wiki FTS 索引，并按 hash 增量同步向量。 */
 export async function rebuildWikiSearchIndex(
   wikiPath: string,

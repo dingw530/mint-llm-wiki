@@ -10,24 +10,31 @@ const DOMAIN_INFRASTRUCTURE: Readonly<Record<string, readonly string[]>> = {
     'infrastructure/persistence/wiki-lifecycle-repository.ts',
     'infrastructure/filesystem/wiki-files.ts',
     'infrastructure/config/wiki-settings.ts',
+    'infrastructure/filesystem/wiki-ingestion-files.ts',
+    'infrastructure/filesystem/wiki-graph-metadata.ts',
+    'infrastructure/persistence/wiki-ingestion-commit-repository.ts',
+    'infrastructure/jobs/job-queue.ts',
+    'infrastructure/jobs/job-store.ts',
+    'infrastructure/jobs/job-events.ts',
+    'infrastructure/jobs/sqlite-job-store.ts',
     'infrastructure/persistence/wiki-search-repository.ts',
     'infrastructure/search/wiki-search-runtime.ts',
   ],
 };
 
-/** Explicit bridges retained until graph generation and Wiki search move in later batches. */
-const LEGACY_BRIDGES: Readonly<Record<string, readonly string[]>> = {
-  'infrastructure/persistence/graph-repository.ts': [
-    'services/graphBuilder.ts',
-    'services/api/crossBatchSemanticService.ts',
+const TRANSITIONAL_INFRASTRUCTURE_ACCESS: Readonly<Record<string, readonly string[]>> = {
+  'services/api/wikiIngestionJobService.ts': [
+    'infrastructure/filesystem/wiki-ingestion-files.ts',
+    'infrastructure/jobs/job-queue.ts',
+    'infrastructure/jobs/job-store.ts',
+    'infrastructure/jobs/job-events.ts',
+    'infrastructure/jobs/sqlite-job-store.ts',
   ],
-  'infrastructure/persistence/graph-candidate-repository.ts': [
-    'services/api/crossBatchSemanticService.ts',
+  'scripts/wiki-ingestion-crash-smoke.ts': [
+    'infrastructure/jobs/job-store.ts',
+    'infrastructure/jobs/sqlite-job-store.ts',
+    'infrastructure/persistence/wiki-ingestion-commit-repository.ts',
   ],
-  'infrastructure/persistence/wiki-search-repository.ts': [
-    'services/api/wikiVectorBackfillService.ts',
-  ],
-  'infrastructure/persistence/wiki-lifecycle-repository.ts': ['services/tools/WikiSearchTool.ts'],
 };
 
 /** Return the owner of a migrated domain source or its domain-specific infrastructure. */
@@ -46,16 +53,50 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
   if (domain && importer.startsWith(`domains/${domain}/`)) {
     if (target.startsWith(`domains/${domain}/`) || DOMAIN_INFRASTRUCTURE[domain].includes(target))
       return null;
+    const targetOwner = owner(target);
+    if (targetOwner && target.startsWith(`domains/${targetOwner}/`)) {
+      return target === `domains/${targetOwner}/index.ts`
+        ? null
+        : 'Cross-domain consumers must use the public domain index';
+    }
     if (
       typeOnly &&
-      ['types.ts', 'services/utils/wikiShared.ts', 'services/utils/wikiCompiler.ts'].includes(
+      [
+        'types.ts',
+        'services/utils/wikiShared.ts',
+        'services/utils/wikiCompiler.ts',
+        'services/utils/fileParseService.ts',
+        'services/vector/types.ts',
+        'services/rerank/types.ts',
+      ].includes(target)
+    )
+      return null;
+    if (
+      domain === 'wiki' &&
+      [
+        'services/utils/wikiShared.ts',
+        'services/utils/wikiCompiler.ts',
+        'services/api/crossBatchSemanticService.ts',
+        'services/utils/fileParseService.ts',
+        'services/utils/wikiPageCapture.ts',
+      ].includes(target)
+    )
+      return null;
+    if (
+      ['utils/logger.ts', 'utils/graphOntology.ts', 'services/utils/wikiLinkProtocol.ts'].includes(
         target,
       )
     )
       return null;
-    if (['utils/logger.ts', 'utils/graphOntology.ts'].includes(target)) return null;
     return 'Domain rules may access only their own infrastructure and approved shared contracts';
   }
+  if (
+    owner(importer) &&
+    owner(importer) === owner(target) &&
+    importer.startsWith('infrastructure/') &&
+    target.startsWith('infrastructure/')
+  )
+    return null;
   const targetDomain = owner(target);
   if (!targetDomain) return null;
   if (target.startsWith(`domains/${targetDomain}/`)) {
@@ -65,7 +106,7 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
       return 'Infrastructure may import only domain type contracts';
     return null;
   }
+  if (TRANSITIONAL_INFRASTRUCTURE_ACCESS[importer]?.includes(target)) return null;
   if (typeOnly || importer.startsWith('bootstrap/')) return null;
-  if (LEGACY_BRIDGES[target]?.includes(importer)) return null;
   return 'Domain-specific infrastructure access requires its domain or an explicit migration bridge';
 }

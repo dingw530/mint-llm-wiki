@@ -20,11 +20,8 @@ import {
   type FeatureConfigInput,
   type RuntimeContext,
 } from './services/runtime/runtimeContext.js';
-export type {
-  WikiIngestionRequest,
-  WikiIngestionResult,
-} from './services/api/wikiIngestionService.js';
-export { ingestWikiSource } from './services/api/wikiIngestionService.js';
+export type { WikiIngestionRequest, WikiIngestionResult } from './domains/wiki/index.js';
+export { ingestWikiSource } from './domains/wiki/index.js';
 
 interface EvalCitation {
   file: string;

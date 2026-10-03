@@ -52,3 +52,17 @@ Wiki 生命周期定时器移至 `bootstrap/wiki-lifecycle.ts`，原六小时默
 - `e56bf1b`：refactor(knowledge): migrate skills graph and Wiki lifecycle domains
 
 Codex plugin/MCP 的配置、插件目录、插件变更文档及相关索引条目保留未提交；没有推送。
+
+## Wiki 跨域仓储桥接收敛（2026-10-03）
+
+已移除四组直接仓储访问：Wiki 图构建归入 `domains/knowledge-graph`，Wiki Schema 分类通过文件系统适配器注入；跨批关系生成使用 Graph 公共 API 创建节点候选；向量回填使用 Wiki 搜索领域查询索引文档；WikiSearchTool 使用 Wiki 领域查询生命周期记录并记访问事件。`knowledge-domains-boundary.ts` 不再含旧仓储访问 allowlist，过渡调用需经公共领域 API。
+
+本批没有移动跨批 LLM 适配、独立向量回填队列或 WikiSearchTool 文件读取实现，也没有改变它们的事务、状态和搜索语义。类型检查通过；依项目当前工作约束，没有新增或执行测试。原设计提案的全量 Harness / 独立 MCP、Electron 运行验收仍属于整体收敛任务，未由这次边界调整声明完成。
+
+## Wiki 摄入领域迁移（2026-10-03）
+
+Wiki 摄入管线、提交恢复、后台作业状态机及任务类型移入 `domains/wiki`；专属暂存文件、SQLite 提交记录、队列、作业存储和事件适配器移入 `infrastructure/`。外部消费者统一经 `domains/wiki/index.ts` 使用领域契约，原 `services/api/wikiIngestionJobService.ts` 保留为 HTTP/Electron 依赖装配适配器。编译器执行、Wiki 页面写入 helpers、文件解析/页面捕获与跨批 LLM 候选生成仍为显式边界桥接；未改变 API、SSE、IPC、Schema、任务状态或提交恢复语义。
+
+验证：TypeScript typecheck；领域边界、摄入、worker、文件、提交仓储、A2UI、工具与 Runtime 73 项 focused tests；Runtime listener 生命周期 2 项；Ingestion A2UI SSE 路由 2 项；全部当前修改 TypeScript 文件 Prettier check 和 `git diff --check` 均通过。GitNexus pre-move job service impact 为 MEDIUM（19 个受影响符号）；迁移后 class impact 报 CRITICAL，只有 2 个直接符号引用，却扩展到 150 个流程与 20 个模块，且包含 HandleRecoveryStream、ListWiki、AcceptCandidate 等无关流程；此图风险保持未消除，未用低共享风险轴豁免。`ingestWikiSource` 调用边为 UNKNOWN，已通过静态引用检查确认其注入依赖和入口消费者。全工作区 detect-changes 也报 CRITICAL（39 个文件、45 个符号），范围含此前已有的领域迁移、文档索引与插件相关改动。没有运行真实模型摄入或 Electron 启动验收。
+
+所有移动使用普通文件重命名，未修改既有 Git 提交或分支；Git rename detection 将在后续暂存/提交时识别历史相似度。当前工作区 `.git` 只读，因此本轮未暂存或提交。

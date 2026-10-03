@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it, beforeEach } from 'vitest';
 
-import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
-import { buildGraphFromPages, normalizeRelation, extractWikiLinks } from '../graphBuilder.js';
+import * as graphRepo from '../../../infrastructure/persistence/graph-repository.js';
+import { buildGraphFromPages, normalizeRelation, extractWikiLinks } from '../graph-builder.js';
 import type { CompiledPage, Relationship } from '../utils/wikiShared.js';
 
 function cleanGraph() {

@@ -6,9 +6,13 @@ import type { ToolContext } from './BaseTool.js';
 import { isPathSafe, getWikiPath } from '../utils/pathSecurity.js';
 import { isSystemWikiPath, parseWikiPage } from '../utils/wikiShared.js';
 import { createLogger } from '../../utils/logger.js';
-import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
-import { calculateWikiRetentionScore } from '../../domains/wiki/index.js';
-import { searchWiki } from '../../domains/wiki/index.js';
+import {
+  calculateWikiRetentionScore,
+  findWikiPageByPath,
+  recordWikiPageAccess,
+  searchWiki,
+} from '../../domains/wiki/index.js';
+import type { WikiPageLifecycleRecord } from '../../domains/wiki/index.js';
 
 const log = createLogger('wiki-search');
 
@@ -38,7 +42,7 @@ interface WikiSearchResult {
   heading?: string;
   snippet?: string;
   matchTypes?: string[];
-  pageStatus?: lifecycleRepo.WikiPageStatus | null;
+  pageStatus?: WikiPageLifecycleRecord['status'] | null;
   lastVerifiedAt?: string | null;
   claimId?: string | null;
 }
@@ -230,9 +234,9 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
         const content = fs.readFileSync(filePath, 'utf-8');
         const parsed = parseWikiPage(relativePath, content);
         const baseScore = this.scorePage(parsed, keywords);
-        let lifecycle: lifecycleRepo.WikiPage | null = null;
+        let lifecycle: WikiPageLifecycleRecord | null = null;
         try {
-          lifecycle = lifecycleRepo.findPageByPath(relativePath);
+          lifecycle = findWikiPageByPath(relativePath);
         } catch {
           // 生命周期索引不可用时保留原有文件搜索能力。
         }
@@ -256,24 +260,15 @@ export class WikiSearchTool extends BaseTool<WikiSearchInput, WikiSearchOutput> 
     const top = scored.slice(0, maxResults);
 
     for (const item of top) {
-      let lifecycle: lifecycleRepo.WikiPage | null = null;
+      let lifecycle: WikiPageLifecycleRecord | null = null;
       try {
-        lifecycle = lifecycleRepo.findPageByPath(item.file);
+        lifecycle = findWikiPageByPath(item.file);
       } catch {
         // 访问反馈是增强能力，不能阻塞搜索结果返回。
       }
       if (lifecycle) {
         try {
-          lifecycleRepo.touchPage(lifecycle.id);
-          lifecycleRepo.recordEvent(
-            'page',
-            lifecycle.id,
-            'accessed',
-            null,
-            lifecycle.sourceId,
-            item.file,
-            'wiki_search result selected',
-          );
+          recordWikiPageAccess(lifecycle, item.file, 'wiki_search result selected');
         } catch {
           // 搜索结果已经确定，访问统计失败不影响响应。
         }

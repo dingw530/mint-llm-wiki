@@ -5,7 +5,7 @@ const graph = vi.hoisted(() => ({
   edges: [] as Array<Record<string, unknown>>,
 }));
 
-vi.mock('../../infrastructure/persistence/graph-repository.js', () => ({
+vi.mock('../../../infrastructure/persistence/graph-repository.js', () => ({
   transaction: <T>(fn: () => T): T => fn(),
   searchNodes: (label: string) => graph.nodes.filter((node) => !label || node.label === label),
   createNode: (params: Record<string, unknown>) => {
@@ -27,7 +27,7 @@ vi.mock('../../infrastructure/persistence/graph-repository.js', () => ({
   },
 }));
 
-import { buildGraphFromPages } from '../graphBuilder.js';
+import { buildGraphFromPages } from '../graph-builder.js';
 
 describe('buildGraphFromPages references', () => {
   it('stores one reference when two pages link to each other', () => {

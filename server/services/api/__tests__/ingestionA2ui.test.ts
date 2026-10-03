@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { createSurface, toIngestionTaskCardModel, updateComponents, updateDataModel } from '../ingestionA2ui.js';
-import type { WikiJob } from '../wikiIngestionTypes.js';
+import {
+  createSurface,
+  toIngestionTaskCardModel,
+  updateComponents,
+  updateDataModel,
+} from '../ingestionA2ui.js';
+import type { WikiJob } from '../../../domains/wiki/index.js';
 
 const job: WikiJob = {
   id: 'job-1',

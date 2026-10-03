@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import * as jobStore from '../sqliteJobStore.js';
+import * as jobStore from '../sqlite-job-store.js';
 
 describe('jobStore', () => {
   it('creates a job', () => {
@@ -67,8 +67,14 @@ describe('jobStore', () => {
   });
 
   it('deduplicates jobs by idempotency key', () => {
-    const first = jobStore.createJob('same.md', 1, { sourceType: 'chat', idempotencyKey: 'same-request' });
-    const second = jobStore.createJob('same.md', 1, { sourceType: 'chat', idempotencyKey: 'same-request' });
+    const first = jobStore.createJob('same.md', 1, {
+      sourceType: 'chat',
+      idempotencyKey: 'same-request',
+    });
+    const second = jobStore.createJob('same.md', 1, {
+      sourceType: 'chat',
+      idempotencyKey: 'same-request',
+    });
     expect(second).toBe(first);
     expect(jobStore.getByIdempotencyKey('same-request')?.id).toBe(first);
   });

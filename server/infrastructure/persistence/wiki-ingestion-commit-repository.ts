@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { getDb } from '../db.js';
+import { getDb } from '../../db.js';
 
 export type WikiIngestionCommitPhase =
   | 'compiling'

@@ -1,4 +1,4 @@
-import type { WikiJob } from '../api/wikiIngestionTypes.js';
+import type { WikiJob } from '../../domains/wiki/index.js';
 
 export type JobEventListener = (job: WikiJob) => void;
 

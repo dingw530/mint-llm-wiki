@@ -50,6 +50,25 @@ export interface WikiHeatResponse {
   pages: WikiHeatPage[];
 }
 
+/** Lifecycle record returned for a Wiki page, shared by search consumers. */
+export type WikiPageLifecycleRecord = lifecycleRepo.WikiPage;
+export type WikiPageStatus = lifecycleRepo.WikiPageStatus;
+
+/** Read lifecycle metadata without exposing the Wiki persistence repository. */
+export function findWikiPageByPath(relativePath: string): WikiPageLifecycleRecord | null {
+  return lifecycleRepo.findPageByPath(relativePath);
+}
+
+/** Record a selected Wiki page and its existing access event. */
+export function recordWikiPageAccess(
+  page: WikiPageLifecycleRecord,
+  relativePath: string,
+  reason: string,
+): void {
+  lifecycleRepo.touchPage(page.id);
+  lifecycleRepo.recordEvent('page', page.id, 'accessed', null, page.sourceId, relativePath, reason);
+}
+
 function getRootPath(): string {
   const wikiPath = getConfiguredWikiPath();
   if (!wikiPath) throw new Error('Wiki 路径未配置');

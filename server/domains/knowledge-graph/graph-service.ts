@@ -1,5 +1,6 @@
 import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
 import * as candidateService from './graph-candidate-service.js';
+import * as candidates from '../../infrastructure/persistence/graph-candidate-repository.js';
 import type {
   GraphNode,
   GraphEdge,
@@ -48,3 +49,18 @@ export const rejectCandidate = candidateService.rejectCandidate;
 
 /** Look up an existing edge for idempotent tool-driven graph updates. */
 export const findEdgeByTriple = graphRepo.findEdgeByTriple;
+
+/** Read graph nodes that have source-file metadata for cross-batch matching. */
+export function getNodesWithSource(): GraphNode[] {
+  return graphRepo.getAllNodesWithSource();
+}
+
+/** Find the canonical graph node matching an exact label. */
+export function findNodeByLabel(label: string): GraphNode | null {
+  return graphRepo.searchNodes(label).find((node) => node.label === label) ?? null;
+}
+
+/** Create a reviewable semantic edge candidate through the Graph domain boundary. */
+export function createGraphCandidate(input: Parameters<typeof candidates.create>[0]) {
+  return candidates.create(input);
+}

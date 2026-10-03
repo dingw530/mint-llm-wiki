@@ -1,4 +1,4 @@
-import type { ParseResult } from '../utils/fileParseService.js';
+import type { ParseResult } from '../../services/utils/fileParseService.js';
 
 export type WikiJobStatus =
   | 'pending'
@@ -72,27 +72,6 @@ export interface WikiJob {
   isSuccessful?: boolean;
   canCancel?: boolean;
   canRetry?: boolean;
-}
-
-/** 将任务状态转换为客户端展示和操作元数据。 */
-export function getWikiJobStatusMeta(status: WikiJobStatus): Pick<WikiJob, 'statusLabel' | 'phase' | 'isTerminal' | 'isSuccessful' | 'canCancel' | 'canRetry'> {
-  if (status === 'completed' || status === 'done') {
-    return { statusLabel: '已完成', phase: 'success', isTerminal: true, isSuccessful: true, canCancel: false, canRetry: false };
-  }
-  if (status === 'failed' || status === 'error' || status === 'partial_failed') {
-    return { statusLabel: status === 'partial_failed' ? '部分失败' : '处理失败', phase: 'error', isTerminal: true, isSuccessful: false, canCancel: false, canRetry: true };
-  }
-  if (status === 'cancelled') {
-    return { statusLabel: '已取消', phase: 'cancelled', isTerminal: true, isSuccessful: false, canCancel: false, canRetry: false };
-  }
-  const labels: Partial<Record<WikiJobStatus, string>> = {
-    pending: '等待处理',
-    queued: '排队中',
-    parsing: '解析资料中',
-    compiling: 'AI 编译中',
-    committing: '提交 Wiki 中',
-  };
-  return { statusLabel: labels[status] || '处理中', phase: 'active', isTerminal: false, isSuccessful: false, canCancel: true, canRetry: false };
 }
 
 /** 将真实编译阶段转换为易理解的任务状态文案。 */

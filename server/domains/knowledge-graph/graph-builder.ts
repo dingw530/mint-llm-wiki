@@ -1,10 +1,7 @@
-import * as graphRepo from '../infrastructure/persistence/graph-repository.js';
-import * as fs from 'fs';
-import * as path from 'path';
-import { normalizeWikiCategories } from './utils/wikiShared.js';
-import type { CompiledPage, Relationship } from './utils/wikiShared.js';
-import { resolveWikiMarkdownLink } from './utils/wikiLinkProtocol.js';
-import { getGraphRelationPriority, normalizeGraphRelation } from '../utils/graphOntology.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
+import type { CompiledPage, Relationship } from '../../services/utils/wikiShared.js';
+import { resolveWikiMarkdownLink } from '../../services/utils/wikiLinkProtocol.js';
+import { getGraphRelationPriority, normalizeGraphRelation } from '../../utils/graphOntology.js';
 
 // ── Types ──
 
@@ -14,20 +11,11 @@ export interface BuildGraphResult {
   errors: string[];
 }
 
-/** 从当前知识库 Schema 读取页面分类，图谱节点类型与分类名称保持一致。 */
-function inferNodeType(filename: string, wikiPath?: string): string {
-  const parts = filename.split('/');
-  const category = parts.length >= 2 ? parts[1] : '';
-  if (!wikiPath) return category || '未分类';
-  try {
-    const schemaPath = path.join(wikiPath, '_schema.json');
-    const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf-8')) as { categories?: unknown };
-    const categories = normalizeWikiCategories(schema.categories);
-    if (categories.some((item) => item.name === category)) return category;
-  } catch {
-    // Schema 不可读时仍保留页面目录作为节点分类，避免丢失分类信息。
-  }
-  return category || '未分类';
+/** Resolve a page node's category from the caller's Wiki schema adapter. */
+export type GraphNodeTypeResolver = (filename: string, wikiPath?: string) => string;
+
+function defaultNodeType(filename: string): string {
+  return filename.split('/')[1] || '未分类';
 }
 
 // ── Relation Normalization ──
@@ -122,6 +110,7 @@ export function buildGraphFromPages(
   pages: CompiledPage[],
   relationships: Relationship[] = [],
   wikiPath?: string,
+  nodeTypeResolver?: GraphNodeTypeResolver,
 ): BuildGraphResult {
   const errors: string[] = [];
 
@@ -137,7 +126,9 @@ export function buildGraphFromPages(
 
   const nodeSpecs: NodeSpec[] = pages.map((page) => ({
     label: page.title,
-    type: inferNodeType(page.filename, wikiPath),
+    type: nodeTypeResolver
+      ? nodeTypeResolver(page.filename, wikiPath)
+      : defaultNodeType(page.filename),
     sourceFile: page.filename,
   }));
   const sourceFileByTitle = new Map(nodeSpecs.map((spec) => [spec.label, spec.sourceFile]));

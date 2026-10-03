@@ -1114,7 +1114,7 @@ runIf(server)('API-007: Ingestion A2UI SSE', () => {
   });
 
   it('registers the SSE endpoint and sends the current session snapshot', async () => {
-    const { createJob } = await import('../../services/jobs/adapters/sqliteJobStore.js');
+    const { createJob } = await import('../../infrastructure/jobs/sqlite-job-store.js');
     createJob('notes.md', 10, {
       sourceType: 'chat',
       conversationId: 'conversation-sse',

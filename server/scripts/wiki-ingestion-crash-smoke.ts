@@ -11,11 +11,11 @@ const scriptPath = fileURLToPath(import.meta.url);
 const crashExitCode = 86;
 
 async function runWorker(mode: string, commitId: string): Promise<void> {
-  const { resumeWikiIngestionCommit } = await import('../services/api/wikiIngestionService.js');
+  const { resumeWikiIngestionCommit } = await import('../domains/wiki/index.js');
   if (mode === 'recover-worker') {
     const [{ createWikiIngestionJobService }, jobStore] = await Promise.all([
       import('../services/api/wikiIngestionJobService.js'),
-      import('../services/jobs/jobStore.js'),
+      import('../infrastructure/jobs/job-store.js'),
     ]);
     let worker: ((jobId: string) => Promise<void>) | undefined;
     let resolveWorker: (() => void) | undefined;
@@ -132,8 +132,8 @@ async function runSmoke(): Promise<void> {
 
   const [{ closeDb, getDb }, commitRepository, jobStore] = await Promise.all([
     import('../db.js'),
-    import('../repositories/wikiIngestionCommitRepository.js'),
-    import('../services/jobs/adapters/sqliteJobStore.js'),
+    import('../infrastructure/persistence/wiki-ingestion-commit-repository.js'),
+    import('../infrastructure/jobs/sqlite-job-store.js'),
   ]);
 
   const jobId = jobStore.createJob('P0 Chat crash recovery', 48, {

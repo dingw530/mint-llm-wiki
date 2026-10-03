@@ -1,8 +1,9 @@
 import type { AiSettings } from '../../types.js';
-import { compileSource, type WikiCompileProgressStage } from '../utils/wikiCompiler.js';
-import { appendWikiManifestEntry } from '../utils/wikiShared.js';
-import { buildGraphFromPages } from '../graphBuilder.js';
-import { generateCrossBatchCandidates } from './crossBatchSemanticService.js';
+import { compileSource, type WikiCompileProgressStage } from '../../services/utils/wikiCompiler.js';
+import { appendWikiManifestEntry } from '../../services/utils/wikiShared.js';
+import { buildGraphFromPages } from '../knowledge-graph/index.js';
+import { inferWikiGraphNodeType } from '../../infrastructure/filesystem/wiki-graph-metadata.js';
+import { generateCrossBatchCandidates } from '../../services/api/crossBatchSemanticService.js';
 import { createLogger } from '../../utils/logger.js';
 import {
   discardWikiStagedFile,
@@ -11,24 +12,27 @@ import {
   isStagedWikiFile,
   stageWikiRawFile,
   stageWikiSourceText,
-} from './wikiFileService.js';
-import { registerCompiledKnowledge } from '../../domains/wiki/index.js';
-import { rebuildWikiSearchIndex } from '../../domains/wiki/index.js';
-import type { OpenAICompatibleEmbeddingConfig } from '../vector/types.js';
-import type { WikiPageSummary } from './wikiIngestionTypes.js';
-import type { CompiledPage, Relationship } from '../utils/wikiShared.js';
+} from '../../infrastructure/filesystem/wiki-ingestion-files.js';
+import { registerCompiledKnowledge } from './wiki-knowledge-lifecycle-service.js';
+import { rebuildWikiSearchIndex } from './wiki-search-service.js';
+import type { OpenAICompatibleEmbeddingConfig } from '../../services/vector/types.js';
+import type { WikiPageSummary } from './wiki-ingestion-types.js';
+import type { CompiledPage, Relationship } from '../../services/utils/wikiShared.js';
 import { createHash } from 'node:crypto';
 import * as path from 'node:path';
-import * as commitRepository from '../../repositories/wikiIngestionCommitRepository.js';
+import * as commitRepository from '../../infrastructure/persistence/wiki-ingestion-commit-repository.js';
 import type {
   WikiIngestionCommit,
   WikiIngestionCommitPhase,
-} from '../../repositories/wikiIngestionCommitRepository.js';
-import { updateIndexMd, writePreparedWikiPages } from '../utils/wikiShared.js';
-import { finalizeWikiSourceFileTo } from './wikiFileService.js';
+} from '../../infrastructure/persistence/wiki-ingestion-commit-repository.js';
+import { updateIndexMd, writePreparedWikiPages } from '../../services/utils/wikiShared.js';
+import { finalizeWikiSourceFileTo } from '../../infrastructure/filesystem/wiki-ingestion-files.js';
 
-export { archiveWikiRawFile, buildWikiSourceText } from './wikiFileService.js';
-export type { WikiSourceSegment } from './wikiIngestionTypes.js';
+export {
+  archiveWikiRawFile,
+  buildWikiSourceText,
+} from '../../infrastructure/filesystem/wiki-ingestion-files.js';
+export type { WikiSourceSegment } from './wiki-ingestion-types.js';
 
 const log = createLogger('wiki-ingestion');
 
@@ -135,66 +139,15 @@ export async function ingestWikiSource(
   const stagedFiles = [...new Set([...archivedFiles, sourceFile])];
   const finalizedFiles: string[] = [];
 
-  if (request.commit) {
-    const canonicalSourceFile = existingCommit?.stagedSourcePath || sourceFile;
-    const canonicalStagedFiles = [...new Set([...archivedFiles, canonicalSourceFile, sourceFile])];
-    const sourcePath =
-      existingCommit?.sourcePath ||
-      buildStableSourcePath(canonicalSourceFile, request.commit.jobId, request.commit.itemKey);
-    const commit = commitRepository.createOrGetWikiIngestionCommit({
-      ...request.commit,
+  if (request.commit)
+    return ingestDurableWikiSource(
+      settings,
       wikiPath,
-      stagedSourcePath: canonicalSourceFile,
-      sourcePath,
-    });
-    try {
-      const snapshot: PersistedCompileSnapshot = (commit.snapshot as PersistedCompileSnapshot) || {
-        sourceText: request.sourceText,
-        sourceFile: canonicalSourceFile,
-        archivedFiles: archivedFiles.map((file) =>
-          existingCommit?.stagedSourcePath && file === sourceFile
-            ? existingCommit.stagedSourcePath
-            : file,
-        ),
-        stagedFiles: canonicalStagedFiles,
-        summaryHint: request.summaryHint,
-        compileResult: await compileSource(
-          settings,
-          wikiPath,
-          request.sourceText,
-          canonicalSourceFile.split('/').pop() || request.sourceTitle,
-          {
-            title: request.sourceTitle,
-            category: request.category,
-            onProgress: request.onCompileProgress,
-            persistPages: false,
-          },
-        ),
-      };
-      if (!commit.snapshot) commitRepository.saveWikiIngestionSnapshot(commit.commitId, snapshot);
-      const result = await applyPersistedWikiIngestionCommit(wikiPath, commit.commitId, {
-        settings,
-      });
-      try {
-        await generateCrossBatchCandidates(
-          settings,
-          wikiPath,
-          snapshot.compileResult.compiledPages,
-        );
-      } catch (error) {
-        log.warn('[crossBatchCandidates] 生成失败', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-      return result;
-    } catch (error: unknown) {
-      commitRepository.setWikiIngestionCommitError(
-        commit.commitId,
-        error instanceof Error ? error.message : String(error),
-      );
-      throw error;
-    }
-  }
+      request,
+      existingCommit,
+      archivedFiles,
+      sourceFile,
+    );
 
   try {
     const compileResult = await compileSource(
@@ -266,6 +219,83 @@ export async function ingestWikiSource(
     }
     finalizedFiles.forEach((file) => rollbackWikiSourceFile(wikiPath, file));
     throw error;
+  }
+}
+
+async function ingestDurableWikiSource(
+  settings: AiSettings,
+  wikiPath: string,
+  request: WikiIngestionRequest,
+  existingCommit: WikiIngestionCommit | undefined,
+  archivedFiles: string[],
+  sourceFile: string,
+): Promise<WikiIngestionResult> {
+  if (!request.commit) throw new Error('缺少持久摄入提交标识');
+  const canonicalSourceFile = existingCommit?.stagedSourcePath || sourceFile;
+  const canonicalStagedFiles = [...new Set([...archivedFiles, canonicalSourceFile, sourceFile])];
+  const sourcePath =
+    existingCommit?.sourcePath ||
+    buildStableSourcePath(canonicalSourceFile, request.commit.jobId, request.commit.itemKey);
+  const commit = commitRepository.createOrGetWikiIngestionCommit({
+    ...request.commit,
+    wikiPath,
+    stagedSourcePath: canonicalSourceFile,
+    sourcePath,
+  });
+  try {
+    const snapshot: PersistedCompileSnapshot = (commit.snapshot as PersistedCompileSnapshot) || {
+      sourceText: request.sourceText,
+      sourceFile: canonicalSourceFile,
+      archivedFiles: archivedFiles.map((file) =>
+        existingCommit?.stagedSourcePath && file === sourceFile
+          ? existingCommit.stagedSourcePath
+          : file,
+      ),
+      stagedFiles: canonicalStagedFiles,
+      summaryHint: request.summaryHint,
+      compileResult: await compileSource(
+        settings,
+        wikiPath,
+        request.sourceText,
+        canonicalSourceFile.split('/').pop() || request.sourceTitle,
+        {
+          title: request.sourceTitle,
+          category: request.category,
+          onProgress: request.onCompileProgress,
+          persistPages: false,
+        },
+      ),
+    };
+    if (!commit.snapshot) commitRepository.saveWikiIngestionSnapshot(commit.commitId, snapshot);
+    const result = await applyPersistedWikiIngestionCommit(wikiPath, commit.commitId, {
+      settings,
+    });
+    await generateCandidatesWithoutFailing(
+      settings,
+      wikiPath,
+      snapshot.compileResult.compiledPages,
+    );
+    return result;
+  } catch (error: unknown) {
+    commitRepository.setWikiIngestionCommitError(
+      commit.commitId,
+      error instanceof Error ? error.message : String(error),
+    );
+    throw error;
+  }
+}
+
+async function generateCandidatesWithoutFailing(
+  settings: AiSettings,
+  wikiPath: string,
+  pages: CompiledPage[],
+): Promise<void> {
+  try {
+    await generateCrossBatchCandidates(settings, wikiPath, pages);
+  } catch (error) {
+    log.warn('[crossBatchCandidates] 生成失败', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -469,7 +499,7 @@ function buildIngestionGraph(
   wikiPath: string,
 ): string[] {
   try {
-    const graphResult = buildGraphFromPages(pages, relationships, wikiPath);
+    const graphResult = buildGraphFromPages(pages, relationships, wikiPath, inferWikiGraphNodeType);
     if (graphResult.errors.length > 0)
       log.warn('[graphBuilder] 部分构建失败:', { errors: graphResult.errors });
     return graphResult.errors;

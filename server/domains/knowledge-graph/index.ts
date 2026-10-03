@@ -10,3 +10,6 @@ export type {
   CandidateStatus,
   GraphEdgeCandidate,
 } from '../../infrastructure/persistence/graph-candidate-repository.js';
+
+export { buildGraphFromPages, extractWikiLinks, normalizeRelation } from './graph-builder.js';
+export type { BuildGraphResult, GraphNodeTypeResolver } from './graph-builder.js';

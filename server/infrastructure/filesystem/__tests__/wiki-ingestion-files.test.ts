@@ -10,7 +10,7 @@ import {
   readArchivedWikiFile,
   discardWikiStagedFile,
   validateWikiUpload,
-} from '../wikiFileService.js';
+} from '../wiki-ingestion-files.js';
 
 describe('wikiFileService', () => {
   it('rejects unsupported file types', () => {
@@ -53,7 +53,9 @@ describe('wikiFileService', () => {
     expect(readArchivedWikiFile(wikiPath, first).toString()).toBe('abc');
 
     expect(finalizeWikiSourceFile(wikiPath, first)).toBe(`sources/${today}-my-notes.md`);
-    expect(fs.readFileSync(path.join(wikiPath, 'sources', `${today}-my-notes.md`), 'utf-8')).toBe('abc');
+    expect(fs.readFileSync(path.join(wikiPath, 'sources', `${today}-my-notes.md`), 'utf-8')).toBe(
+      'abc',
+    );
     discardWikiStagedFile(wikiPath, second);
     expect(fs.existsSync(path.join(wikiPath, second))).toBe(false);
   });

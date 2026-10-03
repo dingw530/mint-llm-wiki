@@ -3,11 +3,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
-vi.mock('../../utils/wikiCompiler.js', () => ({
+vi.mock('../../../services/utils/wikiCompiler.js', () => ({
   compileSource: vi.fn(),
 }));
 
-vi.mock('../../utils/wikiShared.js', () => ({
+vi.mock('../../../services/utils/wikiShared.js', () => ({
   appendWikiManifestEntry: vi.fn(),
   updateIndexMd: vi.fn(),
   writePreparedWikiPages: vi.fn((_wikiPath, pages) =>
@@ -20,26 +20,29 @@ vi.mock('../../utils/wikiShared.js', () => ({
   ),
 }));
 
-vi.mock('../../graphBuilder.js', () => ({
+vi.mock('../../../domains/knowledge-graph/index.js', () => ({
   buildGraphFromPages: vi.fn(() => ({ nodesCreated: 0, edgesCreated: 0, errors: [] })),
 }));
 
-vi.mock('../../../domains/wiki/index.js', () => ({
+vi.mock('../wiki-knowledge-lifecycle-service.js', () => ({
   registerCompiledKnowledge: vi.fn(),
+}));
+
+vi.mock('../wiki-search-service.js', () => ({
   rebuildWikiSearchIndex: vi.fn(),
 }));
 
-vi.mock('../crossBatchSemanticService.js', () => ({
+vi.mock('../../../services/api/crossBatchSemanticService.js', () => ({
   generateCrossBatchCandidates: vi.fn(),
 }));
 
-import * as wikiIngestionService from '../wikiIngestionService.js';
-import { compileSource } from '../../utils/wikiCompiler.js';
-import { stageWikiRawFile } from '../wikiFileService.js';
-import { rebuildWikiSearchIndex } from '../../../domains/wiki/index.js';
+import * as wikiIngestionService from '../wiki-ingestion-service.js';
+import { compileSource } from '../../../services/utils/wikiCompiler.js';
+import { stageWikiRawFile } from '../../../infrastructure/filesystem/wiki-ingestion-files.js';
+import { rebuildWikiSearchIndex } from '../wiki-search-service.js';
 import type { AiSettings } from '../../../types.js';
-import * as jobStore from '../../jobs/adapters/sqliteJobStore.js';
-import * as commitRepository from '../../../repositories/wikiIngestionCommitRepository.js';
+import * as jobStore from '../../../infrastructure/jobs/sqlite-job-store.js';
+import * as commitRepository from '../../../infrastructure/persistence/wiki-ingestion-commit-repository.js';
 
 describe('wikiIngestionService', () => {
   let tmpDir: string;

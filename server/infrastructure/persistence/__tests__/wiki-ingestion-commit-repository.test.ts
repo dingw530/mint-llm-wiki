@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import * as commitRepository from '../wikiIngestionCommitRepository.js';
-import * as jobStore from '../../services/jobs/adapters/sqliteJobStore.js';
+import * as commitRepository from '../wiki-ingestion-commit-repository.js';
+import * as jobStore from '../../jobs/sqlite-job-store.js';
 
 describe('wikiIngestionCommitRepository', () => {
   it('keeps one stable commit identity for a job item', () => {

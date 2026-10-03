@@ -3,6 +3,7 @@ export { existsSync, readdirSync, statSync, readFileSync, writeFileSync } from '
 /** Transitional parser/schema adapter shared with the unmigrated compiler/search modules. */
 export {
   normalizeWikiSchema,
+  normalizeWikiCategories,
   parseWikiPage,
   isSystemWikiPath,
 } from '../../services/utils/wikiShared.js';

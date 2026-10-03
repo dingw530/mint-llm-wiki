@@ -1,12 +1,17 @@
-import * as searchRepo from '../../infrastructure/persistence/wiki-search-repository.js';
 import * as backfillRepo from '../../repositories/wikiVectorBackfillRepository.js';
 import { getAiSettings } from './settingsService.js';
 import {
   rebuildWikiSearchIndex,
   backfillWikiEmbeddings,
   getWikiVectorHealth,
+  listWikiSearchDocuments,
+  hasWikiSearchDocuments,
 } from '../../domains/wiki/index.js';
-import type { OpenAICompatibleEmbeddingConfig, VectorHealth } from '../vector/types.js';
+import type {
+  OpenAICompatibleEmbeddingConfig,
+  VectorHealth,
+  WikiSearchDocument,
+} from '../../domains/wiki/index.js';
 
 export interface WikiVectorBackfillInput {
   scope: backfillRepo.WikiVectorBackfillScope;
@@ -41,10 +46,8 @@ function normalizedInput(input: WikiVectorBackfillInput): WikiVectorBackfillInpu
   };
 }
 
-function selectedDocuments(
-  job: backfillRepo.WikiVectorBackfillJob,
-): searchRepo.WikiSearchDocument[] {
-  const documents = searchRepo.listSearchDocuments();
+function selectedDocuments(job: backfillRepo.WikiVectorBackfillJob): WikiSearchDocument[] {
+  const documents = listWikiSearchDocuments();
   if (job.scope === 'prefix')
     return documents.filter((document) => document.sourcePath.startsWith(job.prefix || ''));
   if (job.scope === 'selected') {
@@ -68,7 +71,7 @@ async function runWorker(jobId: string): Promise<void> {
   const queued = backfillRepo.getRequiredJob(jobId);
   const settings = getAiSettings();
   try {
-    if (!searchRepo.hasSearchDocuments()) await rebuildWikiSearchIndex(settings.wikiPath);
+    if (!hasWikiSearchDocuments()) await rebuildWikiSearchIndex(settings.wikiPath);
     const documents = selectedDocuments(queued);
     backfillRepo.updateJob(jobId, {
       status: 'running',

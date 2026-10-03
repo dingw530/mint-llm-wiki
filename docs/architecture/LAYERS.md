@@ -112,16 +112,17 @@ server/
   infrastructure/filesystem/     # Skills directory and Wiki file operations
   infrastructure/config/         # Wiki root settings adapter
   infrastructure/persistence/    # graph/candidate and Wiki lifecycle repositories
+  infrastructure/jobs/           # durable Wiki ingestion queue/store/event adapters
   bootstrap/wiki-lifecycle.ts    # explicitly started, unref-ed lifecycle timer
 ```
 
-Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki's compiler output types stay type-only dependencies while compilation remains outside this batch. Its shared parser/schema normalization functions are reached through the transitional Wiki filesystem adapter.
+Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki owns durable source-ingestion orchestration, commit recovery, and the background job state machine. Staged source-file operations, ingestion commit records, and durable job queue/store/event adapters live under `infrastructure/`. `services/api/wikiIngestionJobService.ts` only composes the domain worker with existing HTTP/Electron dependencies. Compiler execution, Wiki page-writing helpers, and cross-batch LLM candidate generation remain transitional service dependencies explicitly recorded by `knowledge-domains-boundary.ts`.
 
 The low-frequency lifecycle timer is composed by bootstrap and remains owned/drained by ServerRuntime. Importing the Wiki domain does not start a timer.
 
-`knowledge-domains-boundary.ts` resolves imports, re-exports and literal dynamic dependencies using the existing Server dependency inventory. It records only these legacy runtime bridges: graphBuilder and crossBatchSemanticService access graph storage; crossBatchSemanticService accesses candidate storage; WikiSearchTool accesses lifecycle storage; wikiVectorBackfillService accesses search storage. These exceptions end when graph generation and Wiki search migrate. Other production modules must use public APIs, and infrastructure may import only domain type contracts.
+`knowledge-domains-boundary.ts` resolves imports, re-exports and literal dynamic dependencies using the existing Server dependency inventory. The graph generation/cross-batch matching flows, backfill worker and WikiSearchTool now use public domain APIs instead of direct graph/lifecycle/search repository imports. Other production modules must use public APIs, and infrastructure may import only domain type contracts.
 
-[Three-domain migration evidence](skills-graph-wiki-migration.md) records scope, compatibility, tests and history-preserving commit preparation. Wiki search, ingestion jobs, compiler and cross-batch LLM generation remain outside these domain rules in this batch.
+[Three-domain migration evidence](skills-graph-wiki-migration.md) records scope, compatibility, tests and history-preserving commit preparation. Wiki search, compiler and cross-batch LLM generation remain outside the domain boundary in this batch.
 
 ### Wiki search application boundary
 
@@ -129,7 +130,7 @@ The low-frequency lifecycle timer is composed by bootstrap and remains owned/dra
 
 `infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. `infrastructure/search/wiki-search-runtime.ts` composes the existing settings, embedding/vector, rerank and resilience implementations as an explicit transitional adapter; those provider implementations are not relocated in this batch. Wiki file primitives remain in its filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
 
-The old wikiSearchService persistence bridge is removed. The independent vector backfill job retains an explicit search-storage bridge until its own migration; vector/rerank modules may reference storage contracts through type-only imports. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
+The independent vector backfill job and WikiSearchTool still live in their legacy service/tool locations, but reach persistence through the Wiki public API; vector/rerank modules may reference storage contracts through type-only imports. Ingestion consumers and job status contracts use the Wiki public API. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
 
 ## Client Layer Hierarchy
 
