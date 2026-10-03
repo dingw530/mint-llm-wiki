@@ -70,6 +70,59 @@ The domain imports only its own modules, type-only `server/types.ts`, and the sh
 
 `server/architecture/routingBoundary.ts` resolves static imports, re-exports and literal dynamic imports with TypeScript. Its tests reject domain dependencies on settings/models/persistence, deep consumer imports, runtime domain imports from Routing infrastructure, and direct infrastructure access outside bootstrap. Focused tests may access internal modules. The file mapping, history checks and verification limits are recorded in [Routing migration evidence](routing-domain-migration.md).
 
+### Agents configuration boundary (incremental migration)
+
+```text
+server/
+  domains/agents/                 # Agent CRUD and orchestrator prompt policy
+  infrastructure/persistence/
+    agent-repository.ts           # existing SQLite Agent storage
+```
+
+Agents owns configuration and management only; AgentRun, ReAct execution, tool approval and MCP connection management remain in their existing modules. Consumers use `domains/agents/index.ts`, including HTTP descriptors, message/tool orchestration, evaluation and the Electron namespace export.
+
+Following the incremental Memory boundary, this small application service may access its own infrastructure repository directly; it does not need a new bootstrap lifecycle or dependency-injection factory. Other production modules may not import Agent persistence directly. The domain imports only its own modules, Agent persistence and type-only Server contracts. Infrastructure may consume public domain type contracts, never runtime services.
+
+`server/architecture/agents-boundary.ts` enforces this policy using the existing resolved Server dependency inventory. Focused tests may import internal modules. Migration evidence and scope limitations are recorded in [Agents migration evidence](agents-domain-migration.md).
+
+### Conversations management boundary (incremental migration)
+
+```text
+server/
+  domains/conversations/          # conversation CRUD, route defaults and Agent locking
+  infrastructure/persistence/
+    conversation-repository.ts   # existing SQLite conversation storage
+  infrastructure/config/
+    conversation-defaults.ts     # settings-storage adapter for the route preference
+```
+
+HTTP, CLI, Electron and message setup use `domains/conversations/index.ts`. The domain owns persisted conversation management and nullable metadata lookup, and may import only its own modules, its conversation repository/defaults adapter, type-only Server contracts and external packages such as UUID. Other production Server modules may not access this infrastructure directly. Test fixtures may use the repository to preserve explicit fixture ids.
+
+Message streaming, AgentRun and the request-time `conversationScopeLock.ts` reservations remain in their current locations. Memory space association also remains in its existing application adapter; this migration does not claim completion of all message/runtime or space-management responsibilities.
+
+`server/architecture/conversations-boundary.ts` checks actual resolved imports, including literal dynamic imports. [Conversations migration evidence](conversations-domain-migration.md) records the scope and validation.
+
+### Skills, knowledge graph and Wiki management boundaries
+
+```text
+server/
+  domains/skills/                 # frontmatter, lookup and cache policy
+  domains/knowledge-graph/        # graph CRUD and candidate review transactions
+  domains/wiki/                   # file/schema management, retention and knowledge lifecycle
+  infrastructure/filesystem/     # Skills directory and Wiki file operations
+  infrastructure/config/         # Wiki root settings adapter
+  infrastructure/persistence/    # graph/candidate and Wiki lifecycle repositories
+  bootstrap/wiki-lifecycle.ts    # explicitly started, unref-ed lifecycle timer
+```
+
+Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki's compiler output types stay type-only dependencies while compilation remains outside this batch. Its shared parser/schema normalization functions are reached through the transitional Wiki filesystem adapter.
+
+The low-frequency lifecycle timer is composed by bootstrap and remains owned/drained by ServerRuntime. Importing the Wiki domain does not start a timer.
+
+`knowledge-domains-boundary.ts` resolves imports, re-exports and literal dynamic dependencies using the existing Server dependency inventory. It records only these legacy runtime bridges: graphBuilder and crossBatchSemanticService access graph storage; crossBatchSemanticService accesses candidate storage; wikiSearchService and WikiSearchTool access lifecycle storage. These exceptions end when graph generation and Wiki search migrate. Other production modules must use public APIs, and infrastructure may import only domain type contracts.
+
+[Three-domain migration evidence](skills-graph-wiki-migration.md) records scope, compatibility, tests and history-preserving commit preparation. Wiki search, ingestion jobs, compiler and cross-batch LLM generation remain outside these domain rules in this batch.
+
 ## Client Layer Hierarchy
 
 ```

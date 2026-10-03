@@ -10,7 +10,7 @@
       "test",
       "--",
       "domains/memory/__tests__/memory-semantic-policy.test.ts",
-      "infrastructure/ai/__tests__/memorySemanticClassifier.test.ts"
+      "infrastructure/ai/__tests__/memory-semantic-classifier.test.ts"
     ],
     "timeoutMs": 120000
   },
@@ -25,8 +25,8 @@
       "test",
       "--",
       "domains/memory/",
-      "infrastructure/ai/__tests__/memorySemanticClassifier.test.ts",
-      "infrastructure/persistence/__tests__/memoryScopeRepository.test.ts"
+      "infrastructure/ai/__tests__/memory-semantic-classifier.test.ts",
+      "infrastructure/persistence/__tests__/memory-scope-repository.test.ts"
     ],
     "timeoutMs": 180000
   },

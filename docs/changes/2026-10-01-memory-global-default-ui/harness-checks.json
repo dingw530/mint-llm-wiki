@@ -38,7 +38,7 @@
       "test",
       "--",
       "domains/memory/__tests__/entry.integration.test.ts",
-      "infrastructure/persistence/__tests__/memoryScopeRepository.test.ts",
+      "infrastructure/persistence/__tests__/memory-scope-repository.test.ts",
       "services/api/__tests__/conversationScopeLock.test.ts"
     ],
     "timeoutMs": 120000
