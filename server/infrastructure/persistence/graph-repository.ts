@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDb } from '../db.js';
-import { normalizeGraphRelation } from '../utils/graphOntology.js';
+import { getDb } from '../../db.js';
+import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 
 // ── 类型定义 ──
 

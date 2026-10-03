@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getDb } from '../../db.js';
-import * as repo from '../wikiLifecycleRepository.js';
+import { getDb } from '../../../db.js';
+import * as repo from '../wiki-lifecycle-repository.js';
 
 describe('wikiLifecycleRepository', () => {
   beforeEach(() => {

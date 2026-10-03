@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext } from './BaseTool.js';
-import { getSkill } from '../api/skillService.js';
+import { getSkill } from '../../domains/skills/index.js';
 
 // ── 输入 Schema ──
 
@@ -23,7 +23,8 @@ interface SkillOutput {
 
 export class SkillTool extends BaseTool<SkillInput, SkillOutput> {
   readonly name = 'invoke_skill';
-  readonly description = '加载并应用指定技能（skill），技能提供了特定任务的专业指导和上下文。调用后请严格按照技能的指令来响应用户';
+  readonly description =
+    '加载并应用指定技能（skill），技能提供了特定任务的专业指导和上下文。调用后请严格按照技能的指令来响应用户';
   readonly inputSchema = SkillInputSchema;
 
   isReadOnly(): boolean {

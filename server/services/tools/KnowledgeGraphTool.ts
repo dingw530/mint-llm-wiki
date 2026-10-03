@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext } from './BaseTool.js';
-import type { GraphNode } from '../../repositories/graphRepository.js';
-import * as graphRepo from '../../repositories/graphRepository.js';
+import type { GraphNode } from '../../domains/knowledge-graph/index.js';
+import * as graphRepo from '../../domains/knowledge-graph/index.js';
 
 // ── 批量操作子 Schema ──
 
@@ -19,12 +19,20 @@ const BatchEdgeSchema = z.object({
 });
 
 const KnowledgeGraphInputSchema = z.object({
-  action: z.enum(['query_nodes', 'batch_add']).describe('操作类型：query_nodes=搜索节点，batch_add=批量创建节点和关系（优先使用）'),
+  action: z
+    .enum(['query_nodes', 'batch_add'])
+    .describe('操作类型：query_nodes=搜索节点，batch_add=批量创建节点和关系（优先使用）'),
   // query_nodes
   query: z.string().optional().describe('搜索关键词（action=query_nodes 时使用）'),
   // batch_add
-  nodes: z.array(BatchNodeSchema).optional().describe('批量添加的节点列表（action=batch_add 时使用）'),
-  edges: z.array(BatchEdgeSchema).optional().describe('批量添加的关系列表（action=batch_add 时使用）。关系必须使用已定义的图谱关系本体。'),
+  nodes: z
+    .array(BatchNodeSchema)
+    .optional()
+    .describe('批量添加的节点列表（action=batch_add 时使用）'),
+  edges: z
+    .array(BatchEdgeSchema)
+    .optional()
+    .describe('批量添加的关系列表（action=batch_add 时使用）。关系必须使用已定义的图谱关系本体。'),
 });
 
 type KnowledgeGraphInput = z.infer<typeof KnowledgeGraphInputSchema>;
@@ -41,7 +49,8 @@ interface KnowledgeGraphOutput {
  */
 export class KnowledgeGraphTool extends BaseTool<KnowledgeGraphInput, KnowledgeGraphOutput> {
   readonly name = 'knowledge_graph';
-  readonly description = '操作知识图谱三元关系数据。支持：搜索节点(query_nodes)、批量创建节点和关系(batch_add)。用户说"加到图谱""提取到图谱"时使用此工具。批量创建时每个节点必须关联来源文件(sourceFile)。';
+  readonly description =
+    '操作知识图谱三元关系数据。支持：搜索节点(query_nodes)、批量创建节点和关系(batch_add)。用户说"加到图谱""提取到图谱"时使用此工具。批量创建时每个节点必须关联来源文件(sourceFile)。';
 
   readonly inputSchema = KnowledgeGraphInputSchema;
 
@@ -61,17 +70,19 @@ export class KnowledgeGraphTool extends BaseTool<KnowledgeGraphInput, KnowledgeG
         if (!q.trim()) {
           const all = graphRepo.getGraphData();
           return {
-            message: all.nodes.length > 0
-              ? `图谱中共有 ${all.nodes.length} 个节点、${all.edges.length} 条关系`
-              : '图谱中暂无数据',
+            message:
+              all.nodes.length > 0
+                ? `图谱中共有 ${all.nodes.length} 个节点、${all.edges.length} 条关系`
+                : '图谱中暂无数据',
             data: { nodes: all.nodes, edges: all.edges },
           };
         }
         const results = graphRepo.searchNodes(q);
         return {
-          message: results.length > 0
-            ? `找到 ${results.length} 个匹配的节点：${results.map(n => n.label).join('、')}`
-            : `未找到匹配 "${q}" 的节点`,
+          message:
+            results.length > 0
+              ? `找到 ${results.length} 个匹配的节点：${results.map((n) => n.label).join('、')}`
+              : `未找到匹配 "${q}" 的节点`,
           data: { nodes: results },
         };
       }
@@ -119,16 +130,22 @@ export class KnowledgeGraphTool extends BaseTool<KnowledgeGraphInput, KnowledgeG
             const targets = graphRepo.searchNodes(e.targetNodeLabel.trim());
 
             if (sources.length === 0) {
-              errors.push(`关系"${e.sourceNodeLabel}→${e.targetNodeLabel}"失败：源节点"${e.sourceNodeLabel}"不存在`);
+              errors.push(
+                `关系"${e.sourceNodeLabel}→${e.targetNodeLabel}"失败：源节点"${e.sourceNodeLabel}"不存在`,
+              );
               continue;
             }
             if (targets.length === 0) {
-              errors.push(`关系"${e.sourceNodeLabel}→${e.targetNodeLabel}"失败：目标节点"${e.targetNodeLabel}"不存在`);
+              errors.push(
+                `关系"${e.sourceNodeLabel}→${e.targetNodeLabel}"失败：目标节点"${e.targetNodeLabel}"不存在`,
+              );
               continue;
             }
 
-            const source = sources.find((n: GraphNode) => n.label === e.sourceNodeLabel.trim()) || sources[0];
-            const target = targets.find((n: GraphNode) => n.label === e.targetNodeLabel.trim()) || targets[0];
+            const source =
+              sources.find((n: GraphNode) => n.label === e.sourceNodeLabel.trim()) || sources[0];
+            const target =
+              targets.find((n: GraphNode) => n.label === e.targetNodeLabel.trim()) || targets[0];
 
             // 按 (sourceId, relation, targetId) 去重
             const relation = e.relation.trim();
@@ -145,17 +162,23 @@ export class KnowledgeGraphTool extends BaseTool<KnowledgeGraphInput, KnowledgeG
             });
             createdEdges.push({ sourceLabel: source.label, relation, targetLabel: target.label });
           } catch (err) {
-            errors.push(`关系"${e.sourceNodeLabel}→${e.targetNodeLabel}"创建失败: ${(err as Error).message}`);
+            errors.push(
+              `关系"${e.sourceNodeLabel}→${e.targetNodeLabel}"创建失败: ${(err as Error).message}`,
+            );
           }
         }
 
         // 3. 构建返回消息
         const parts: string[] = [];
         if (createdNodes.length > 0) {
-          parts.push(`添加了 ${createdNodes.length} 个节点：${createdNodes.map(n => `「${n.label}」`).join('、')}`);
+          parts.push(
+            `添加了 ${createdNodes.length} 个节点：${createdNodes.map((n) => `「${n.label}」`).join('、')}`,
+          );
         }
         if (createdEdges.length > 0) {
-          parts.push(`建立了 ${createdEdges.length} 条关系：${createdEdges.map(e => `「${e.sourceLabel}」—[${e.relation}]→「${e.targetLabel}」`).join('、')}`);
+          parts.push(
+            `建立了 ${createdEdges.length} 条关系：${createdEdges.map((e) => `「${e.sourceLabel}」—[${e.relation}]→「${e.targetLabel}」`).join('、')}`,
+          );
         }
         if (errors.length > 0) {
           parts.push(`遇到 ${errors.length} 个错误：${errors.join('；')}`);
@@ -163,7 +186,11 @@ export class KnowledgeGraphTool extends BaseTool<KnowledgeGraphInput, KnowledgeG
 
         return {
           message: parts.length > 0 ? parts.join('；') : '没有执行任何操作',
-          data: { nodes: createdNodes, edges: createdEdges, errors: errors.length > 0 ? errors : undefined },
+          data: {
+            nodes: createdNodes,
+            edges: createdEdges,
+            errors: errors.length > 0 ? errors : undefined,
+          },
         };
       }
 

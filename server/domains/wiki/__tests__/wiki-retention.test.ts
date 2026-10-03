@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calculateWikiRetentionScore } from '../wikiRetention.js';
+import { calculateWikiRetentionScore } from '../wiki-retention.js';
 
 describe('calculateWikiRetentionScore', () => {
   it('decays with time but keeps the score bounded', () => {

@@ -20,7 +20,7 @@ const dependencies = vi.hoisted(() => ({
 vi.mock('../../services/utils/toolResultArtifact.js', () => ({
   cleanupArtifacts: dependencies.cleanupArtifacts,
 }));
-vi.mock('../../services/api/skillService.js', () => ({ listSkills: dependencies.listSkills }));
+vi.mock('../../domains/skills/index.js', () => ({ listSkills: dependencies.listSkills }));
 vi.mock('../../services/api/mcpService.js', () => ({
   mcpService: { initialize: dependencies.mcpInitialize, shutdown: dependencies.mcpShutdown },
 }));
@@ -35,7 +35,7 @@ vi.mock('../../services/api/wikiIngestionJobService.js', () => ({
     shutdownWorker: dependencies.wikiShutdown,
   },
 }));
-vi.mock('../../services/api/wikiLifecycleService.js', () => ({
+vi.mock('../../bootstrap/wiki-lifecycle.js', () => ({
   startWikiLifecycleProcessing: dependencies.startWikiLifecycle,
 }));
 vi.mock('../../services/observability/langfuse.js', () => ({

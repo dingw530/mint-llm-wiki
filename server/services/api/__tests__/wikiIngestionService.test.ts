@@ -24,7 +24,7 @@ vi.mock('../../graphBuilder.js', () => ({
   buildGraphFromPages: vi.fn(() => ({ nodesCreated: 0, edgesCreated: 0, errors: [] })),
 }));
 
-vi.mock('../wikiKnowledgeLifecycleService.js', () => ({
+vi.mock('../../../domains/wiki/index.js', () => ({
   registerCompiledKnowledge: vi.fn(),
 }));
 

@@ -1,4 +1,4 @@
-import * as wikiService from '../../services/api/wikiService.js';
+import * as wikiService from '../../domains/wiki/index.js';
 import { wikiVectorBackfillService } from '../../services/api/wikiVectorBackfillService.js';
 import type { EndpointDescriptor } from '../types.js';
 
@@ -69,7 +69,8 @@ export const wikiEndpoints: EndpointDescriptor[] = [
     method: 'PUT',
     path: '/schema',
     preloadMethod: 'updateWikiSchema',
-    service: (schema: unknown) => wikiService.updateSchema(schema as Parameters<typeof wikiService.updateSchema>[0]),
+    service: (schema: unknown) =>
+      wikiService.updateSchema(schema as Parameters<typeof wikiService.updateSchema>[0]),
     args: [{ from: 'body' }],
     result: 'direct',
   },
@@ -78,7 +79,8 @@ export const wikiEndpoints: EndpointDescriptor[] = [
     method: 'GET',
     path: '/jobs',
     preloadMethod: 'listWikiJobs',
-    service: async (status?: string, limit?: string) => (await getWikiIngestionJobService()).listForApi(status, limit ? Number(limit) : undefined),
+    service: async (status?: string, limit?: string) =>
+      (await getWikiIngestionJobService()).listForApi(status, limit ? Number(limit) : undefined),
     ipcServiceRef: { module: 'wikiIngestionJobService', method: 'listForApi' },
     async: true,
     args: [

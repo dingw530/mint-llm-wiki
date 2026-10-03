@@ -3,12 +3,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
-vi.mock('../settingsService.js', () => ({
+vi.mock('../../../services/api/settingsService.js', () => ({
   get: vi.fn(),
 }));
 
-import * as wikiService from '../wikiService.js';
-import * as settingsService from '../settingsService.js';
+import * as wikiService from '../wiki-service.js';
+import * as settingsService from '../../../services/api/settingsService.js';
 
 describe('wikiService', () => {
   let tmpDir: string;

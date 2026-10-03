@@ -1,12 +1,20 @@
 import { afterAll, describe, expect, it, beforeEach } from 'vitest';
 
-import * as graphRepo from '../../repositories/graphRepository.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
 import { buildGraphFromPages, normalizeRelation, extractWikiLinks } from '../graphBuilder.js';
 import type { CompiledPage, Relationship } from '../utils/wikiShared.js';
 
 function cleanGraph() {
-  graphRepo.getAllEdges().forEach(e => { try { graphRepo.deleteEdge(e.id); } catch {} });
-  graphRepo.getGraphData().nodes.forEach(n => { try { graphRepo.deleteNode(n.id); } catch {} });
+  graphRepo.getAllEdges().forEach((e) => {
+    try {
+      graphRepo.deleteEdge(e.id);
+    } catch {}
+  });
+  graphRepo.getGraphData().nodes.forEach((n) => {
+    try {
+      graphRepo.deleteNode(n.id);
+    } catch {}
+  });
 }
 
 describe('graphBuilder', () => {
@@ -83,7 +91,14 @@ describe('graphBuilder', () => {
         { filename: 'pages/cat/Y.md', title: 'GraphY', tags: [], content: 'Y' },
       ];
       const rels: Relationship[] = [
-        { source: 'GraphX', target: 'GraphY', relation: '基于', reason: 'test', confidence: 0.8, evidence: 'e' },
+        {
+          source: 'GraphX',
+          target: 'GraphY',
+          relation: '基于',
+          reason: 'test',
+          confidence: 0.8,
+          evidence: 'e',
+        },
       ];
       const result = buildGraphFromPages(pages, rels);
       expect(result.edgesCreated).toBeGreaterThanOrEqual(1);
@@ -100,8 +115,18 @@ describe('graphBuilder', () => {
 
     it('extracts references from markdown links', () => {
       const pages: CompiledPage[] = [
-        { filename: 'pages/cat/P1.md', title: 'P1', tags: [], content: 'See [P2](pages/cat/P2.md)' },
-        { filename: 'pages/cat/P2.md', title: 'P2', tags: [], content: 'See [P1](pages/cat/P1.md)' },
+        {
+          filename: 'pages/cat/P1.md',
+          title: 'P1',
+          tags: [],
+          content: 'See [P2](pages/cat/P2.md)',
+        },
+        {
+          filename: 'pages/cat/P2.md',
+          title: 'P2',
+          tags: [],
+          content: 'See [P1](pages/cat/P1.md)',
+        },
       ];
       const result = buildGraphFromPages(pages);
       expect(result.nodesCreated).toBe(2);

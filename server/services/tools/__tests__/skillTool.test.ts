@@ -4,14 +4,14 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const mockSkills: Record<string, string> = {};
 
-vi.mock('../../api/skillService.js', () => ({
+vi.mock('../../../domains/skills/index.js', () => ({
   getSkill: vi.fn(async (name: string) => {
     if (mockSkills[name]) return { name, content: mockSkills[name] };
     return undefined;
   }),
 }));
 
-import { getSkill } from '../../api/skillService.js';
+import { getSkill } from '../../../domains/skills/index.js';
 import { SkillTool } from '../SkillTool.js';
 
 const ctx = { conversationId: 'test-conv' };
@@ -21,7 +21,7 @@ describe('SkillTool', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    Object.keys(mockSkills).forEach(k => delete mockSkills[k]);
+    Object.keys(mockSkills).forEach((k) => delete mockSkills[k]);
   });
 
   it('should have correct metadata', () => {
@@ -48,8 +48,7 @@ describe('SkillTool', () => {
   });
 
   it('should throw when skill not found', async () => {
-    await expect(tool.execute({ name: 'no-exist' }, ctx))
-      .rejects.toThrow('技能不存在: no-exist');
+    await expect(tool.execute({ name: 'no-exist' }, ctx)).rejects.toThrow('技能不存在: no-exist');
   });
 
   it('should validate input schema', () => {

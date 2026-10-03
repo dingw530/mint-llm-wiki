@@ -6,8 +6,8 @@ import type { ToolContext } from './BaseTool.js';
 import { isPathSafe, getWikiPath } from '../utils/pathSecurity.js';
 import { isSystemWikiPath, parseWikiPage } from '../utils/wikiShared.js';
 import { createLogger } from '../../utils/logger.js';
-import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
-import { calculateWikiRetentionScore } from '../utils/wikiRetention.js';
+import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
+import { calculateWikiRetentionScore } from '../../domains/wiki/index.js';
 import { searchWiki } from '../api/wikiSearchService.js';
 
 const log = createLogger('wiki-search');

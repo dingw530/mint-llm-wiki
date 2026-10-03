@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
+import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
 import * as searchRepo from '../../repositories/wikiSearchRepository.js';
 import { getAiSettings, getJevSettings } from './settingsService.js';
 import { createWikiVectorService, pruneWikiVectorOrphans } from '../vector/index.js';

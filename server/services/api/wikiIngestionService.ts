@@ -12,7 +12,7 @@ import {
   stageWikiRawFile,
   stageWikiSourceText,
 } from './wikiFileService.js';
-import { registerCompiledKnowledge } from './wikiKnowledgeLifecycleService.js';
+import { registerCompiledKnowledge } from '../../domains/wiki/index.js';
 import { rebuildWikiSearchIndex } from './wikiSearchService.js';
 import type { OpenAICompatibleEmbeddingConfig } from '../vector/types.js';
 import type { WikiPageSummary } from './wikiIngestionTypes.js';

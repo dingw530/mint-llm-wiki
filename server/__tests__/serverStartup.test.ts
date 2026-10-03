@@ -8,7 +8,7 @@ const mockApp = vi.hoisted(() => ({ listen: vi.fn() }));
 const mockSkills = vi.hoisted(() => ({ listSkills: vi.fn().mockResolvedValue([]) }));
 
 vi.mock('../app.js', () => ({ default: mockApp, createApp: vi.fn(() => mockApp) }));
-vi.mock('../services/api/skillService.js', () => mockSkills);
+vi.mock('../domains/skills/index.js', () => mockSkills);
 
 process.env.AI_CHAT_CLIENT_DIST = 'test-client-dist';
 

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as graphRepo from '../../repositories/graphRepository.js';
-import * as candidateRepo from '../../repositories/graphCandidateRepository.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
+import * as candidateRepo from '../../infrastructure/persistence/graph-candidate-repository.js';
 import { getAdapter } from '../adapters/apiAdapter.js';
 import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 import type { AiSettings } from '../../types.js';

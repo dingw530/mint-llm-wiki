@@ -54,8 +54,7 @@ wikiCommand
   .description('将已有 pages/*.md 回填到知识生命周期表')
   .action(async (wikiPath?: string) => {
     const { get } = await import('../services/api/settingsService.js');
-    const { migrateExistingWikiPages } =
-      await import('../services/api/wikiKnowledgeLifecycleService.js');
+    const { migrateExistingWikiPages } = await import('../domains/wiki/index.js');
     const targetPath = wikiPath || get().wikiPath;
     if (!targetPath) throw new Error('未提供 Wiki 路径，且设置中没有 wikiPath');
     const result = migrateExistingWikiPages(targetPath);

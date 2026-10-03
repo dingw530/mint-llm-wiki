@@ -1,4 +1,4 @@
-import * as graphRepo from '../repositories/graphRepository.js';
+import * as graphRepo from '../infrastructure/persistence/graph-repository.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { normalizeWikiCategories } from './utils/wikiShared.js';

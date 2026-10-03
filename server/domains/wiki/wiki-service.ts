@@ -2,9 +2,9 @@ import * as fs from '../../infrastructure/filesystem/wiki-files.js';
 import * as path from 'path';
 import { getConfiguredWikiPath } from '../../infrastructure/config/wiki-settings.js';
 import { normalizeWikiSchema } from '../../infrastructure/filesystem/wiki-files.js';
-import type { WikiCategory, WikiSchema } from '../utils/wikiShared.js';
-import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
-import { calculateWikiRetentionScore } from '../utils/wikiRetention.js';
+import type { WikiCategory, WikiSchema } from '../../services/utils/wikiShared.js';
+import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
+import { calculateWikiRetentionScore } from './wiki-retention.js';
 
 interface FileTreeNode {
   name: string;

@@ -1,5 +1,5 @@
-import * as candidates from '../../repositories/graphCandidateRepository.js';
-import * as graphRepo from '../../repositories/graphRepository.js';
+import * as candidates from '../../infrastructure/persistence/graph-candidate-repository.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
 import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 export const listCandidates = (status?: candidates.CandidateStatus) => candidates.list(status);
 export function acceptCandidate(id: string) {

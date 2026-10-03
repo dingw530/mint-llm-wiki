@@ -1,5 +1,5 @@
-import * as lifecycleRepo from '../../repositories/wikiLifecycleRepository.js';
-import { calculateWikiRetentionScore } from '../utils/wikiRetention.js';
+import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
+import { calculateWikiRetentionScore } from './wiki-retention.js';
 
 export interface WikiLifecycleRunOptions {
   now?: Date;
@@ -111,17 +111,4 @@ function expireClaims(
     expired++;
   }
   return expired;
-}
-
-/** 启动低频生命周期调度；定时器 unref 后不会阻止进程正常退出。 */
-export function startWikiLifecycleProcessing(intervalMs = 6 * 60 * 60 * 1000): ReturnType<typeof setInterval> {
-  const timer = setInterval(() => {
-    try {
-      runWikiLifecycleOnce();
-    } catch (error) {
-      console.error('[wiki-lifecycle] run failed:', error);
-    }
-  }, intervalMs);
-  timer.unref?.();
-  return timer;
 }

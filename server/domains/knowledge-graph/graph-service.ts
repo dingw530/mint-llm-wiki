@@ -1,12 +1,12 @@
-import * as graphRepo from '../../repositories/graphRepository.js';
-import * as candidateService from './graphCandidateService.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
+import * as candidateService from './graph-candidate-service.js';
 import type {
   GraphNode,
   GraphEdge,
   GraphData,
   CreateNodeParams,
   CreateEdgeParams,
-} from '../../repositories/graphRepository.js';
+} from '../../infrastructure/persistence/graph-repository.js';
 
 // ── CRUD ──
 

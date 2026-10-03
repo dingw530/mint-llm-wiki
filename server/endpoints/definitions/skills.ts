@@ -1,4 +1,4 @@
-import { listSkills } from '../../services/api/skillService.js';
+import { listSkills } from '../../domains/skills/index.js';
 import type { EndpointDescriptor } from '../types.js';
 
 export const skillsEndpoints: EndpointDescriptor[] = [

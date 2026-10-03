@@ -5,9 +5,9 @@ const graph = vi.hoisted(() => ({
   edges: [] as Array<Record<string, unknown>>,
 }));
 
-vi.mock('../../repositories/graphRepository.js', () => ({
+vi.mock('../../infrastructure/persistence/graph-repository.js', () => ({
   transaction: <T>(fn: () => T): T => fn(),
-  searchNodes: (label: string) => graph.nodes.filter(node => !label || node.label === label),
+  searchNodes: (label: string) => graph.nodes.filter((node) => !label || node.label === label),
   createNode: (params: Record<string, unknown>) => {
     const node = { ...params, id: `node-${graph.nodes.length + 1}` };
     graph.nodes.push(node);
@@ -15,11 +15,11 @@ vi.mock('../../repositories/graphRepository.js', () => ({
   },
   updateNodeType: vi.fn(),
   getAllEdges: () => graph.edges,
-  findEdgeByTriple: (sourceId: string, relation: string, targetId: string) => (
-    graph.edges.find(edge => (
-      edge.sourceId === sourceId && edge.relation === relation && edge.targetId === targetId
-    )) || null
-  ),
+  findEdgeByTriple: (sourceId: string, relation: string, targetId: string) =>
+    graph.edges.find(
+      (edge) =>
+        edge.sourceId === sourceId && edge.relation === relation && edge.targetId === targetId,
+    ) || null,
   createEdge: (params: Record<string, unknown>) => {
     const edge = { ...params, id: `edge-${graph.edges.length + 1}` };
     graph.edges.push(edge);
@@ -81,7 +81,11 @@ describe('buildGraphFromPages references', () => {
 
     expect(result.edgesCreated).toBe(1);
     expect(graph.edges).toHaveLength(1);
-    expect(graph.edges[0]).toMatchObject({ relation: '支持', sourceId: 'node-2', targetId: 'node-1' });
+    expect(graph.edges[0]).toMatchObject({
+      relation: '支持',
+      sourceId: 'node-2',
+      targetId: 'node-1',
+    });
   });
 
   it('keeps the highest-priority semantic relation and stores its evidence', () => {
@@ -95,7 +99,13 @@ describe('buildGraphFromPages references', () => {
       ],
       [
         { source: 'A', target: 'B', relation: '支持', confidence: 0.95, reason: '提供辅助' },
-        { source: 'B', target: 'A', relation: '应对', confidence: 0.6, evidence: '方案用于解决挑战' },
+        {
+          source: 'B',
+          target: 'A',
+          relation: '应对',
+          confidence: 0.6,
+          evidence: '方案用于解决挑战',
+        },
       ],
     );
 

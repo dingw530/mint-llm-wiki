@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getDb } from '../../../db.js';
-import { migrateExistingWikiPages } from '../wikiKnowledgeLifecycleService.js';
+import { migrateExistingWikiPages } from '../wiki-knowledge-lifecycle-service.js';
 
 const tempDirs: string[] = [];
 

@@ -2,7 +2,7 @@ import type { Express } from 'express';
 import type { Server } from 'node:http';
 import { closeDb } from '../db.js';
 import { agentRunRegistry } from '../services/agentRun.js';
-import { listSkills } from '../services/api/skillService.js';
+import { listSkills } from '../domains/skills/index.js';
 import { mcpService } from '../services/api/mcpService.js';
 import {
   initializeMemorySearchIndex,
@@ -10,7 +10,7 @@ import {
   stopMemoryProcessing,
 } from '../bootstrap/memory.js';
 import { wikiIngestionJobService } from '../services/api/wikiIngestionJobService.js';
-import { startWikiLifecycleProcessing } from '../services/api/wikiLifecycleService.js';
+import { startWikiLifecycleProcessing } from '../bootstrap/wiki-lifecycle.js';
 import { flushLangfuseTracing } from '../services/observability/langfuse.js';
 import { cleanupArtifacts } from '../services/utils/toolResultArtifact.js';
 import { getAddressPort, getErrorMessage } from '../utils/typeGuards.js';

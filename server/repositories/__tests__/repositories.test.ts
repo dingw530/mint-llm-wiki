@@ -2,8 +2,8 @@ import { describe, expect, it, vi, afterAll, beforeEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
 
 import * as endpointRepo from '../endpointRepository.js';
-import * as graphRepo from '../graphRepository.js';
-import * as candidateRepo from '../graphCandidateRepository.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
+import * as candidateRepo from '../../infrastructure/persistence/graph-candidate-repository.js';
 import * as routingLogRepo from '../../infrastructure/persistence/routing-log-repository.js';
 import * as endpointService from '../../services/api/endpointService.js';
 import { encrypt } from '../../services/utils/encryption.js';

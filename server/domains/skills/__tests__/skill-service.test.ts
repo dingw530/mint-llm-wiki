@@ -22,7 +22,7 @@ vi.mock('fs', () => ({
   }),
 }));
 
-import * as skillService from '../skillService.js';
+import * as skillService from '../skill-service.js';
 
 describe('skillService', () => {
   beforeEach(() => {

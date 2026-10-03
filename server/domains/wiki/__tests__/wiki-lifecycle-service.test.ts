@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getDb } from '../../../db.js';
-import { registerCompiledKnowledge } from '../wikiKnowledgeLifecycleService.js';
-import { runWikiLifecycleOnce } from '../wikiLifecycleService.js';
+import { registerCompiledKnowledge } from '../wiki-knowledge-lifecycle-service.js';
+import { runWikiLifecycleOnce } from '../wiki-lifecycle-service.js';
 
 describe('wikiLifecycleService', () => {
   beforeEach(() => {

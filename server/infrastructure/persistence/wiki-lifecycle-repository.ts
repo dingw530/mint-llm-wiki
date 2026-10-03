@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDb } from '../db.js';
+import { getDb } from '../../db.js';
 
 export type WikiSourceStatus = 'ingested' | 'compiled' | 'superseded' | 'quarantined';
 export type WikiPageStatus = 'draft' | 'active' | 'stale' | 'archived' | 'superseded' | 'deleted';

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDb } from '../db.js';
+import { getDb } from '../../db.js';
 
 export type CandidateStatus = 'pending' | 'accepted' | 'rejected' | 'expired';
 export interface GraphEdgeCandidate {
