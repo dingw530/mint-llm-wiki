@@ -43,6 +43,8 @@ middleware     services/, types (request processing)
 
 `bootstrap/` continues to own process-scoped composition and resource lifecycle. Two inherited Settings reads from infrastructure still use the Settings application facade; this remains explicit migration debt and is not authorization for new infrastructure-to-application imports.
 
+Provider protocol implementations and the API adapter registry live in `infrastructure/ai/adapters/`. They translate model/provider requests and streams; Agent Runtime, ToolLoop execution, approvals, and public SSE event semantics remain Mint-owned. Built-in adapters are registered at the Agent Runtime bootstrap boundary. [AI adapters and A2UI migration evidence](ai-adapters-a2ui-migration.md) records the moved files and checks.
+
 ### Memory domain boundary (incremental migration)
 
 The existing top-level Server layer diagram describes the current broad layout. Memory migration adds a finer boundary without implying that the other Server domains have moved:
@@ -136,9 +138,11 @@ The low-frequency lifecycle timer is composed by bootstrap and remains owned/dra
 
 `domains/wiki/wiki-search-service.ts` owns index orchestration, lexical/vector candidate fusion, page aggregation, evidence/snippet construction, source-family expansion and access feedback. Its public functions are exported through the existing Wiki index. Search state uses only the per-run `getJevSettings` capability instead of importing Agent runtime types.
 
-`infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. `infrastructure/search/wiki-search-runtime.ts` composes the existing settings, embedding/vector, rerank and resilience implementations as an explicit transitional adapter; those provider implementations are not relocated in this batch. Wiki file primitives remain in its filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
+`infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. Wiki rerank policy and providers live in `domains/wiki/rerank/`; the Jev provider keeps its explicit dependency on the shared client/config utilities in `infrastructure/ai/jev/`. That package owns the external protocol, request/retry handling, shared questions and wire types; routing and memory providers remain composed in `infrastructure/ai/`.
 
-The independent vector backfill job now lives in `application/wiki/wiki-vector-backfill-service.ts` and reaches Wiki persistence through the public API. WikiSearchTool remains in its legacy tool location; vector/rerank modules may reference storage contracts through type-only imports. Ingestion consumers and job status contracts use the Wiki public API. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
+`infrastructure/search/vector/` owns the embedding provider, vector ports/types and idempotent sync/backfill service. `infrastructure/search/wiki-vector-service.ts` composes the Wiki repository and optional Chroma adapter. Resilience policies remain in the legacy `services/resilience/` module as a transitional dependency used by vector adapters and the Wiki search runtime. SQLite/sqlite-vec remains the default store. Wiki file primitives remain in their filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
+
+The independent vector backfill job now lives in `application/wiki/wiki-vector-backfill-service.ts` and reaches Wiki persistence through the public API. WikiSearchTool remains in its legacy tool location; Wiki rerank types use the Wiki search storage contract as a type-only import. Ingestion consumers and job status contracts use the Wiki public API. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
 
 ### Model endpoint management boundary
 
@@ -164,17 +168,19 @@ HTTP descriptors, settings and the Electron namespace export use `domains/model-
 
 Settings key/value persistence is under `infrastructure/config/settings-repository.ts`; the Settings use case is in `application/settings/settings-service.ts`, with endpoint and Electron contracts preserved. MCP server persistence and process-scoped connection lifecycle live in `infrastructure/persistence/mcp-server-repository.ts` and `infrastructure/mcp/mcp-client-manager.ts`. `bootstrap/mcp-client.ts` owns the manager instance, and `application/mcp/mcp-server-service.ts` keeps MCP configuration CRUD and connection coordination behind the endpoint descriptor.
 
-Model and vector connection verification are infrastructure capabilities composed from the existing adapter/settings dependencies. SQLite vector persistence and the experimental Chroma store live in `infrastructure/persistence/vector-repository.ts` and `infrastructure/search/chroma-vector-store.ts`; Wiki vector orchestration and public behavior remain behind their existing Wiki/application adapters. [Settings, MCP and vector migration evidence](settings-mcp-vector-migration.md) records moved files, callers and verification limits.
+Model and vector connection verification are infrastructure capabilities composed from the existing adapter/settings dependencies. SQLite vector persistence and the experimental Chroma store live in `infrastructure/persistence/vector-repository.ts` and `infrastructure/search/chroma-vector-store.ts`; provider/service contracts live in `infrastructure/search/vector/`, and Wiki composition remains behind its Wiki/application adapters. [Settings, MCP and vector migration evidence](settings-mcp-vector-migration.md) records moved files, callers and verification limits.
 
 ### Remaining API application modules
 
-Approval continuation and its message-persistence adapter now live in `application/agent-runtime/`; conversation scope reservations and memory-space use cases live in `application/conversations/` and `application/memory/`. The Jev endpoint probe moved to `infrastructure/ai/jev-connection-verification.ts`. Redundant model/vector connection re-export shims were removed because callers already use the bootstrap or infrastructure entry points.
+Approval continuation and its message-persistence adapter now live in `application/agent-runtime/`; conversation scope reservations and memory-space use cases live in `application/conversations/` and `application/memory/`. The shared Jev client moved to `infrastructure/ai/jev/` alongside its endpoint probe in `infrastructure/ai/jev-connection-verification.ts`. Redundant model/vector connection re-export shims were removed because callers already use the bootstrap or infrastructure entry points.
 
 [Application service migration evidence](application-services-migration.md) records the file map, high-impact callers and focused verification. Settings remains a CRITICAL-impact facade, so its move preserves all existing exports and read/write behavior.
 
 ### Ingestion event transport
 
 The per-conversation ingestion stream lives under `http/streams/`; A2UI v0.9 task-card projection lives under `infrastructure/transports/` and uses the public Wiki job type. The stream retains the current Wiki ingestion application façade as a transition bridge. Business domains, Agent Runtime and infrastructure do not import the HTTP stream. `server/architecture/ingestion-transport-boundary.ts` checks these dependencies.
+
+Answer and tool-result projection into A2UI v0.9 lives in `infrastructure/transports/a2ui/`. The Agent Runtime consumes its input/output contracts by type, while bootstrap constructs the composer and its Wiki source-reference provider. This output projection remains separate from Agent execution and from the ingestion-task A2UI transport. [AI adapters and A2UI migration evidence](ai-adapters-a2ui-migration.md) records the moved files and checks.
 
 [Three small module migrations](small-server-modules-migration.md) records the selected scope, impact, behavior constraints and verification.
 

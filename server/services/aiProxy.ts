@@ -1,7 +1,7 @@
 import { getAllToolDefinitions } from './toolOrchestration.js';
 import type { HistoryMessage, AiSettings, StreamResult, TokenUsage } from '../types.js';
-import type { AdapterStream, ApiAdapter } from './adapters/apiAdapter.js';
-import { getAdapter } from './adapters/apiAdapter.js';
+import type { AdapterStream, ApiAdapter } from '../infrastructure/ai/adapters/api-adapter.js';
+import { getAdapter } from '../infrastructure/ai/adapters/api-adapter.js';
 import { toolLoopEngine, parseSSEStream } from './toolRoundEngine.js';
 import type { Sink } from '../agent-runtime/output-sink.js';
 import { getErrorMessage } from '../utils/typeGuards.js';

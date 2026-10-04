@@ -1,4 +1,4 @@
-import { AI_REQUEST_TIMEOUT_MS, getAdapter } from '../../services/adapters/apiAdapter.js';
+import { AI_REQUEST_TIMEOUT_MS, getAdapter } from './adapters/api-adapter.js';
 import * as settingsService from '../../application/settings/settings-service.js';
 import type { Agent } from '../../types.js';
 

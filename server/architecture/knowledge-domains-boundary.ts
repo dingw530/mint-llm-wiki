@@ -65,8 +65,7 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
         'types.ts',
         'services/utils/wikiShared.ts',
         'services/utils/fileParseService.ts',
-        'services/vector/types.ts',
-        'services/rerank/types.ts',
+        'infrastructure/search/vector/types.ts',
       ].includes(target)
     )
       return null;
@@ -74,15 +73,25 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
       domain === 'wiki' &&
       [
         'services/utils/wikiShared.ts',
-        'services/adapters/apiAdapter.ts',
+        'infrastructure/ai/adapters/api-adapter.ts',
         'services/utils/fileParseService.ts',
         'services/utils/wikiPageCapture.ts',
       ].includes(target)
     )
       return null;
     if (
+      domain === 'wiki' &&
+      importer.startsWith('domains/wiki/rerank/') &&
+      [
+        'infrastructure/ai/jev/jev-client.ts',
+        'infrastructure/ai/jev/config.ts',
+        'infrastructure/ai/jev/types.ts',
+      ].includes(target)
+    )
+      return null;
+    if (
       domain === 'knowledge-graph' &&
-      ['services/adapters/apiAdapter.ts', 'utils/typeGuards.ts'].includes(target)
+      ['infrastructure/ai/adapters/api-adapter.ts', 'utils/typeGuards.ts'].includes(target)
     )
       return null;
     if (

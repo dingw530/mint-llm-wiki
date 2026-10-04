@@ -7,7 +7,7 @@ import type {
   ToolDefinition,
 } from '../types.js';
 import type { AgentRuntimePorts } from './contracts.js';
-import type { A2UIComposer } from '../services/a2ui/composer.js';
+import type { A2UIComposer } from '../infrastructure/transports/a2ui/composer.js';
 import type { Sink } from './output-sink.js';
 import { v4 as uuidv4 } from 'uuid';
 import { ReactEventEmitter, subscribeReactEvents } from './react-events.js';

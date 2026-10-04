@@ -1,6 +1,6 @@
 import type { AgentRun, AgentRunOptions } from './agent-run.js';
-import type { ApiAdapter } from '../services/adapters/apiAdapter.js';
-import type { A2UIComposer } from '../services/a2ui/composer.js';
+import type { ApiAdapter } from '../infrastructure/ai/adapters/api-adapter.js';
+import type { A2UIComposer } from '../infrastructure/transports/a2ui/composer.js';
 import type { ContextPreparationOptions } from '../services/utils/contextWindow.js';
 import type { RuntimeContext } from '../services/runtime/runtimeContext.js';
 import type { Sink } from './output-sink.js';

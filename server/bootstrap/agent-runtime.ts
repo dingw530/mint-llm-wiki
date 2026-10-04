@@ -13,7 +13,7 @@ let portsPromise: Promise<AgentRuntimePorts> | undefined;
 export function initializeAgentRuntime(): Promise<void> {
   if (!initialization) {
     initialization = Promise.all([
-      import('../services/adapters/register-built-in-adapters.js'),
+      import('../infrastructure/ai/adapters/register-built-in-adapters.js'),
       import('../services/tools/index.js'),
     ])
       .then(async ([adapters, tools]) => {
@@ -75,8 +75,8 @@ async function composeAgentRuntimePorts(): Promise<AgentRuntimePorts> {
     runFactory,
     observation,
   ] = await Promise.all([
-    import('../services/adapters/apiAdapter.js'),
-    import('../services/a2ui/composer.js'),
+    import('../infrastructure/ai/adapters/api-adapter.js'),
+    import('../infrastructure/transports/a2ui/composer.js'),
     import('../services/utils/contextWindow.js'),
     import('../services/utils/tokenEstimator.js'),
     import('../services/toolRoundEngine.js'),

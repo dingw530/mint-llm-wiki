@@ -6,14 +6,14 @@
  */
 import { ChromaClient, type Collection, type EmbeddingFunction } from 'chromadb';
 import type { WikiSearchDocumentInput } from '../persistence/wiki-search-repository.js';
-import type { VectorStore } from '../../services/vector/ports.js';
-import type { OpenAICompatibleEmbeddingConfig } from '../../services/vector/types.js';
+import type { VectorStore } from './vector/ports.js';
+import type { OpenAICompatibleEmbeddingConfig } from './vector/types.js';
 import type {
   VectorEmbeddingState,
   VectorHealth,
   VectorIndexConfig,
   VectorSearchHit,
-} from '../../services/vector/types.js';
+} from './vector/types.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('chroma-vector-store');

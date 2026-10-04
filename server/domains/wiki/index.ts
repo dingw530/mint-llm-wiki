@@ -11,12 +11,13 @@ export type { WikiRetentionInput } from './wiki-retention.js';
 export * from './wiki-search-service.js';
 export type { WikiPageLifecycleRecord, WikiPageStatus } from './wiki-service.js';
 
+export type { RerankCandidate, RerankedCandidate } from './rerank/types.js';
+
 export type {
   OpenAICompatibleEmbeddingConfig,
   VectorHealth,
   VectorSearchHit,
-} from '../../services/vector/types.js';
-export type { RerankCandidate, RerankedCandidate } from '../../services/rerank/types.js';
+} from '../../infrastructure/search/vector/types.js';
 export type {
   WikiSearchDocument,
   WikiSearchDocumentInput,

@@ -12,7 +12,7 @@ import * as memoryRepository from '../../../infrastructure/persistence/memory-re
 import * as memoryJobRepository from '../../../infrastructure/persistence/memory-job-repository.js';
 import * as memoryScopeRepository from '../../../infrastructure/persistence/memory-scope-repository.js';
 import * as settingsService from '../../../application/settings/settings-service.js';
-import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../../infrastructure/ai/jev/config.js';
 import { createMemorySemanticClassifier } from '../../../infrastructure/ai/memory-semantic-classifier.js';
 import { performMemoryExtraction } from '../../../bootstrap/memory.js';
 import { createMemoryJobService } from '../memory-job-service.js';

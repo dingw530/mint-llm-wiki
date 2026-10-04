@@ -1,4 +1,4 @@
-import { getAdapter } from '../services/adapters/apiAdapter.js';
+import { getAdapter } from '../infrastructure/ai/adapters/api-adapter.js';
 import { createModelConnectionVerifier } from '../infrastructure/ai/model-connection-verification.js';
 
 const verifier = createModelConnectionVerifier(getAdapter);

@@ -9,7 +9,7 @@ const mockAdapter = {
   call: vi.fn(),
 };
 
-vi.mock('../../services/adapters/apiAdapter.js', () => ({
+vi.mock('../../infrastructure/ai/adapters/api-adapter.js', () => ({
   getAdapter: vi.fn(() => mockAdapter as any),
   registerAdapter: vi.fn(),
 }));
@@ -34,7 +34,7 @@ vi.mock('../../services/utils/contextWindow.js', () => ({
 
 import { runAgentChat as reactChat } from '../../bootstrap/agent-runtime.js';
 import { toolLoopEngine } from '../../services/toolRoundEngine.js';
-import { getAdapter } from '../../services/adapters/apiAdapter.js';
+import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 
 describe('reactChat', () => {
   beforeEach(() => {

@@ -22,7 +22,7 @@ import type { Sink } from '../agent-runtime/output-sink.js';
 import { parseFile, isSupportedFile } from './utils/fileParseService.js';
 import { streamToolApproval } from '../application/agent-runtime/tool-approval-service.js';
 import { reserveConversationScope } from '../application/conversations/conversation-scope-lock.js';
-import { AI_REQUEST_TIMEOUT_MS } from './adapters/apiAdapter.js';
+import { AI_REQUEST_TIMEOUT_MS } from '../infrastructure/ai/adapters/api-adapter.js';
 import * as a2uiRepository from '../repositories/a2uiRepository.js';
 import type { PersistedUiBlock } from '../types.js';
 import { applyContextProviders } from './contextProvider.js';

@@ -1,6 +1,6 @@
 import type { Sink } from './output-sink.js';
 import type { AgentStatusSnapshot } from './agent-status.js';
-import type { A2uiMessage } from '../services/a2ui/types.js';
+import type { A2uiMessage } from '../infrastructure/transports/a2ui/types.js';
 import { AgentRun } from './agent-run.js';
 
 export type ReactRunState =

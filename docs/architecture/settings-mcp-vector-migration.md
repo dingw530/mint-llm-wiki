@@ -21,6 +21,8 @@ This batch moves the remaining Settings persistence, MCP server persistence and 
 
 Settings CRUD, connection API descriptors and Wiki vector orchestration keep their existing public facades. Startup, tools and Electron use the bootstrap MCP instance; MCP endpoint descriptors call the application facade. No API names, table schemas, or transport payloads were intentionally changed.
 
+Follow-up consolidation moved the former `services/vector/` provider, contracts and sync/backfill service to `infrastructure/search/vector/`; Wiki-specific store selection and resilience composition live in `infrastructure/search/wiki-vector-service.ts`. SQLite/sqlite-vec remains the default and Chroma remains opt-in. The shared Jev protocol client, config, question builders and wire types moved from `services/jev/` to `infrastructure/ai/jev/`; Wiki, routing, memory and connection-check callers retain their contracts.
+
 ## Dependency and compatibility checks
 
 - Pre-edit impact assessments were recorded in the migration work: Settings repository and MCP service were MEDIUM; model/vector connection services were LOW; vector repository and Settings service were UNKNOWN. UNKNOWN results were treated as unresolved and corroborated with source reference scans before moving files.

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-vi.mock('../adapters/apiAdapter.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../adapters/apiAdapter.js')>()),
+vi.mock('../../infrastructure/ai/adapters/api-adapter.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../infrastructure/ai/adapters/api-adapter.js')>()),
   getAdapter: vi.fn(() => ({
     stream: vi.fn(),
     call: vi.fn(),
@@ -31,17 +31,27 @@ describe('aiProxy', () => {
 
     it('returns error when apiKey missing', async () => {
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
-      const result = await streamChat([], { apiUrl: 'https://api.test.com', apiKey: '' } as any, sink);
+      const result = await streamChat(
+        [],
+        { apiUrl: 'https://api.test.com', apiKey: '' } as any,
+        sink,
+      );
       expect(result.content).toBe('');
     });
 
     it('uses one AgentRun event contract for ordinary streamed answers', async () => {
-      const adapter = vi.mocked((await import('../adapters/apiAdapter.js')).getAdapter)();
-      adapter.stream = vi.fn(async () => (async function* () {
-        yield { content: 'hello' };
-        yield { isFinished: true };
-      })());
-      vi.mocked((await import('../adapters/apiAdapter.js')).getAdapter).mockReturnValue(adapter);
+      const adapter = vi.mocked(
+        (await import('../../infrastructure/ai/adapters/api-adapter.js')).getAdapter,
+      )();
+      adapter.stream = vi.fn(async () =>
+        (async function* () {
+          yield { content: 'hello' };
+          yield { isFinished: true };
+        })(),
+      );
+      vi.mocked(
+        (await import('../../infrastructure/ai/adapters/api-adapter.js')).getAdapter,
+      ).mockReturnValue(adapter);
       vi.mocked(getAllToolDefinitions).mockResolvedValue([]);
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
 
@@ -69,7 +79,7 @@ describe('aiProxy', () => {
 
     it('returns fallback on API error', async () => {
       // getAdapter returns a mock from the vi.mock above
-      const { getAdapter } = await import('../adapters/apiAdapter.js');
+      const { getAdapter } = await import('../../infrastructure/ai/adapters/api-adapter.js');
       const mockAdapter = vi.mocked(getAdapter)();
       mockAdapter.call = vi.fn().mockRejectedValue(new Error('API fail'));
       vi.mocked(getAdapter).mockReturnValue(mockAdapter);
@@ -84,7 +94,7 @@ describe('aiProxy', () => {
     });
 
     it('disables thinking for title generation', async () => {
-      const { getAdapter } = await import('../adapters/apiAdapter.js');
+      const { getAdapter } = await import('../../infrastructure/ai/adapters/api-adapter.js');
       const mockAdapter = vi.mocked(getAdapter)();
       mockAdapter.call = vi.fn().mockResolvedValue('Chat title');
       vi.mocked(getAdapter).mockReturnValue(mockAdapter);

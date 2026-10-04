@@ -1,12 +1,12 @@
 import { getDb } from '../../db.js';
 import type { WikiSearchDocument, WikiSearchDocumentInput } from './wiki-search-repository.js';
-import type { VectorStore } from '../../services/vector/ports.js';
+import type { VectorStore } from '../search/vector/ports.js';
 import type {
   VectorEmbeddingState,
   VectorHealth,
   VectorIndexConfig,
   VectorSearchHit,
-} from '../../services/vector/types.js';
+} from '../search/vector/types.js';
 
 interface VectorDocumentRow {
   id: string;

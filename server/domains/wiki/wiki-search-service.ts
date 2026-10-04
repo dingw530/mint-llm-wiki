@@ -7,17 +7,15 @@ import {
   getJevSettings,
   createWikiVectorService,
   pruneWikiVectorOrphans,
-  baseRrfScore,
-  rerankCandidates,
   ExternalServiceError,
 } from '../../infrastructure/search/wiki-search-runtime.js';
+import { baseRrfScore, rerankCandidates } from './rerank/index.js';
 import type {
   OpenAICompatibleEmbeddingConfig,
   VectorHealth,
   VectorSearchHit,
-  RerankCandidate,
-  RerankedCandidate,
 } from '../../infrastructure/search/wiki-search-runtime.js';
+import type { RerankCandidate, RerankedCandidate } from './rerank/types.js';
 import { isSystemWikiPath, parseWikiPage } from '../../infrastructure/filesystem/wiki-files.js';
 import { createLogger } from '../../utils/logger.js';
 import type { JevSettings } from '../../types.js';

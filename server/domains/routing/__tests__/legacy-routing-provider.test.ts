@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../../services/adapters/apiAdapter.js', () => ({
+vi.mock('../../../infrastructure/ai/adapters/api-adapter.js', () => ({
   getAdapter: vi.fn(),
   AI_REQUEST_TIMEOUT_MS: 180_000,
 }));
@@ -14,10 +14,10 @@ vi.mock('../../../application/settings/settings-service.js', () => ({
   })),
 }));
 
-import { getAdapter } from '../../../services/adapters/apiAdapter.js';
+import { getAdapter } from '../../../infrastructure/ai/adapters/api-adapter.js';
 import { GENERAL_AGENT_ID, createLegacyRoutingProvider } from '../legacy-routing-provider.js';
 import type { Agent } from '../../../types.js';
-import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../../infrastructure/ai/jev/config.js';
 
 const CONFIG = { jev: DISABLED_JEV_SETTINGS };
 

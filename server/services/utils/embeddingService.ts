@@ -1,10 +1,10 @@
 import {
   EmbeddingServiceError,
   OpenAICompatibleEmbeddingProvider,
-} from '../vector/providers/openaiCompatibleEmbeddingProvider.js';
-import type { OpenAICompatibleEmbeddingConfig } from '../vector/types.js';
+} from '../../infrastructure/search/vector/providers/openai-compatible-embedding-provider.js';
+import type { OpenAICompatibleEmbeddingConfig } from '../../infrastructure/search/vector/types.js';
 
-/** @deprecated Import the vector provider and its config from services/vector instead. */
+/** @deprecated Import the vector provider and its config from infrastructure/search/vector instead. */
 export type EmbeddingConfig = OpenAICompatibleEmbeddingConfig;
 
 export { EmbeddingServiceError };

@@ -1,5 +1,5 @@
 import type { JevSettings } from '../../types.js';
-import { DISABLED_JEV_SETTINGS } from '../jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../infrastructure/ai/jev/config.js';
 
 /** 一个可由评测或运行时注入的能力配置。 */
 export interface FeatureConfig {

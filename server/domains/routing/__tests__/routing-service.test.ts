@@ -7,12 +7,12 @@ vi.mock('../../../infrastructure/persistence/agent-repository.js', () => ({
   findById: vi.fn(),
 }));
 
-vi.mock('../../../services/adapters/apiAdapter.js', () => ({
+vi.mock('../../../infrastructure/ai/adapters/api-adapter.js', () => ({
   getAdapter: vi.fn(),
 }));
 
 import { RoutingService } from '../../../bootstrap/routing.js';
-import { getAdapter } from '../../../services/adapters/apiAdapter.js';
+import { getAdapter } from '../../../infrastructure/ai/adapters/api-adapter.js';
 
 describe('RoutingService', () => {
   let service: RoutingService;

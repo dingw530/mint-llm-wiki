@@ -1,5 +1,5 @@
-import { JEV_TIMEOUT_MS, callJev } from '../../services/jev/jevClient.js';
-import type { JevFailureReason } from '../../services/jev/types.js';
+import { JEV_TIMEOUT_MS, callJev } from './jev/jev-client.js';
+import type { JevFailureReason } from './jev/types.js';
 
 /** 测试连接使用的极小 state，避免为一次探测消耗预算。 */
 const PROBE_STATE = 'Connection test.';

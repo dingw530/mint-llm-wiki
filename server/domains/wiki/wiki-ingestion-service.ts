@@ -15,7 +15,7 @@ import {
 } from '../../infrastructure/filesystem/wiki-ingestion-files.js';
 import { registerCompiledKnowledge } from './wiki-knowledge-lifecycle-service.js';
 import { rebuildWikiSearchIndex } from './wiki-search-service.js';
-import type { OpenAICompatibleEmbeddingConfig } from '../../services/vector/types.js';
+import type { OpenAICompatibleEmbeddingConfig } from '../../infrastructure/search/vector/types.js';
 import type { WikiPageSummary } from './wiki-ingestion-types.js';
 import type { CompiledPage, Relationship } from '../../services/utils/wikiShared.js';
 import { createHash } from 'node:crypto';

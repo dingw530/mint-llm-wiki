@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiAdapter } from '../../../services/adapters/apiAdapter.js';
+import type { ApiAdapter } from '../adapters/api-adapter.js';
 import { createModelConnectionVerifier } from '../model-connection-verification.js';
 
 const adapter = { call: vi.fn() } as unknown as ApiAdapter;

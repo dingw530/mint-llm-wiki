@@ -1,4 +1,4 @@
-import { getAdapter } from '../../services/adapters/apiAdapter.js';
+import { getAdapter } from './adapters/api-adapter.js';
 import type { MemoryExtractionClient } from '../../domains/memory/index.js';
 
 /** Routes memory extraction requests through the configured AI adapter. */

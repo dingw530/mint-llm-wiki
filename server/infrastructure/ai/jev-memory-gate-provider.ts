@@ -1,11 +1,11 @@
-import { callJev } from '../../services/jev/jevClient.js';
+import { callJev } from './jev/jev-client.js';
 import {
   MEMORY_ACTION_OPTIONS,
   MEMORY_GATE_KEYS,
   buildMemoryGateQuestions,
   buildMemoryGateState,
-} from '../../services/jev/questions.js';
-import type { JevAnswer } from '../../services/jev/types.js';
+} from './jev/questions.js';
+import type { JevAnswer } from './jev/types.js';
 import type { MemoryOperationAction } from '../../domains/memory/index.js';
 import type { MemoryGateHint, MemoryGateProvider } from '../../domains/memory/index.js';
 

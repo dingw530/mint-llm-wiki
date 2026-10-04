@@ -3,10 +3,10 @@ import type { RoutingDependency } from './routingBoundary.js';
 const TYPE_CONTRACT_IMPORTS = new Set([
   'types.ts',
   'agent-runtime/agent-run.ts',
-  'services/adapters/apiAdapter.ts',
-  'services/a2ui/composer.ts',
+  'infrastructure/ai/adapters/api-adapter.ts',
+  'infrastructure/transports/a2ui/composer.ts',
   'services/runtime/runtimeContext.ts',
-  'services/a2ui/types.ts',
+  'infrastructure/transports/a2ui/types.ts',
   'services/utils/contextWindow.ts',
   'services/toolRoundEngine.ts',
 ]);

@@ -3,8 +3,12 @@
 // 不依赖 Express，可单元测试
 
 import type { HistoryMessage, AiSettings, TokenUsage, ToolCall, ToolDefinition } from '../types.js';
-import type { AdapterStream, ApiAdapter, ParsedChunk } from './adapters/apiAdapter.js';
-import { getAdapter } from './adapters/apiAdapter.js';
+import type {
+  AdapterStream,
+  ApiAdapter,
+  ParsedChunk,
+} from '../infrastructure/ai/adapters/api-adapter.js';
+import { getAdapter } from '../infrastructure/ai/adapters/api-adapter.js';
 import { executeTool, getToolResultSummary } from './toolOrchestration.js';
 import { createLogger } from '../utils/logger.js';
 import type { Sink } from '../agent-runtime/output-sink.js';

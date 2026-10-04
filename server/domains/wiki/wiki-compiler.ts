@@ -5,7 +5,7 @@ import {
   parseWikiFrontmatter,
   stripWikiFrontmatter,
 } from '../../services/utils/wikiShared.js';
-import { getAdapter } from '../../services/adapters/apiAdapter.js';
+import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 import type { CompiledPage, Relationship, WikiCategory } from '../../services/utils/wikiShared.js';
 import {
   INGEST_SYSTEM_PROMPT as SHARED_PROMPT,

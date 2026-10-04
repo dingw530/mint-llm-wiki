@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const adapter = { call: vi.fn() };
 
-vi.mock('../../../services/adapters/apiAdapter.js', () => ({
+vi.mock('../../../infrastructure/ai/adapters/api-adapter.js', () => ({
   getAdapter: vi.fn(() => adapter),
 }));
 

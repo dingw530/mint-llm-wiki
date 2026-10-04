@@ -59,6 +59,9 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
   });
 
   it.each([
+    ['domains/wiki/rerank/jev-rerank-provider.ts', 'infrastructure/ai/jev/jev-client.ts', false],
+    ['domains/wiki/rerank/jev-rerank-provider.ts', 'infrastructure/ai/jev/config.ts', false],
+    ['domains/wiki/rerank/jev-rerank-provider.ts', 'infrastructure/ai/jev/types.ts', true],
     [
       'domains/wiki/wiki-ingestion-service.ts',
       'infrastructure/filesystem/wiki-ingestion-files.ts',
@@ -72,10 +75,10 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ['domains/wiki/wiki-ingestion-job-service.ts', 'infrastructure/jobs/job-queue.ts', false],
     ['domains/wiki/wiki-ingestion-service.ts', 'domains/knowledge-graph/index.ts', false],
     ['domains/wiki/wiki-ingestion-service.ts', 'domains/wiki/wiki-compiler.ts', false],
-    ['domains/wiki/wiki-compiler.ts', 'services/adapters/apiAdapter.ts', false],
+    ['domains/wiki/wiki-compiler.ts', 'infrastructure/ai/adapters/api-adapter.ts', false],
     [
       'domains/knowledge-graph/cross-batch-semantic-service.ts',
-      'services/adapters/apiAdapter.ts',
+      'infrastructure/ai/adapters/api-adapter.ts',
       false,
     ],
     [

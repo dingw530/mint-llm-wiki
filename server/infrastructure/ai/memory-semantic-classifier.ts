@@ -6,8 +6,8 @@ import type {
   MemorySemanticKind,
 } from '../../domains/memory/index.js';
 import type { AiSettings, JevSettings } from '../../types.js';
-import { callJev } from '../../services/jev/jevClient.js';
-import type { JevConfig, JevRequest, JevCallResult } from '../../services/jev/types.js';
+import { callJev } from './jev/jev-client.js';
+import type { JevConfig, JevRequest, JevCallResult } from './jev/types.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('memory-semantic');

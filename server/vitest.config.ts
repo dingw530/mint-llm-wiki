@@ -22,7 +22,7 @@ export default defineConfig({
       include: ['services/**/*.ts', 'utils/**/*.ts', 'repositories/**/*.ts'],
       exclude: [
         // AI 适配器需要真实 API 密钥，集成测试覆盖
-        'services/adapters/**/*.ts',
+        'infrastructure/ai/adapters/**/*.ts',
       ],
       thresholds: {
         lines: 65,

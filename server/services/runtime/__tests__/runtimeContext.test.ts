@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISABLED_JEV_SETTINGS } from '../../jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../../infrastructure/ai/jev/config.js';
 import { createRuntimeContext } from '../runtimeContext.js';
 
 describe('RuntimeContext', () => {

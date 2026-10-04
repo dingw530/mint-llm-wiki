@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RoutingService } from '../routing-service.js';
 import { createLegacyRoutingProvider } from '../legacy-routing-provider.js';
 import type { RoutingDependencies } from '../ports.js';
-import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
+import { DISABLED_JEV_SETTINGS } from '../../../infrastructure/ai/jev/config.js';
 import type { Agent } from '../../../types.js';
 
 const agents: Agent[] = [

@@ -1,10 +1,10 @@
-import { callJev } from '../../services/jev/jevClient.js';
-import { toJevConfig } from '../../services/jev/config.js';
+import { callJev } from './jev/jev-client.js';
+import { toJevConfig } from './jev/config.js';
 import {
   ROUTING_AGENT_KEY,
   buildAgentRoutingQuestions,
   buildAgentRoutingState,
-} from '../../services/jev/questions.js';
+} from './jev/questions.js';
 import type { AgentRoutingProvider } from '../../domains/routing/index.js';
 
 /**

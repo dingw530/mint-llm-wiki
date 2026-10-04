@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { getNodesWithSource, findNodeByLabel, createGraphCandidate } from './graph-service.js';
-import { getAdapter } from '../../services/adapters/apiAdapter.js';
+import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 import type { AiSettings } from '../../types.js';
 import type { CompiledPage } from '../../services/utils/wikiShared.js';

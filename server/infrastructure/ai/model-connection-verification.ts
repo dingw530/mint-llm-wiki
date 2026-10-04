@@ -1,4 +1,4 @@
-import type { ApiAdapter } from '../../services/adapters/apiAdapter.js';
+import type { ApiAdapter } from './adapters/api-adapter.js';
 
 export const SUPPORTED_API_TYPES = ['openai-chat', 'openai-responses', 'anthropic'] as const;
 export type SupportedApiType = (typeof SUPPORTED_API_TYPES)[number];
