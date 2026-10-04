@@ -116,13 +116,13 @@ server/
   bootstrap/wiki-lifecycle.ts    # explicitly started, unref-ed lifecycle timer
 ```
 
-Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki owns durable source-ingestion orchestration, commit recovery, and the background job state machine. Staged source-file operations, ingestion commit records, and durable job queue/store/event adapters live under `infrastructure/`. `services/api/wikiIngestionJobService.ts` only composes the domain worker with existing HTTP/Electron dependencies. Compiler execution, Wiki page-writing helpers, and cross-batch LLM candidate generation remain transitional service dependencies explicitly recorded by `knowledge-domains-boundary.ts`.
+Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki owns source ingestion, compilation, commit recovery, and the background job state machine. Knowledge Graph owns cross-batch candidate generation. Staged source-file operations, ingestion commit records, and durable job queue/store/event adapters live under `infrastructure/`. `services/api/wikiIngestionJobService.ts` only composes the domain worker with existing HTTP/Electron dependencies. The Wiki compiler still uses shared Wiki page-writing helpers and the existing API adapter; cross-batch generation still reads Wiki source files directly and uses that API adapter. These are explicit migration bridges recorded in `knowledge-domains-boundary.ts` where applicable.
 
 The low-frequency lifecycle timer is composed by bootstrap and remains owned/drained by ServerRuntime. Importing the Wiki domain does not start a timer.
 
 `knowledge-domains-boundary.ts` resolves imports, re-exports and literal dynamic dependencies using the existing Server dependency inventory. The graph generation/cross-batch matching flows, backfill worker and WikiSearchTool now use public domain APIs instead of direct graph/lifecycle/search repository imports. Other production modules must use public APIs, and infrastructure may import only domain type contracts.
 
-[Three-domain migration evidence](skills-graph-wiki-migration.md) records scope, compatibility, tests and history-preserving commit preparation. Wiki search, compiler and cross-batch LLM generation remain outside the domain boundary in this batch.
+[Three-domain migration evidence](skills-graph-wiki-migration.md) records scope, compatibility, tests and history-preserving commit preparation. That initial migration checkpoint excluded Wiki search, ingestion, compiler and cross-batch generation; later Wiki search and ingestion migrations are recorded separately below and in the evidence file.
 
 ### Wiki search application boundary
 

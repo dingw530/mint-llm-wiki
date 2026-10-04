@@ -13,3 +13,4 @@ export type {
 
 export { buildGraphFromPages, extractWikiLinks, normalizeRelation } from './graph-builder.js';
 export type { BuildGraphResult, GraphNodeTypeResolver } from './graph-builder.js';
+export * from './cross-batch-semantic-service.js';

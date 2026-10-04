@@ -4,9 +4,9 @@ import {
   normalizeWikiCategories,
   parseWikiFrontmatter,
   stripWikiFrontmatter,
-} from './wikiShared.js';
-import { getAdapter } from '../adapters/apiAdapter.js';
-import type { CompiledPage, Relationship, WikiCategory } from './wikiShared.js';
+} from '../../services/utils/wikiShared.js';
+import { getAdapter } from '../../services/adapters/apiAdapter.js';
+import type { CompiledPage, Relationship, WikiCategory } from '../../services/utils/wikiShared.js';
 import {
   INGEST_SYSTEM_PROMPT as SHARED_PROMPT,
   getWikiPageSummary,
@@ -16,7 +16,7 @@ import {
   writePreparedWikiPages,
   updateIndexMd,
   discoverCategoriesFromDir,
-} from './wikiShared.js';
+} from '../../services/utils/wikiShared.js';
 import type { AiSettings } from '../../types.js';
 
 export interface CompileResult {
@@ -24,6 +24,13 @@ export interface CompileResult {
   compiledPages: CompiledPage[]; // 完整页面数据（含 tags/content），供图构建使用
   relationships: Relationship[]; // AI 输出的页面间语义关系
   claims: WikiCompiledClaim[]; // AI 输出的可追溯事实，旧模型缺失时由摄入层生成 fallback
+  summary: string;
+}
+
+interface ParsedCompileOutput {
+  pages: CompiledPage[];
+  claims?: WikiCompiledClaim[];
+  relationships?: Relationship[];
   summary: string;
 }
 
@@ -562,25 +569,11 @@ function mergeLists(existing: string[], incoming: string[]): string[] {
   return out;
 }
 
-/**
- * 单个页面的合并入口。若页面文件已存在于磁盘，调用 LLM 合并新旧内容；
- * 否则直接返回 AI 生成的新页面。合并失败时回退到新页面（前端数组字段已合并）。
- */
-async function mergePageIfExists(
+/** Merge array metadata before deciding whether a Wiki page needs an LLM call. */
+function mergeExistingPageMetadata(
   page: CompiledPage,
-  wikiPath: string,
-  settings: AiSettings,
-): Promise<CompiledPage> {
-  const sanitizedPath = page.filename.startsWith('pages/')
-    ? page.filename
-    : 'pages/' + page.filename;
-  const resolvedPath = path.resolve(wikiPath, sanitizedPath);
-  if (!fs.existsSync(resolvedPath)) return page;
-
-  const existingMd = fs.readFileSync(resolvedPath, 'utf-8');
-  const existingParsed = parseWikiFrontmatter(existingMd);
-
-  // ① 前端数组字段取并集（纯应用层，不依赖 LLM）
+  existingParsed: Record<string, unknown> | null,
+): CompiledPage {
   const mergedPage = { ...page };
   for (const field of UNION_FIELDS) {
     const existingValues: string[] = (existingParsed?.[field] as string[] | undefined) ?? [];
@@ -589,20 +582,76 @@ async function mergePageIfExists(
       (mergedPage as Record<string, unknown>)[field] = mergeLists(existingValues, newValues);
     }
   }
+  return mergedPage;
+}
 
-  const existingBody = stripWikiFrontmatter(existingMd);
-  const newBody = page.content || '';
-  // ② Fast path：body 完全相同 → 只需前端合并
-  if (existingBody.trim() === newBody.trim()) {
-    console.log(
-      '[wikiCompiler] page-merge: body identical for "' + page.title + '", frontmatter union only',
+/** Lock fields that stay owned by the existing Wiki page after an update. */
+function preserveExistingPageMetadata(
+  mergedPage: CompiledPage,
+  existingParsed: Record<string, unknown> | null,
+): CompiledPage {
+  if (existingParsed?.title) mergedPage.title = String(existingParsed.title);
+  if (existingParsed?.created) mergedPage.created = String(existingParsed.created);
+  return mergedPage;
+}
+
+/** Validate and apply an LLM page merge; invalid output falls back to the new page. */
+function applyLlmPageMerge(
+  page: CompiledPage,
+  mergedPage: CompiledPage,
+  existingParsed: Record<string, unknown> | null,
+  existingBody: string,
+  newBody: string,
+  llmResult: string,
+): CompiledPage {
+  const llmParsed = parseWikiFrontmatter(llmResult);
+  const llmBody = stripWikiFrontmatter(llmResult);
+  if (!llmParsed?.title) {
+    console.warn(
+      '[wikiCompiler] page-merge: LLM output has no valid frontmatter for "' +
+        page.title +
+        '", fallback to new content',
     );
-    if (existingParsed?.title) mergedPage.title = String(existingParsed.title);
-    if (existingParsed?.created) mergedPage.created = String(existingParsed.created);
     return mergedPage;
   }
+  const maxBodyLen = Math.max(existingBody.length, newBody.length);
+  const threshold = maxBodyLen * BODY_SHRINK_THRESHOLD;
+  if (llmBody.length < threshold) {
+    console.warn(
+      '[wikiCompiler] page-merge: LLM body length ' +
+        llmBody.length +
+        ' below threshold ' +
+        threshold.toFixed(0) +
+        ' for "' +
+        page.title +
+        '", fallback',
+    );
+    return mergedPage;
+  }
+  mergedPage.content = llmBody;
+  preserveExistingPageMetadata(mergedPage, existingParsed);
+  mergedPage.tags = mergeLists(
+    (existingParsed?.tags as string[] | undefined) ?? [],
+    Array.isArray(llmParsed.tags)
+      ? llmParsed.tags.filter((tag): tag is string => typeof tag === 'string')
+      : (page.tags ?? []),
+  );
+  console.log(
+    `[wikiCompiler] page-merge: merged "${page.title}" via LLM (existing=${existingBody.length} new=${newBody.length} merged=${llmBody.length})`,
+  );
+  return mergedPage;
+}
 
-  // ③ LLM 合并 body
+/** Ask the configured AI adapter to merge one existing page with new content. */
+async function requestMergedPage(
+  page: CompiledPage,
+  mergedPage: CompiledPage,
+  existingParsed: Record<string, unknown> | null,
+  existingMd: string,
+  existingBody: string,
+  newBody: string,
+  settings: AiSettings,
+): Promise<CompiledPage> {
   const mergePrompt = `你是一名知识库管理员。磁盘上已存在一个同名页面，现在有新的摄入内容需要对它进行补充。
 
 请将已有内容和新增内容合并为一篇连贯、无重复、信息完整的 Wiki 页面。
@@ -622,7 +671,6 @@ ${newBody}
 """
 
 仅输出合并后的完整 Markdown 页面，不要加任何说明文字。`;
-
   try {
     const adapter = getAdapter(settings.apiType || 'openai-chat');
     if (!adapter) throw new Error('Adapter not found');
@@ -639,79 +687,53 @@ ${newBody}
       settings.apiKey,
       { maxTokens: 4096, temperature: 0.3 },
     );
-
-    const llmParsed = parseWikiFrontmatter(llmResult);
-    const llmBody = stripWikiFrontmatter(llmResult);
-
-    // ④ 安全校验：LLM 输出必须可解析、body 长度不缩水太多
-    if (!llmParsed || !llmParsed.title) {
-      console.warn(
-        '[wikiCompiler] page-merge: LLM output has no valid frontmatter for "' +
-          page.title +
-          '", fallback to new content',
-      );
-      return mergedPage;
-    }
-
-    const maxBodyLen = Math.max(existingBody.length, newBody.length);
-    const threshold = maxBodyLen * BODY_SHRINK_THRESHOLD;
-    if (llmBody.length < threshold) {
-      console.warn(
-        '[wikiCompiler] page-merge: LLM body length ' +
-          llmBody.length +
-          ' below threshold ' +
-          threshold.toFixed(0) +
-          ' for "' +
-          page.title +
-          '", fallback',
-      );
-      return mergedPage;
-    }
-
-    // ⑤ 锁定 title / created，设定 updated
-    mergedPage.content = llmBody;
-    if (existingParsed?.title) mergedPage.title = String(existingParsed.title);
-    if (existingParsed?.created) mergedPage.created = String(existingParsed.created);
-    mergedPage.tags = mergeLists(
-      (existingParsed?.tags as string[] | undefined) ?? [],
-      llmParsed?.tags && Array.isArray(llmParsed.tags)
-        ? llmParsed.tags.filter((tag): tag is string => typeof tag === 'string')
-        : (page.tags ?? []),
-    );
-    console.log(
-      '[wikiCompiler] page-merge: merged "' +
-        page.title +
-        '" via LLM (existing=' +
-        existingBody.length +
-        ' new=' +
-        newBody.length +
-        ' merged=' +
-        llmBody.length +
-        ')',
-    );
-    return mergedPage;
-  } catch (err) {
+    return applyLlmPageMerge(page, mergedPage, existingParsed, existingBody, newBody, llmResult);
+  } catch (error) {
     console.warn(
       '[wikiCompiler] page-merge: LLM call failed for "' +
         page.title +
         '", fallback to new content: ' +
-        (err instanceof Error ? err.message : String(err)),
+        (error instanceof Error ? error.message : String(error)),
     );
     return mergedPage;
   }
 }
 
-/**
- * 编译源文本并写入 Wiki 页面
- * 返回编译结果（页面列表 + 摘要）
- */
-export async function compileSource(
-  settings: AiSettings,
+/** Merge one compiled page with its existing Wiki file, if present. */
+async function mergePageIfExists(
+  page: CompiledPage,
   wikiPath: string,
-  sourceText: string,
-  sourceFilename: string,
-  options?: CompileSourceOptions,
-): Promise<CompileResult> {
+  settings: AiSettings,
+): Promise<CompiledPage> {
+  const sanitizedPath = page.filename.startsWith('pages/')
+    ? page.filename
+    : `pages/${page.filename}`;
+  const resolvedPath = path.resolve(wikiPath, sanitizedPath);
+  if (!fs.existsSync(resolvedPath)) return page;
+  const existingMd = fs.readFileSync(resolvedPath, 'utf-8');
+  const existingParsed = parseWikiFrontmatter(existingMd);
+  const mergedPage = mergeExistingPageMetadata(page, existingParsed);
+  const existingBody = stripWikiFrontmatter(existingMd);
+  const newBody = page.content || '';
+  if (existingBody.trim() === newBody.trim()) {
+    console.log(
+      '[wikiCompiler] page-merge: body identical for "' + page.title + '", frontmatter union only',
+    );
+    return preserveExistingPageMetadata(mergedPage, existingParsed);
+  }
+  return requestMergedPage(
+    page,
+    mergedPage,
+    existingParsed,
+    existingMd,
+    existingBody,
+    newBody,
+    settings,
+  );
+}
+
+/** Read a Wiki schema, falling back to an empty definition if it is absent or invalid. */
+function readWikiCompilerSchema(wikiPath: string): Record<string, unknown> {
   const schemaPath = path.join(wikiPath, '_schema.json');
   let schema: Record<string, unknown> = {};
   try {
@@ -719,11 +741,18 @@ export async function compileSource(
   } catch {
     // schema 不存在或无法解析时使用空对象
   }
+  return schema;
+}
 
-  discoverCategoriesFromDir(wikiPath, schema);
-  const existingIndex = buildExistingKnowledgeIndex(wikiPath);
-  options?.onProgress?.('prepare');
-
+/** Compile the AI response and enforce claim evidence before any page writes. */
+async function compileAndValidateOutput(
+  settings: AiSettings,
+  sourceText: string,
+  sourceFilename: string,
+  schema: Record<string, unknown>,
+  existingIndex: string,
+  options?: CompileSourceOptions,
+): Promise<ParsedCompileOutput> {
   const aiResult = await callAiForCompilation(
     settings,
     sourceText,
@@ -740,12 +769,7 @@ export async function compileSource(
     console.error(`[wikiCompiler] AI 返回非 JSON 格式 (len=${aiResult.length})`);
     throw new Error('AI 返回格式异常，完整返回已打印到日志');
   }
-  const compiled: {
-    pages: CompiledPage[];
-    claims?: WikiCompiledClaim[];
-    relationships?: Relationship[];
-    summary: string;
-  } = parsed;
+  const compiled: ParsedCompileOutput = parsed;
 
   if (!compiled.pages || compiled.pages.length === 0) {
     throw new Error('AI 未生成任何 Wiki 页面');
@@ -779,8 +803,18 @@ export async function compileSource(
       compiled.claims = await callAiForClaims(settings, sourceText, compiled.pages);
     }
   }
+  return compiled;
+}
 
-  options?.onProgress?.('pages');
+/** Apply page-level policy, merge existing pages, and persist the finalized output. */
+async function finalizeCompiledPages(
+  settings: AiSettings,
+  wikiPath: string,
+  sourceText: string,
+  schema: Record<string, unknown>,
+  compiled: ParsedCompileOutput,
+  options?: CompileSourceOptions,
+): Promise<{ pages: CompileResult['pages']; compiledPages: CompiledPage[] }> {
   const categories = normalizeWikiCategories(schema.categories);
   compiled.pages = await auditPageCategories(settings, compiled.pages, categories);
   preserveLeadFacts(sourceText, compiled.pages);
@@ -819,11 +853,45 @@ export async function compileSource(
   if (options?.persistPages !== false) updateIndexMd(wikiPath, preparedPages);
   compiled.pages = preparedPages;
 
+  return { pages: results, compiledPages: compiled.pages };
+}
+
+/**
+ * Compile source text into Wiki pages and return summaries and structured relations.
+ */
+export async function compileSource(
+  settings: AiSettings,
+  wikiPath: string,
+  sourceText: string,
+  sourceFilename: string,
+  options?: CompileSourceOptions,
+): Promise<CompileResult> {
+  const schema = readWikiCompilerSchema(wikiPath);
+  discoverCategoriesFromDir(wikiPath, schema);
+  const existingIndex = buildExistingKnowledgeIndex(wikiPath);
+  options?.onProgress?.('prepare');
+  const compiled = await compileAndValidateOutput(
+    settings,
+    sourceText,
+    sourceFilename,
+    schema,
+    existingIndex,
+    options,
+  );
+  options?.onProgress?.('pages');
+  const finalized = await finalizeCompiledPages(
+    settings,
+    wikiPath,
+    sourceText,
+    schema,
+    compiled,
+    options,
+  );
   return {
-    pages: results,
-    compiledPages: compiled.pages,
+    pages: finalized.pages,
+    compiledPages: finalized.compiledPages,
     relationships: compiled.relationships || [],
     claims: compiled.claims || [],
-    summary: compiled.summary || `成功创建 ${results.length} 个 Wiki 页面`,
+    summary: compiled.summary || `成功创建 ${finalized.pages.length} 个 Wiki 页面`,
   };
 }

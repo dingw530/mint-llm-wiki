@@ -1,14 +1,10 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  getNodesWithSource,
-  findNodeByLabel,
-  createGraphCandidate,
-} from '../../domains/knowledge-graph/index.js';
-import { getAdapter } from '../adapters/apiAdapter.js';
+import { getNodesWithSource, findNodeByLabel, createGraphCandidate } from './graph-service.js';
+import { getAdapter } from '../../services/adapters/apiAdapter.js';
 import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 import type { AiSettings } from '../../types.js';
-import type { CompiledPage } from '../utils/wikiShared.js';
+import type { CompiledPage } from '../../services/utils/wikiShared.js';
 import { isRecord } from '../../utils/typeGuards.js';
 
 const ALLOWED = ['基于', '导致', '应对', '应用于', '约束', '案例', '区别于'];

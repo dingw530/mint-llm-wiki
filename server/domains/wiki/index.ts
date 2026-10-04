@@ -3,6 +3,7 @@ export * from './wiki-knowledge-lifecycle-service.js';
 export * from './wiki-ingestion-service.js';
 export * from './wiki-ingestion-job-service.js';
 export * from './wiki-ingestion-types.js';
+export * from './wiki-compiler.js';
 export { runWikiLifecycleOnce } from './wiki-lifecycle-service.js';
 export type { WikiLifecycleRunOptions, WikiLifecycleRunResult } from './wiki-lifecycle-service.js';
 export { calculateWikiRetentionScore } from './wiki-retention.js';

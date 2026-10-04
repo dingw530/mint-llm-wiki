@@ -1,9 +1,9 @@
 import type { AiSettings } from '../../types.js';
-import { compileSource, type WikiCompileProgressStage } from '../../services/utils/wikiCompiler.js';
+import { compileSource, type WikiCompileProgressStage } from './wiki-compiler.js';
 import { appendWikiManifestEntry } from '../../services/utils/wikiShared.js';
 import { buildGraphFromPages } from '../knowledge-graph/index.js';
 import { inferWikiGraphNodeType } from '../../infrastructure/filesystem/wiki-graph-metadata.js';
-import { generateCrossBatchCandidates } from '../../services/api/crossBatchSemanticService.js';
+import { generateCrossBatchCandidates } from '../knowledge-graph/index.js';
 import { createLogger } from '../../utils/logger.js';
 import {
   discardWikiStagedFile,

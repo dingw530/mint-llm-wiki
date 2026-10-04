@@ -25,7 +25,7 @@ export * as graphService from './domains/knowledge-graph/index.js';
 export * as messageRepository from './repositories/messageRepository.js';
 export { generateTitle } from './services/aiProxy.js';
 export { parseFile } from './services/utils/fileParseService.js';
-export { compileSource } from './services/utils/wikiCompiler.js';
+export { compileSource } from './domains/wiki/index.js';
 export { ingestWikiSource, buildWikiSourceText } from './domains/wiki/index.js';
 export * as ingestionA2ui from './services/api/ingestionA2ui.js';
 export {

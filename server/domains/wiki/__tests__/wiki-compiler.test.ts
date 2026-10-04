@@ -5,11 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const adapter = { call: vi.fn() };
 
-vi.mock('../../adapters/apiAdapter.js', () => ({
+vi.mock('../../../services/adapters/apiAdapter.js', () => ({
   getAdapter: vi.fn(() => adapter),
 }));
 
-import { compileSource } from '../wikiCompiler.js';
+import { compileSource } from '../wiki-compiler.js';
 
 const settings = {
   apiUrl: 'https://example.com/v1',

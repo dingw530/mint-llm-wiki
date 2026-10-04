@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { CompiledPage } from '../services/utils/wikiShared.js';
-import type { WikiCompiledClaim } from '../services/utils/wikiCompiler.js';
+import type { WikiCompiledClaim } from '../domains/wiki/index.js';
 import type { AiSettings } from '../types.js';
 
 const scriptPath = fileURLToPath(import.meta.url);

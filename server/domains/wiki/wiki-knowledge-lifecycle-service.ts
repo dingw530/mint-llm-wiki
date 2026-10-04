@@ -4,7 +4,7 @@ import path from 'node:path';
 import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
 import { parseWikiPage } from '../../infrastructure/filesystem/wiki-files.js';
 import type { CompiledPage } from '../../services/utils/wikiShared.js';
-import type { WikiCompiledClaim } from '../../services/utils/wikiCompiler.js';
+import type { WikiCompiledClaim } from './wiki-compiler.js';
 
 const clamp = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : fallback;

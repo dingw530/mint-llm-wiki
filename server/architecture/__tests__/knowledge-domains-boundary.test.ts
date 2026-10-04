@@ -37,7 +37,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ).toBeNull();
     expect(
       knowledgeDomainsBoundaryViolation({
-        importer: 'services/api/crossBatchSemanticService.ts',
+        importer: 'domains/wiki/wiki-ingestion-service.ts',
         target: 'domains/knowledge-graph/index.ts',
         typeOnly: false,
       }),
@@ -71,7 +71,13 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ],
     ['domains/wiki/wiki-ingestion-job-service.ts', 'infrastructure/jobs/job-queue.ts', false],
     ['domains/wiki/wiki-ingestion-service.ts', 'domains/knowledge-graph/index.ts', false],
-    ['domains/wiki/wiki-ingestion-service.ts', 'services/utils/wikiCompiler.ts', false],
+    ['domains/wiki/wiki-ingestion-service.ts', 'domains/wiki/wiki-compiler.ts', false],
+    ['domains/wiki/wiki-compiler.ts', 'services/adapters/apiAdapter.ts', false],
+    [
+      'domains/knowledge-graph/cross-batch-semantic-service.ts',
+      'services/adapters/apiAdapter.ts',
+      false,
+    ],
     ['services/api/wikiIngestionJobService.ts', 'infrastructure/jobs/sqlite-job-store.ts', false],
     ['infrastructure/jobs/job-store.ts', 'infrastructure/jobs/sqlite-job-store.ts', false],
   ])('allows ingestion boundary %s -> %s', (importer, target, typeOnly) => {

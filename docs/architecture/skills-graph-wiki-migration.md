@@ -59,10 +59,12 @@ Codex plugin/MCP 的配置、插件目录、插件变更文档及相关索引条
 
 本批没有移动跨批 LLM 适配、独立向量回填队列或 WikiSearchTool 文件读取实现，也没有改变它们的事务、状态和搜索语义。类型检查通过；依项目当前工作约束，没有新增或执行测试。原设计提案的全量 Harness / 独立 MCP、Electron 运行验收仍属于整体收敛任务，未由这次边界调整声明完成。
 
-## Wiki 摄入领域迁移（2026-10-03）
+## Wiki 摄入、编译与跨批候选领域迁移（2026-10-03）
 
-Wiki 摄入管线、提交恢复、后台作业状态机及任务类型移入 `domains/wiki`；专属暂存文件、SQLite 提交记录、队列、作业存储和事件适配器移入 `infrastructure/`。外部消费者统一经 `domains/wiki/index.ts` 使用领域契约，原 `services/api/wikiIngestionJobService.ts` 保留为 HTTP/Electron 依赖装配适配器。编译器执行、Wiki 页面写入 helpers、文件解析/页面捕获与跨批 LLM 候选生成仍为显式边界桥接；未改变 API、SSE、IPC、Schema、任务状态或提交恢复语义。
+Wiki 摄入管线、编译器、提交恢复、后台作业状态机及任务类型位于 `domains/wiki`；跨批候选生成位于 `domains/knowledge-graph`。专属暂存文件、SQLite 提交记录、队列、作业存储和事件适配器位于 `infrastructure/`。外部消费者统一经领域 `index.ts` 使用契约，原 `services/api/wikiIngestionJobService.ts` 保留为 HTTP/Electron 依赖装配适配器。编译器仍调用共享 Wiki 页面写入 helpers 和现有 API adapter；跨批候选服务仍直接读取 Wiki 页面并调用该 adapter。这些是后续可单独收敛的依赖桥接。未改变 API、SSE、IPC、Schema、任务状态或提交恢复语义。
 
-验证：TypeScript typecheck；领域边界、摄入、worker、文件、提交仓储、A2UI、工具与 Runtime 73 项 focused tests；Runtime listener 生命周期 2 项；Ingestion A2UI SSE 路由 2 项；全部当前修改 TypeScript 文件 Prettier check 和 `git diff --check` 均通过。GitNexus pre-move job service impact 为 MEDIUM（19 个受影响符号）；迁移后 class impact 报 CRITICAL，只有 2 个直接符号引用，却扩展到 150 个流程与 20 个模块，且包含 HandleRecoveryStream、ListWiki、AcceptCandidate 等无关流程；此图风险保持未消除，未用低共享风险轴豁免。`ingestWikiSource` 调用边为 UNKNOWN，已通过静态引用检查确认其注入依赖和入口消费者。全工作区 detect-changes 也报 CRITICAL（39 个文件、45 个符号），范围含此前已有的领域迁移、文档索引与插件相关改动。没有运行真实模型摄入或 Electron 启动验收。
+2026-10-04 将 `services/utils/wikiCompiler.ts` 与 `services/api/crossBatchSemanticService.ts` 分别迁入 Wiki 和 Knowledge Graph 域，并迁移各自测试。Wiki 摄入改为本地编译器调用和 Graph 公共 API 调用。现有 Wiki shared 文件 helper、Wiki 文件读取及通用 API adapter 仍保留为后续可收敛依赖。
 
-所有移动使用普通文件重命名，未修改既有 Git 提交或分支；Git rename detection 将在后续暂存/提交时识别历史相似度。当前工作区 `.git` 只读，因此本轮未暂存或提交。
+本次迁移前 `compileSource` 与 `generateCrossBatchCandidates` 的 GitNexus impact 均为 LOW，分别涉及 2 个/3 个受影响符号。未暂存检查曾报 LOW，但暂存后的检查纳入搬迁文件和新 helper，报 CRITICAL（15 个文件、10 个符号、834 个流程）；此前 LOW 结果不作为完整风险证据。`compileAndValidateOutput` impact 也报 CRITICAL，源码引用显示其直接调用来自 `compileSource`，而图流程展开包含无关的 transport、Memory 和进程生命周期路径；这些异常保留为未消除的图风险，不以低共享风险轴豁免。全仓执行流采样仍有截断，结合引用清单、定向测试与正常提交钩子验证。
+
+验证：TypeScript typecheck；领域边界、编译器、跨批候选与摄入 52 项 focused tests 全部通过；Server lint、Prettier 与 `git diff --check` 通过。未运行真实模型或 Electron 启动验收。暂存时 4 个来源文件均由 Git 识别为重命名，相似度 66%～99%；未改写既有提交。提交范围包含模块、测试、必要引用和本架构记录，Agent Runtime 提案补充、Codex plugin/MCP 配置及相关索引保持独立。

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 
-vi.mock('../../../services/utils/wikiCompiler.js', () => ({
+vi.mock('../wiki-compiler.js', () => ({
   compileSource: vi.fn(),
 }));
 
@@ -22,6 +22,7 @@ vi.mock('../../../services/utils/wikiShared.js', () => ({
 
 vi.mock('../../../domains/knowledge-graph/index.js', () => ({
   buildGraphFromPages: vi.fn(() => ({ nodesCreated: 0, edgesCreated: 0, errors: [] })),
+  generateCrossBatchCandidates: vi.fn(),
 }));
 
 vi.mock('../wiki-knowledge-lifecycle-service.js', () => ({
@@ -32,12 +33,8 @@ vi.mock('../wiki-search-service.js', () => ({
   rebuildWikiSearchIndex: vi.fn(),
 }));
 
-vi.mock('../../../services/api/crossBatchSemanticService.js', () => ({
-  generateCrossBatchCandidates: vi.fn(),
-}));
-
 import * as wikiIngestionService from '../wiki-ingestion-service.js';
-import { compileSource } from '../../../services/utils/wikiCompiler.js';
+import { compileSource } from '../wiki-compiler.js';
 import { stageWikiRawFile } from '../../../infrastructure/filesystem/wiki-ingestion-files.js';
 import { rebuildWikiSearchIndex } from '../wiki-search-service.js';
 import type { AiSettings } from '../../../types.js';

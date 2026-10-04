@@ -64,7 +64,6 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
       [
         'types.ts',
         'services/utils/wikiShared.ts',
-        'services/utils/wikiCompiler.ts',
         'services/utils/fileParseService.ts',
         'services/vector/types.ts',
         'services/rerank/types.ts',
@@ -75,17 +74,24 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
       domain === 'wiki' &&
       [
         'services/utils/wikiShared.ts',
-        'services/utils/wikiCompiler.ts',
-        'services/api/crossBatchSemanticService.ts',
+        'services/adapters/apiAdapter.ts',
         'services/utils/fileParseService.ts',
         'services/utils/wikiPageCapture.ts',
       ].includes(target)
     )
       return null;
     if (
-      ['utils/logger.ts', 'utils/graphOntology.ts', 'services/utils/wikiLinkProtocol.ts'].includes(
-        target,
-      )
+      domain === 'knowledge-graph' &&
+      ['services/adapters/apiAdapter.ts', 'utils/typeGuards.ts'].includes(target)
+    )
+      return null;
+    if (
+      [
+        'utils/logger.ts',
+        'utils/graphOntology.ts',
+        'utils/typeGuards.ts',
+        'services/utils/wikiLinkProtocol.ts',
+      ].includes(target)
     )
       return null;
     return 'Domain rules may access only their own infrastructure and approved shared contracts';
