@@ -1,4 +1,4 @@
-import { getBashSecurity, updateBashSecurity } from '../../services/api/bashSecurityService.js';
+import { getBashSecurity, updateBashSecurity } from '../../domains/tool-security/index.js';
 import type { EndpointDescriptor } from '../types.js';
 
 export const bashSecurityEndpoints: EndpointDescriptor[] = [

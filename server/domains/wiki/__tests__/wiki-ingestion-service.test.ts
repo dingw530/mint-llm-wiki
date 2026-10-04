@@ -20,7 +20,7 @@ vi.mock('../../../services/utils/wikiShared.js', () => ({
   ),
 }));
 
-vi.mock('../../../domains/knowledge-graph/index.js', () => ({
+vi.mock('../../knowledge-graph/index.js', () => ({
   buildGraphFromPages: vi.fn(() => ({ nodesCreated: 0, edgesCreated: 0, errors: [] })),
   generateCrossBatchCandidates: vi.fn(),
 }));

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { A2UIComposer } from '../../services/a2ui/composer.js';
-import { AgentRun } from '../../agent-runtime/agent-run.js';
+import { AgentRun } from '../agent-run.js';
 import { getAdapter } from '../../services/adapters/apiAdapter.js';
 import { AccumulatingSink } from '../../infrastructure/transports/sinks.js';
 import { ToolRegistry } from '../../services/tools/ToolRegistry.js';

@@ -19,7 +19,7 @@ vi.mock('../../utils/pathSecurity.js', () => ({
 }));
 
 // ── Mock settingsService ──
-vi.mock('../../api/settingsService.js', () => ({
+vi.mock('../../../application/settings/settings-service.js', () => ({
   getAiSettings: () => ({
     apiUrl: '',
     apiKey: '',
@@ -45,7 +45,7 @@ vi.mock('../../api/settingsService.js', () => ({
 }));
 
 // ── Mock bashSecurityService ──
-vi.mock('../../api/bashSecurityService.js', () => ({
+vi.mock('../../../domains/tool-security/index.js', () => ({
   checkCommand: (cmd: string) => {
     if (cmd.includes('rm -rf /')) return { allowed: false, reason: '不允许删除根目录' };
     if (cmd.includes('sudo')) return { allowed: false, reason: '不允许使用 sudo' };

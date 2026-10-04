@@ -28,7 +28,7 @@ import { getDb } from '../../../db.js';
 import * as memoryService from '../index.js';
 import * as memoryScopeRepository from '../../../infrastructure/persistence/memory-scope-repository.js';
 import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
-import * as settingsRepository from '../../../repositories/settingsRepository.js';
+import * as settingsRepository from '../../../infrastructure/config/settings-repository.js';
 import * as conversationRepository from '../../../infrastructure/persistence/conversation-repository.js';
 import { agentRunRegistry } from '../../../agent-runtime/agent-run.js';
 import type { AiSettings, HistoryMessage, StreamResult } from '../../../types.js';

@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { AiSettings, HistoryMessage, PersistedUiBlock } from './types.js';
 import { runAgentChat } from './bootstrap/agent-runtime.js';
 import { parseWikiPage } from './services/utils/wikiShared.js';
-import * as settingsService from './services/api/settingsService.js';
+import * as settingsService from './application/settings/settings-service.js';
 import type { ReactEvent } from './agent-runtime/react-events.js';
 import { AccumulatingSink } from './infrastructure/transports/sinks.js';
 import type { ReactExecutionPolicy } from './agent-runtime/react-loop-core.js';
@@ -327,8 +327,8 @@ export function createReactExecutor(
 }
 
 /** 读取当前激活的 Mint AI 配置。 */
-export { getAiSettings } from './services/api/settingsService.js';
-export { getJevSettings } from './services/api/settingsService.js';
+export { getAiSettings } from './application/settings/settings-service.js';
+export { getJevSettings } from './application/settings/settings-service.js';
 export { callJev } from './services/jev/jevClient.js';
 export type {
   JevAnswer,

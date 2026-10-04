@@ -1,4 +1,4 @@
-import * as settingsRepository from '../../repositories/settingsRepository.js';
+import * as settingsRepository from './settings-repository.js';
 
 /**
  * Read the persisted route preference without importing settings storage into the domain.

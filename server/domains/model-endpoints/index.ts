@@ -1,0 +1,15 @@
+export {
+  list,
+  getById,
+  getActiveEndpoint,
+  create,
+  updateEndpoint,
+  remove,
+  activate,
+  getActiveAiConfig,
+  hasVerifiedTextEndpoint,
+  getAiConfig,
+  markVerified,
+  migrateLegacyEndpoint,
+  syncLegacyEndpointSettings,
+} from './model-endpoint-service.js';

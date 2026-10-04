@@ -20,6 +20,7 @@ export function agentRuntimeBoundaryViolation(edge: RoutingDependency): string |
   if (typeOnly && TYPE_CONTRACT_IMPORTS.has(target)) return null;
   if (
     target.startsWith('services/') ||
+    target.startsWith('application/') ||
     target.startsWith('repositories/') ||
     target.startsWith('infrastructure/') ||
     target.startsWith('bootstrap/')

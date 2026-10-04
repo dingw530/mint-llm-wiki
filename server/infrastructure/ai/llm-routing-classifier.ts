@@ -1,5 +1,5 @@
 import { AI_REQUEST_TIMEOUT_MS, getAdapter } from '../../services/adapters/apiAdapter.js';
-import * as settingsService from '../../services/api/settingsService.js';
+import * as settingsService from '../../application/settings/settings-service.js';
 import type { Agent } from '../../types.js';
 
 /** LLM 分类使用既有占位置信度。 */

@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import multer from 'multer';
 import * as wikiService from '../domains/wiki/index.js';
-import { wikiIngestionJobService } from '../services/api/wikiIngestionJobService.js';
+import { wikiIngestionJobService } from '../application/wiki/wiki-ingestion-job-service.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();

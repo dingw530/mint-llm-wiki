@@ -1,8 +1,8 @@
-import * as endpointService from '../../services/api/endpointService.js';
-import * as settingsRepo from '../../repositories/settingsRepository.js';
+import * as endpointService from '../../domains/model-endpoints/index.js';
+import * as settingsRepo from '../../infrastructure/config/settings-repository.js';
 import type { EndpointDescriptor } from '../types.js';
 import type { EndpointInput } from '../../types.js';
-import * as modelConnectionService from '../../services/api/modelConnectionService.js';
+import * as modelConnectionService from '../../bootstrap/model-connections.js';
 
 function toEndpointInput(data: Record<string, unknown>): EndpointInput {
   return {

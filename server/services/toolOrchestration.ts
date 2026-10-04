@@ -1,5 +1,5 @@
 import type { ToolCall, ToolDefinition } from '../types.js';
-import { mcpService } from './api/mcpService.js';
+import { mcpService } from '../bootstrap/mcp-client.js';
 import * as agentService from '../domains/agents/index.js';
 import {
   McpToolAdapter,

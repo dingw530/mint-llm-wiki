@@ -129,7 +129,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     }));
 
     // Mock other dependencies
-    vi.doMock('../api/settingsService.js', () => ({
+    vi.doMock('../../application/settings/settings-service.js', () => ({
       getAiSettings: vi.fn().mockReturnValue({
         apiUrl: 'https://api.test.com/v1',
         apiKey: 'test-key',
@@ -228,7 +228,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       runAgentChat: reactChatMock,
     }));
 
-    vi.doMock('../api/settingsService.js', () => ({
+    vi.doMock('../../application/settings/settings-service.js', () => ({
       getAiSettings: vi.fn().mockReturnValue({
         apiUrl: 'https://api.test.com/v1',
         apiKey: 'test-key',
@@ -353,7 +353,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
       runAgentChat: reactChatMock,
     }));
 
-    vi.doMock('../api/settingsService.js', () => ({
+    vi.doMock('../../application/settings/settings-service.js', () => ({
       getAiSettings: vi.fn().mockReturnValue({
         apiUrl: 'https://api.test.com/v1',
         apiKey: 'test-key',

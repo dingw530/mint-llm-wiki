@@ -1,10 +1,10 @@
 import * as wikiService from '../../domains/wiki/index.js';
-import { wikiVectorBackfillService } from '../../services/api/wikiVectorBackfillService.js';
+import { wikiVectorBackfillService } from '../../application/wiki/wiki-vector-backfill-service.js';
 import type { EndpointDescriptor } from '../types.js';
 
 /** 延迟加载摄入服务，避免生成 endpoint manifest 时启动后台任务和访问数据库。 */
 async function getWikiIngestionJobService() {
-  const module = await import('../../services/api/wikiIngestionJobService.js');
+  const module = await import('../../application/wiki/wiki-ingestion-job-service.js');
   return module.wikiIngestionJobService;
 }
 

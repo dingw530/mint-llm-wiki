@@ -14,7 +14,7 @@ vi.mock('../../../domains/agents/index.js', () => ({
   remove: vi.fn(),
 }));
 
-vi.mock('../../../services/api/settingsService.js', () => ({
+vi.mock('../../../application/settings/settings-service.js', () => ({
   get: vi.fn(() => ({ apiUrl: '', modelId: '' })),
   save: vi.fn(),
   getJevSettings: vi.fn(() => ({

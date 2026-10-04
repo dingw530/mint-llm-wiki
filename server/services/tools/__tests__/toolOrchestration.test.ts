@@ -5,7 +5,7 @@ vi.mock('../../../domains/agents/index.js', () => ({
   findById: vi.fn(),
 }));
 
-vi.mock('../../api/mcpService.js', () => ({
+vi.mock('../../../bootstrap/mcp-client.js', () => ({
   mcpService: {
     getTools: vi.fn().mockResolvedValue([]),
     callTool: vi.fn(),
@@ -46,7 +46,7 @@ vi.mock('../index.js', () => {
 });
 
 import * as agentRepo from '../../../domains/agents/index.js';
-import { mcpService } from '../../api/mcpService.js';
+import { mcpService } from '../../../bootstrap/mcp-client.js';
 import { toolExecutor } from '../index.js';
 
 const { getAllToolDefinitions, executeTool, getToolCallSummary, getToolResultSummary } =

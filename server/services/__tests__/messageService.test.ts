@@ -26,7 +26,7 @@ vi.mock('../../repositories/a2uiRepository.js', () => ({
   createUiBlock: vi.fn(),
 }));
 
-vi.mock('../api/settingsService.js', () => ({
+vi.mock('../../application/settings/settings-service.js', () => ({
   getAiSettings: vi.fn(),
   getJevSettings: vi.fn(() => ({
     apiUrl: '',
@@ -112,7 +112,7 @@ vi.mock('../toolOrchestration.js', () => ({
 import * as conversationRepo from '../../domains/conversations/index.js';
 import * as messageRepo from '../../repositories/messageRepository.js';
 import * as a2uiRepository from '../../repositories/a2uiRepository.js';
-import * as settingsService from '../api/settingsService.js';
+import * as settingsService from '../../application/settings/settings-service.js';
 import * as memoryService from '../../domains/memory/index.js';
 import * as agentService from '../../domains/agents/index.js';
 import { enqueueMemoryProcessing } from '../../bootstrap/memory.js';

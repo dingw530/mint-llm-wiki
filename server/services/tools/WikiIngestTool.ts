@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext } from './BaseTool.js';
 import { getWikiPath } from '../utils/pathSecurity.js';
-import * as settingsService from '../api/settingsService.js';
-import { wikiIngestionJobService } from '../api/wikiIngestionJobService.js';
+import * as settingsService from '../../application/settings/settings-service.js';
+import { wikiIngestionJobService } from '../../application/wiki/wiki-ingestion-job-service.js';
 
 const FileInputSchema = z.object({
   name: z.string().describe('原始文件名（含扩展名）'),
@@ -12,11 +12,26 @@ const FileInputSchema = z.object({
 });
 
 const WikiIngestInputSchema = z.object({
-  source: z.string().optional().default('').describe('要摄入的原始资料内容（文本/Markdown），与 urls/files 至少提供一个'),
+  source: z
+    .string()
+    .optional()
+    .default('')
+    .describe('要摄入的原始资料内容（文本/Markdown），与 urls/files 至少提供一个'),
   title: z.string().optional().describe('原始资料标题'),
   category: z.string().optional().describe('分类目录名'),
-  urls: z.array(z.string().url().refine(value => /^https?:\/\//i.test(value), '仅支持 http/https URL')).optional().describe('要抓取的网页 URL 列表'),
-  files: z.array(FileInputSchema).optional().describe('要上传的文件列表（Base64 编码），支持 HTML/TXT/MD/PDF'),
+  urls: z
+    .array(
+      z
+        .string()
+        .url()
+        .refine((value) => /^https?:\/\//i.test(value), '仅支持 http/https URL'),
+    )
+    .optional()
+    .describe('要抓取的网页 URL 列表'),
+  files: z
+    .array(FileInputSchema)
+    .optional()
+    .describe('要上传的文件列表（Base64 编码），支持 HTML/TXT/MD/PDF'),
   idempotencyKey: z.string().min(1).max(200).optional().describe('客户端重试时复用的幂等键'),
 });
 
@@ -52,7 +67,9 @@ export class WikiIngestTool extends BaseTool<WikiIngestInput, WikiIngestOutput> 
       input.urls?.length ? `${input.urls.length} 个网页` : '',
       input.files?.length ? `${input.files.length} 个文件` : '',
     ].filter(Boolean);
-    return sources.length > 0 ? `正在加入 Wiki 摄入任务：${sources.join('、')}` : '正在加入 Wiki 摄入任务';
+    return sources.length > 0
+      ? `正在加入 Wiki 摄入任务：${sources.join('、')}`
+      : '正在加入 Wiki 摄入任务';
   }
 
   /** 返回异步任务受理摘要。 */

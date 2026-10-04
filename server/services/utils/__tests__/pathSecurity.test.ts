@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../api/settingsService.js', () => ({
+vi.mock('../../../application/settings/settings-service.js', () => ({
   getAiSettings: vi.fn(() => ({ wikiPath: '' })),
 }));
 

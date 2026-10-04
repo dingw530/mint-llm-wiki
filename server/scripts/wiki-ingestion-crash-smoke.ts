@@ -14,7 +14,7 @@ async function runWorker(mode: string, commitId: string): Promise<void> {
   const { resumeWikiIngestionCommit } = await import('../domains/wiki/index.js');
   if (mode === 'recover-worker') {
     const [{ createWikiIngestionJobService }, jobStore] = await Promise.all([
-      import('../services/api/wikiIngestionJobService.js'),
+      import('../application/wiki/wiki-ingestion-job-service.js'),
       import('../infrastructure/jobs/job-store.js'),
     ]);
     let worker: ((jobId: string) => Promise<void>) | undefined;

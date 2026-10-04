@@ -5,7 +5,7 @@ vi.mock('../../../services/adapters/apiAdapter.js', () => ({
   AI_REQUEST_TIMEOUT_MS: 180_000,
 }));
 
-vi.mock('../../../services/api/settingsService.js', () => ({
+vi.mock('../../../application/settings/settings-service.js', () => ({
   getAiSettings: vi.fn(() => ({
     apiUrl: 'https://api.test',
     apiKey: 'test-key',

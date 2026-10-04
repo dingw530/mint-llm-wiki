@@ -1,10 +1,13 @@
-import * as settingsService from '../../services/api/settingsService.js';
+import * as settingsService from '../../application/settings/settings-service.js';
 import { httpError } from '../helpers.js';
 import type { EndpointDescriptor } from '../types.js';
 import type { SettingsInput } from '../../types.js';
-import * as vectorConnectionService from '../../services/api/vectorConnectionService.js';
-import * as jevConnectionService from '../../services/api/jevConnectionService.js';
-import { MAX_JEV_TIMEOUT_MS, MIN_JEV_TIMEOUT_MS } from '../../services/api/settingsService.js';
+import * as vectorConnectionService from '../../infrastructure/search/vector-connection-verification.js';
+import * as jevConnectionService from '../../infrastructure/ai/jev-connection-verification.js';
+import {
+  MAX_JEV_TIMEOUT_MS,
+  MIN_JEV_TIMEOUT_MS,
+} from '../../application/settings/settings-service.js';
 
 function toSettingsInput(data: Record<string, unknown>): SettingsInput {
   return {

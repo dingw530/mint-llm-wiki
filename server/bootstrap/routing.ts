@@ -5,7 +5,7 @@ import {
 import type { RoutingHooks, RoutingStepFactory } from '../domains/routing/index.js';
 import * as routingLogRepository from '../infrastructure/persistence/routing-log-repository.js';
 import { recordRoute } from '../infrastructure/persistence/routing-log-writer.js';
-import * as settingsService from '../services/api/settingsService.js';
+import * as settingsService from '../application/settings/settings-service.js';
 import { DISABLED_JEV_SETTINGS } from '../services/jev/config.js';
 
 import { classify, createDefaultRoutingSteps, LEGACY_ROUTING_STEPS } from './routingSteps.js';

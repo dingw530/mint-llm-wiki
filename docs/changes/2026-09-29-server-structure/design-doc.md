@@ -43,6 +43,7 @@ Mint 的 `server/` 已有 `repositories/`、`endpoints/`、`runtime/`、`adapter
 server/
   bootstrap/             # 进程入口与启动装配（现有 index/runtime 逐步归位）
   http/                  # Express app、middleware、routes、endpoint 注册
+  application/           # HTTP 无关的跨领域应用用例和协调服务
   infrastructure/        # db、migrations、repositories、adapters、外部服务客户端
   domains/
     conversations/       # 会话、消息持久化与应用服务
@@ -88,7 +89,7 @@ server/
 | `services/agentRunFactory.ts`（已迁移）            | 创建 run 时绑定 SQLite writer 与 Langfuse observer                                              | `bootstrap/agent-run-factory.ts` 装配 RunFactory、持久化与观测能力                       |
 | `services/sink.ts`（已迁移）                       | 输出契约与 Express、Electron、CLI 实现混放                                                      | `agent-runtime/output-sink.ts` 定义契约；`infrastructure/transports/sinks.ts` 持有实现   |
 | `services/toolOrchestration.ts`、`tools/index.ts`  | 工具目录依赖 Agent 配置、MCP，同一 barrel 创建实例并自动注册内置工具                            | Runtime 使用工具目录和执行端口；业务工具、MCP 和注册时机由装配侧管理                     |
-| `services/api/toolApprovalService.ts`              | 恢复暂停 run、调用工具与保存会话消息/响应流混放                                                 | 审批归属与 run continuation 归 Runtime；消息保存与 transport 归应用/入口层               |
+| `services/api/toolApprovalService.ts`              | 恢复暂停 run、调用工具与保存会话消息/响应流混放                                                 | 审批归属与 run continuation 归 Runtime；消息保存与 transport 归应用层                    |
 | `services/agentRunRecoveryService.ts`              | 纯事件还原、恢复策略、SQLite 动作存储与工具 metadata 混放                                       | reducer 迁入 `agent-runtime/agent-run-recovery-reducer.ts`；SQLite 实现归 infrastructure |
 | `services/messageService.ts`                       | 会话、消息、上下文、路由、运行启动及结果持久化                                                  | Conversations 应用服务准备请求并调用 Runtime；不整体移入 Runtime                         |
 

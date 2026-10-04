@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const getAiSettings = vi.hoisted(() => vi.fn());
 const getJevSettings = vi.hoisted(() => vi.fn());
 
-vi.mock('../../../services/api/settingsService.js', () => ({ getAiSettings, getJevSettings }));
+vi.mock('../../../application/settings/settings-service.js', () => ({
+  getAiSettings,
+  getJevSettings,
+}));
 
 import { searchWiki } from '../wiki-search-service.js';
 

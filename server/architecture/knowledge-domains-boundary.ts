@@ -23,7 +23,7 @@ const DOMAIN_INFRASTRUCTURE: Readonly<Record<string, readonly string[]>> = {
 };
 
 const TRANSITIONAL_INFRASTRUCTURE_ACCESS: Readonly<Record<string, readonly string[]>> = {
-  'services/api/wikiIngestionJobService.ts': [
+  'application/wiki/wiki-ingestion-job-service.ts': [
     'infrastructure/filesystem/wiki-ingestion-files.ts',
     'infrastructure/jobs/job-queue.ts',
     'infrastructure/jobs/job-store.ts',

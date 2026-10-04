@@ -10,7 +10,7 @@
 - 领域的运行上下文只要求 getJevSettings，由原 RuntimeContext 结构性满足；文件操作改用 Wiki 既有文件适配器。
 - 保持 FTS/hash 幂等索引、RRF/rerank、最佳片段/页面聚合、source-family 补充、结果证据粒度、向量失败降级、生命周期过滤与访问计数更新的顺序和规则。长函数/循环/分支分解为命名函数；事务中的 statement 准备与写入顺序不变。旧 Row 断言换成类型化 prepare。
 
-摄入队列和独立 Wiki 向量回填作业不搬迁。原 wikiSearchService 的生命周期仓储桥接删除；wikiVectorBackfillService 对搜索仓储的桥接保留为明确退出项。WikiSearchTool 的直接 lifecycle 访问仍由前批规则登记，待工具/反馈接口收敛时移除。
+摄入队列和独立 Wiki 向量回填作业当时不在该批搬迁范围。随后向量回填应用服务迁至 `application/wiki/wiki-vector-backfill-service.ts`，通过 Wiki 公共 API 读取文档和向量能力，并通过持久化 adapter 管理回填作业状态。WikiSearchTool 的直接 lifecycle 访问仍由前批规则登记，待工具/反馈接口收敛时移除。
 
 MCP 搜索入口只更新原搜索 API 导入路径，不改协议实现，也不修改 plugin/MCP 配置。摄入回归测试合并了两条指向同一 Wiki 公共 index 的 mock，避免后一条覆盖 registerCompiledKnowledge。
 

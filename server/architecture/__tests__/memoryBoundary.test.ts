@@ -55,8 +55,8 @@ describe('Memory domain dependency boundary', () => {
     const dependencies = [
       edge(
         'domains/memory/memory-service.ts',
-        '../../services/api/routingService.js',
-        'services/api/routingService.ts',
+        '../../domains/routing/routing-service.js',
+        'domains/routing/routing-service.ts',
       ),
       edge(
         'infrastructure/ai/memoryGateProvider.ts',
@@ -69,7 +69,7 @@ describe('Memory domain dependency boundary', () => {
         'domains/memory/memory-service.ts',
       ),
       edge(
-        'services/api/memoryService.ts',
+        'application/memory/memory-service.ts',
         '../../infrastructure/ai/memory-extraction-client.js',
         'infrastructure/ai/memory-extraction-client.ts',
       ),
@@ -79,7 +79,7 @@ describe('Memory domain dependency boundary', () => {
     expect(findMemoryBoundaryViolations(dependencies, SERVER_ROOT)).toEqual([
       expect.objectContaining({
         importer: 'domains/memory/memory-service.ts',
-        target: 'services/api/routingService.ts',
+        target: 'domains/routing/routing-service.ts',
       }),
       expect.objectContaining({
         importer: 'infrastructure/ai/memoryGateProvider.ts',
@@ -90,7 +90,7 @@ describe('Memory domain dependency boundary', () => {
         target: 'domains/memory/memory-service.ts',
       }),
       expect.objectContaining({
-        importer: 'services/api/memoryService.ts',
+        importer: 'application/memory/memory-service.ts',
         target: 'infrastructure/ai/memory-extraction-client.ts',
       }),
       expect.objectContaining({

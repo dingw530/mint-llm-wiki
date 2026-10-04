@@ -32,7 +32,7 @@ vi.mock('../../../infrastructure/persistence/memory-search-repository.js', () =>
 import * as memoryService from '../memory-service.js';
 import * as memoryRepo from '../../../infrastructure/persistence/memory-repository.js';
 import * as memorySearchRepo from '../../../infrastructure/persistence/memory-search-repository.js';
-import type { MemoryGateResolution } from '../../../domains/memory/gates/types.js';
+import type { MemoryGateResolution } from '../gates/types.js';
 import type { Memory } from '../../../types.js';
 import type { AiSettings } from '../../../types.js';
 import type { MemoryExtractionClient } from '../ports.js';

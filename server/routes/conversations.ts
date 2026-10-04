@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { Router } from 'express';
 import * as conversationService from '../domains/conversations/index.js';
 import * as messageRepo from '../repositories/messageRepository.js';
-import * as settingsService from '../services/api/settingsService.js';
+import * as settingsService from '../application/settings/settings-service.js';
 import { generateTitle } from '../services/aiProxy.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 

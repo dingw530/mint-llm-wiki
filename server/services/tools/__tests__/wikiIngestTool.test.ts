@@ -9,14 +9,14 @@ vi.mock('../../utils/pathSecurity.js', () => ({
   getWikiPath: () => mockWikiPath,
 }));
 
-vi.mock('../../api/settingsService.js', () => ({
+vi.mock('../../../application/settings/settings-service.js', () => ({
   getAiSettings: () => ({
     apiUrl: mockApiUrl,
     apiKey: 'sk-test',
   }),
 }));
 
-vi.mock('../../api/wikiIngestionJobService.js', () => ({
+vi.mock('../../../application/wiki/wiki-ingestion-job-service.js', () => ({
   wikiIngestionJobService: {
     startChat: vi.fn((input: any) => ({
       jobId: 'job-123',
@@ -70,29 +70,32 @@ describe('WikiIngestTool', () => {
 
   it('should combine multiple source types', async () => {
     const encoded = Buffer.from('hello').toString('base64');
-    const result = await tool.execute({
-      source: '# Test',
-      urls: ['https://example.com/a', 'https://example.com/b'],
-      files: [{ name: 'a.md', content: encoded }, { name: 'b.md', content: encoded }],
-    }, ctx);
+    const result = await tool.execute(
+      {
+        source: '# Test',
+        urls: ['https://example.com/a', 'https://example.com/b'],
+        files: [
+          { name: 'a.md', content: encoded },
+          { name: 'b.md', content: encoded },
+        ],
+      },
+      ctx,
+    );
     expect(result.fileCount).toBe(5); // 1 source + 2 urls + 2 files
   });
 
   it('should throw when wiki path not configured', async () => {
     mockWikiPath = null;
-    await expect(tool.execute({ source: '# Test' }, ctx))
-      .rejects.toThrow('Wiki 路径未配置');
+    await expect(tool.execute({ source: '# Test' }, ctx)).rejects.toThrow('Wiki 路径未配置');
   });
 
   it('should throw when AI API not configured', async () => {
     mockApiUrl = '';
-    await expect(tool.execute({ source: '# Test' }, ctx))
-      .rejects.toThrow('AI API 未配置');
+    await expect(tool.execute({ source: '# Test' }, ctx)).rejects.toThrow('AI API 未配置');
   });
 
   it('should throw when no input provided', async () => {
-    await expect(tool.execute({}, ctx))
-      .rejects.toThrow('请提供 source');
+    await expect(tool.execute({}, ctx)).rejects.toThrow('请提供 source');
   });
 
   it('should getCallSummary for source text', () => {
@@ -120,8 +123,11 @@ describe('WikiIngestTool', () => {
 
   it('should getResultSummary', () => {
     const summary = tool.getResultSummary({
-      jobId: 'j-1', status: 'queued', executionMode: 'async',
-      fileCount: 3, message: 'Wiki 摄入任务已加入队列',
+      jobId: 'j-1',
+      status: 'queued',
+      executionMode: 'async',
+      fileCount: 3,
+      message: 'Wiki 摄入任务已加入队列',
     });
     expect(summary).toContain('3 个输入');
   });

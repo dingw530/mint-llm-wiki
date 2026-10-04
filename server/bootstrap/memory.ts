@@ -1,7 +1,7 @@
 import { createMemorySemanticClassifier } from '../infrastructure/ai/memory-semantic-classifier.js';
 import * as memoryJobRepository from '../infrastructure/persistence/memory-job-repository.js';
 import * as memoryScopeRepository from '../infrastructure/persistence/memory-scope-repository.js';
-import * as settingsService from '../services/api/settingsService.js';
+import * as settingsService from '../application/settings/settings-service.js';
 import { memoryExtractionClient } from '../infrastructure/ai/memory-extraction-client.js';
 import {
   createMemoryJobService,

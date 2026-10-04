@@ -559,7 +559,7 @@ export function recordMemoryProcessingFailure(
 
 // 原有启发式由 Memory domain 的 legacy gate provider 持有，
 // 在这里再导出以保住既有调用方与测试的导入路径。
-export { isConversationValuable } from '../../domains/memory/index.js';
+export { isConversationValuable } from './index.js';
 
 /**
  * 记录一次记忆门控尝试，供实验稳定性统计。

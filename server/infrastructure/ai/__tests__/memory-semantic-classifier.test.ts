@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createMemorySemanticClassifier } from '../memory-semantic-classifier.js';
 import { DISABLED_JEV_SETTINGS } from '../../../services/jev/config.js';
-import * as settingsService from '../../../services/api/settingsService.js';
+import * as settingsService from '../../../application/settings/settings-service.js';
 import type { JevCallResult, JevConfig, JevRequest } from '../../../services/jev/types.js';
 
 const input = {

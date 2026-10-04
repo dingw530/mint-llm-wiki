@@ -7,7 +7,7 @@ vi.mock('../../../domains/agents/index.js', () => ({
   findById: vi.fn(),
 }));
 
-vi.mock('../../api/settingsService.js', () => ({
+vi.mock('../../../application/settings/settings-service.js', () => ({
   getAiSettings: vi.fn(),
 }));
 
@@ -16,7 +16,7 @@ vi.mock('../../../bootstrap/agent-runtime.js', () => ({
 }));
 
 import * as agentService from '../../../domains/agents/index.js';
-import * as settingsService from '../../api/settingsService.js';
+import * as settingsService from '../../../application/settings/settings-service.js';
 import { runAgentChat as reactChat } from '../../../bootstrap/agent-runtime.js';
 import { InvokeAgentTool } from '../InvokeAgentTool.js';
 

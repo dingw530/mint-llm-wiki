@@ -3,7 +3,7 @@ import { Router } from 'express';
 import * as messageService from '../services/messageService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { ResSink } from '../infrastructure/transports/sinks.js';
-import { validateSlashCommand } from '../services/api/slashCommandService.js';
+import { validateSlashCommand } from '../domains/conversations/index.js';
 
 const router = Router();
 

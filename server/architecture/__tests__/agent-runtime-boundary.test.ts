@@ -11,7 +11,7 @@ describe('Agent Runtime boundaries', () => {
   });
 
   it.each([
-    ['agent-runtime/react-loop-core.ts', 'services/api/settingsService.ts', false, true],
+    ['agent-runtime/react-loop-core.ts', 'application/settings/settings-service.ts', false, true],
     ['agent-runtime/react-loop-core.ts', 'services/tools/BashTool.ts', false, true],
     [
       'agent-runtime/react-loop-core.ts',

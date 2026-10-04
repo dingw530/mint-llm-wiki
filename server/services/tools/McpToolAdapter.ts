@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext, ValidationResult } from './BaseTool.js';
 import type { ToolMetadata, ToolRiskLevel } from './toolMetadata.js';
-import { mcpService } from '../api/mcpService.js';
+import { mcpService } from '../../bootstrap/mcp-client.js';
 
 interface McpToolRecord {
   serverName: string;
@@ -18,21 +18,27 @@ function matchesJsonSchema(value: unknown, schema: Record<string, unknown>): boo
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const objectValue = value as Record<string, unknown>;
     const properties = (schema.properties || {}) as Record<string, Record<string, unknown>>;
-    const required = Array.isArray(schema.required) ? schema.required as string[] : [];
-    if (required.some(key => !(key in objectValue))) return false;
-    return Object.entries(properties).every(([key, propertySchema]) =>
-      !(key in objectValue) || matchesJsonSchema(objectValue[key], propertySchema));
+    const required = Array.isArray(schema.required) ? (schema.required as string[]) : [];
+    if (required.some((key) => !(key in objectValue))) return false;
+    return Object.entries(properties).every(
+      ([key, propertySchema]) =>
+        !(key in objectValue) || matchesJsonSchema(objectValue[key], propertySchema),
+    );
   }
   if (schema.type === 'array') return Array.isArray(value);
   if (schema.type === 'string') return typeof value === 'string';
-  if (schema.type === 'number' || schema.type === 'integer') return typeof value === 'number' && Number.isFinite(value);
+  if (schema.type === 'number' || schema.type === 'integer')
+    return typeof value === 'number' && Number.isFinite(value);
   if (schema.type === 'boolean') return typeof value === 'boolean';
   return true;
 }
 
 function riskFor(description: string): ToolRiskLevel {
-  return /delete|remove|write|send|create|update|upload|execute|run|publish|支付|删除|写入|发送|创建|执行/i.test(description)
-    ? 'high' : 'medium';
+  return /delete|remove|write|send|create|update|upload|execute|run|publish|支付|删除|写入|发送|创建|执行/i.test(
+    description,
+  )
+    ? 'high'
+    : 'medium';
 }
 
 /** 将 MCP 工具适配为统一 Tool Runtime 可执行的工具。 */
@@ -44,8 +50,12 @@ export class McpToolAdapter extends BaseTool<Record<string, unknown>, unknown> {
     super();
   }
 
-  get name(): string { return `${this.record.serverName}__${this.record.name}`; }
-  get description(): string { return this.record.description; }
+  get name(): string {
+    return `${this.record.serverName}__${this.record.name}`;
+  }
+  get description(): string {
+    return this.record.description;
+  }
 
   getDefinition() {
     return {
@@ -63,8 +73,9 @@ export class McpToolAdapter extends BaseTool<Record<string, unknown>, unknown> {
       return { valid: false, error: 'MCP 工具参数必须是 JSON object' };
     }
     const required = Array.isArray(this.record.inputSchema?.required)
-      ? this.record.inputSchema.required as unknown[] : [];
-    const missing = required.filter(key => !(key as string in input));
+      ? (this.record.inputSchema.required as unknown[])
+      : [];
+    const missing = required.filter((key) => !((key as string) in input));
     if (missing.length > 0) return { valid: false, error: `缺少必填参数: ${missing.join(', ')}` };
     return matchesJsonSchema(input, this.record.inputSchema || {})
       ? { valid: true }
@@ -80,9 +91,15 @@ export class McpToolAdapter extends BaseTool<Record<string, unknown>, unknown> {
     };
   }
 
-  isReadOnly(): boolean { return this.getMetadata().sideEffect === 'none'; }
-  isIdempotent(): boolean { return this.isReadOnly(); }
-  isConcurrencySafe(): boolean { return this.isReadOnly(); }
+  isReadOnly(): boolean {
+    return this.getMetadata().sideEffect === 'none';
+  }
+  isIdempotent(): boolean {
+    return this.isReadOnly();
+  }
+  isConcurrencySafe(): boolean {
+    return this.isReadOnly();
+  }
 
   async execute(input: Record<string, unknown>, context: ToolContext): Promise<unknown> {
     if (context.signal?.aborted) throw new Error('MCP tool execution cancelled');

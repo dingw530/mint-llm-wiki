@@ -3,7 +3,7 @@ import { httpError } from '../helpers.js';
 import type { Request, Response } from 'express';
 import type { EndpointDescriptor } from '../types.js';
 import { ResSink } from '../../infrastructure/transports/sinks.js';
-import * as memorySpaceService from '../../services/api/memorySpaceService.js';
+import * as memorySpaceService from '../../application/memory/memory-space-service.js';
 
 /** 延迟加载摄入事件流，避免生成 endpoint manifest 时初始化摄入服务。 */
 async function streamIngestionEvents(
@@ -11,7 +11,7 @@ async function streamIngestionEvents(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const module = await import('../../services/api/ingestionEventsService.js');
+  const module = await import('../../http/streams/ingestion-events.js');
   module.streamConversationIngestionEvents(conversationId, req, res);
 }
 
@@ -21,7 +21,7 @@ async function resolveApproval(
   approvalId: string,
   action: 'approve' | 'deny',
 ) {
-  const module = await import('../../services/api/toolApprovalService.js');
+  const module = await import('../../application/agent-runtime/tool-approval-service.js');
   return module.resolveToolApproval(conversationId, approvalId, action);
 }
 

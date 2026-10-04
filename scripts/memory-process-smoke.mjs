@@ -98,7 +98,8 @@ function assertOneSelectedMemory(output, entryName) {
 
 async function seedDatabase() {
   const dbModule = await import('../server/dist/db.js');
-  const settingsRepository = await import('../server/dist/repositories/settingsRepository.js');
+  const settingsRepository =
+    await import('../server/dist/infrastructure/config/settings-repository.js');
   const conversationRepository =
     await import('../server/dist/infrastructure/persistence/conversation-repository.js');
   const memoryService = await import('../server/dist/domains/memory/index.js');

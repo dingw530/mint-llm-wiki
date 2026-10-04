@@ -7,7 +7,7 @@ const { mockCallTool } = vi.hoisted(() => ({
   mockCallTool: vi.fn(),
 }));
 
-vi.mock('../../api/mcpService.js', () => ({
+vi.mock('../../../bootstrap/mcp-client.js', () => ({
   mcpService: {
     callTool: mockCallTool,
   },
@@ -72,7 +72,9 @@ describe('McpToolAdapter', () => {
 
   it('should accept input without required fields when schema has none', () => {
     const tool = new McpToolAdapter({
-      serverName: 'search', name: 'search_web', description: 'Search the web',
+      serverName: 'search',
+      name: 'search_web',
+      description: 'Search the web',
       inputSchema: { type: 'object', properties: { query: { type: 'string' } } },
     });
     expect(tool.validate({}).valid).toBe(true);
@@ -114,15 +116,17 @@ describe('McpToolAdapter', () => {
 
   it('should throw when execution is cancelled via signal', async () => {
     const tool = new McpToolAdapter(readToolRecord);
-    await expect(tool.execute({ path: '/tmp/file.txt' }, { ...ctx, signal: AbortSignal.abort() }))
-      .rejects.toThrow('cancelled');
+    await expect(
+      tool.execute({ path: '/tmp/file.txt' }, { ...ctx, signal: AbortSignal.abort() }),
+    ).rejects.toThrow('cancelled');
   });
 
   it('should propagate MCP errors', async () => {
     mockCallTool.mockRejectedValue(new Error('MCP server not connected'));
     const tool = new McpToolAdapter(readToolRecord);
-    await expect(tool.execute({ path: '/tmp/file.txt' }, ctx))
-      .rejects.toThrow('MCP server not connected');
+    await expect(tool.execute({ path: '/tmp/file.txt' }, ctx)).rejects.toThrow(
+      'MCP server not connected',
+    );
   });
 
   it('should return function definition with original schema', () => {
@@ -135,7 +139,9 @@ describe('McpToolAdapter', () => {
 
   it('should validate enum values', () => {
     const tool = new McpToolAdapter({
-      serverName: 'test', name: 'enum_test', description: 'test enum',
+      serverName: 'test',
+      name: 'enum_test',
+      description: 'test enum',
       inputSchema: {
         type: 'object',
         properties: { mode: { type: 'string', enum: ['fast', 'slow'] } },
@@ -148,7 +154,9 @@ describe('McpToolAdapter', () => {
 
   it('should validate nested object properties', () => {
     const tool = new McpToolAdapter({
-      serverName: 'test', name: 'nested', description: 'nested schema',
+      serverName: 'test',
+      name: 'nested',
+      description: 'nested schema',
       inputSchema: {
         type: 'object',
         properties: {

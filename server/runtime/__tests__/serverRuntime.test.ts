@@ -25,7 +25,7 @@ vi.mock('../../bootstrap/agent-runtime.js', () => ({
   initializeAgentRuntime: dependencies.initializeAgentRuntime,
 }));
 vi.mock('../../domains/skills/index.js', () => ({ listSkills: dependencies.listSkills }));
-vi.mock('../../services/api/mcpService.js', () => ({
+vi.mock('../../bootstrap/mcp-client.js', () => ({
   mcpService: { initialize: dependencies.mcpInitialize, shutdown: dependencies.mcpShutdown },
 }));
 vi.mock('../../bootstrap/memory.js', () => ({
@@ -33,7 +33,7 @@ vi.mock('../../bootstrap/memory.js', () => ({
   startMemoryProcessing: dependencies.startMemory,
   stopMemoryProcessing: dependencies.stopMemory,
 }));
-vi.mock('../../services/api/wikiIngestionJobService.js', () => ({
+vi.mock('../../application/wiki/wiki-ingestion-job-service.js', () => ({
   wikiIngestionJobService: {
     startWorker: dependencies.wikiStart,
     shutdownWorker: dependencies.wikiShutdown,

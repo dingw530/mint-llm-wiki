@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as memoryService from '../../domains/memory/index.js';
-import * as memorySpaceService from '../../services/api/memorySpaceService.js';
+import * as memorySpaceService from '../../application/memory/memory-space-service.js';
 import type { EndpointDescriptor } from '../types.js';
 
 function listManagedMemories(query: Record<string, unknown> = {}) {

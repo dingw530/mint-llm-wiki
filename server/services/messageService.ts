@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as conversationRepo from '../domains/conversations/index.js';
 import * as messageRepo from '../repositories/messageRepository.js';
-import * as settingsService from './api/settingsService.js';
+import * as settingsService from '../application/settings/settings-service.js';
 import * as memoryService from '../domains/memory/index.js';
 import {
   enqueueMemoryProcessing,
@@ -20,8 +20,8 @@ import type { HttpError, HistoryMessage } from '../types.js';
 import { DeferredEndSink } from '../infrastructure/transports/sinks.js';
 import type { Sink } from '../agent-runtime/output-sink.js';
 import { parseFile, isSupportedFile } from './utils/fileParseService.js';
-import { streamToolApproval } from './api/toolApprovalService.js';
-import { reserveConversationScope } from './api/conversationScopeLock.js';
+import { streamToolApproval } from '../application/agent-runtime/tool-approval-service.js';
+import { reserveConversationScope } from '../application/conversations/conversation-scope-lock.js';
 import { AI_REQUEST_TIMEOUT_MS } from './adapters/apiAdapter.js';
 import * as a2uiRepository from '../repositories/a2uiRepository.js';
 import type { PersistedUiBlock } from '../types.js';
@@ -37,7 +37,7 @@ import {
   buildSlashCommandContext,
   validateSlashCommand,
   type SlashCommandIntent,
-} from './api/slashCommandService.js';
+} from '../domains/conversations/index.js';
 import {
   claimRecoveryAction,
   completeRecoveryAction,

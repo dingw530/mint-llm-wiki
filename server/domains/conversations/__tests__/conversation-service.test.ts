@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as conversations from '../index.js';
 import * as conversationRepository from '../../../infrastructure/persistence/conversation-repository.js';
-import * as settingsRepository from '../../../repositories/settingsRepository.js';
+import * as settingsRepository from '../../../infrastructure/config/settings-repository.js';
 
-vi.mock('../../../repositories/settingsRepository.js', () => ({ getAll: vi.fn() }));
+vi.mock('../../../infrastructure/config/settings-repository.js', () => ({ getAll: vi.fn() }));
 
 const createdIds = new Set<string>();
 

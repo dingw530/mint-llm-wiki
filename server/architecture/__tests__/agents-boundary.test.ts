@@ -13,7 +13,7 @@ describe('Agents application boundary', () => {
   it.each([
     ['services/messageService.ts', 'domains/agents/agent-service.ts', false],
     ['services/toolOrchestration.ts', 'infrastructure/persistence/agent-repository.ts', false],
-    ['domains/agents/agent-service.ts', 'services/api/mcpService.ts', false],
+    ['domains/agents/agent-service.ts', 'infrastructure/mcp/mcp-client-manager.ts', false],
     ['domains/agents/agent-service.ts', 'domains/routing/routing-service.ts', true],
     ['domains/agents/agent-service.ts', 'unresolved:./missing.js', false],
     ['infrastructure/persistence/agent-repository.ts', 'domains/agents/index.ts', false],

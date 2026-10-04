@@ -8,3 +8,6 @@ export {
   rename,
   setLockedAgent,
 } from './conversation-service.js';
+
+export { buildSlashCommandContext, validateSlashCommand } from './slash-command.js';
+export type { SlashCommandIntent } from './slash-command.js';

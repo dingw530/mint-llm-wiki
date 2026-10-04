@@ -3,13 +3,13 @@ import type { Server } from 'node:http';
 import { closeDb } from '../db.js';
 import { agentRunRegistry } from '../agent-runtime/agent-run.js';
 import { listSkills } from '../domains/skills/index.js';
-import { mcpService } from '../services/api/mcpService.js';
+import { mcpService } from '../bootstrap/mcp-client.js';
 import {
   initializeMemorySearchIndex,
   startMemoryProcessing,
   stopMemoryProcessing,
 } from '../bootstrap/memory.js';
-import { wikiIngestionJobService } from '../services/api/wikiIngestionJobService.js';
+import { wikiIngestionJobService } from '../application/wiki/wiki-ingestion-job-service.js';
 import { startWikiLifecycleProcessing } from '../bootstrap/wiki-lifecycle.js';
 import { flushLangfuseTracing } from '../services/observability/langfuse.js';
 import { cleanupArtifacts } from '../services/utils/toolResultArtifact.js';

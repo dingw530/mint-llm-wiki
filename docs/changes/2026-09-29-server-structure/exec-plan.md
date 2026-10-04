@@ -56,7 +56,7 @@
 
 ### TP-4：高耦合运行时与入口边界收敛
 
-- 状态：已完成（TP-4A～TP-4E）
+- 状态：进行中（TP-4A～TP-4F 已完成，TP-4G 验证中）
 - 关联：DS-3，AC-2、AC-3、AC-4、AC-6～AC-9
 - 工作：基于 TP-1 结果处理 `reactLoopCore`、`ServerRuntime`、`app.ts` 的职责和依赖；先提取清晰接口/模块职责，再按需要移动文件。不得把 CRITICAL impact 当作普通搬迁处理。
 - 产出：运行时/装配边界调整及契约说明；若发现需改变 API 或行为，暂停并开新变更范围。
@@ -74,12 +74,18 @@
 | TP-4C：生命周期与恢复     | 已完成 | AgentRun/events/recovery reducer 迁入 Runtime；SQLite 仓储进入 infrastructure；factory 在 bootstrap 绑定 observer  | AC-2、AC-4、AC-7             | AgentRun/事件仓储/恢复/审批 focused tests；写入顺序、唯一终态、快照复制和未知工具结果测试           |
 | TP-4D：输出与工具适配     | 已完成 | 输出契约与 HTTP/IPC/CLI 实现分离；审批 continuation 的消息落库提为单独应用适配；A2UI/Langfuse/MCP 保持显式能力端口 | AC-3、AC-4、AC-7、AC-8、AC-9 | sink/message/approval/security/A2UI tests；审批恢复保持 runId/sequence；ServerRuntime shutdown 测试 |
 | TP-4E：公共入口与目录搬迁 | 已完成 | 模块迁至 kebab-case `agent-runtime/`；生产入口使用 bootstrap；旧 `services/reactLoopCore.ts` facade 已删除         | AC-2、AC-3、AC-4、AC-6、AC-9 | 全仓 source 验证、入口 smoke/bundle、Git rename 历史和正常提交 Hook 全部通过                        |
+| TP-4F：Settings、MCP 与向量基础设施 | 已完成（未提交） | 设置、MCP 持久化/连接管理、模型与向量连接验证、SQLite/Chroma 向量存储迁至 infrastructure；通过 bootstrap/API facade 保持现有调用契约 | AC-2、AC-3、AC-4 | typecheck、16 个 focused Vitest 文件/133 项、Prettier、边界/路径扫描、diff check；MCP 仓储历史需在提交后以 20% 阈值追踪 |
+| TP-4G：迁出剩余 API 应用模块 | 已完成（未提交） | 应用用例移入 `application/`，Jev 探测归 infrastructure，删除冗余连接 re-export；端点、Runtime、CLI、Electron 调用路径保持原契约 | AC-2、AC-3、AC-4 | typecheck、19 个 focused Vitest 文件/138 项、架构边界、Prettier、旧路径扫描、rename 探测和 diff check |
 
 各子批次采用相关源码目录下的既有 Vitest 用例为回归基线，只补足现有证据未覆盖的契约。重点覆盖：无工具流式回答、单/多工具往返、预算耗尽、重复调用、模型/工具失败及重试、取消、审批 approve/deny/过期/重复、重启后未知工具结果、上下文压缩、A2UI 引用和 token usage。验收比较语义事件及调用次数，不要求随机 runId 或时间戳相同；测试使用受控 provider/tool stub，不隐式发送真实知识库内容。
 
 每批完成后运行对应 focused suites、Server typecheck/build、边界与格式检查；涉及具体交付入口时补对应 bundle/smoke。最终以正常 `verify:source` 和入口证据收敛。真实提供商行为或某交付入口未验证时明确登记，不能由 mock/bundle 成功推定运行验收通过。
 
 2026-10-04 的评估结果为 AgentRun CRITICAL、`executeReactRun` UNKNOWN，且图查询有异常路径；启动任何子批次前必须重新确认该批 impact 与源码引用范围。不得把上述图结果当作普通目录移动的许可。
+
+2026-10-04：TP-4F 完成源码搬迁与 focused 验证。设置存储适配器、MCP Server 仓储与连接管理、模型/向量连接验证以及向量持久化和 Chroma adapter 已迁至 infrastructure；端点和既有 application facade 保留。当前验证记录见 [Settings、MCP 与向量迁移证据](../../architecture/settings-mcp-vector-migration.md)。
+
+2026-10-04：TP-4G 开始迁出剩余 `services/api/` TypeScript 模块。新增 `application/` 用例目录，Settings、MCP 配置、Memory spaces、会话 scope reservations、Agent Runtime approval 与 Wiki job facades 已移入；Jev connection probe 迁入 AI infrastructure，模型/向量连接旧 re-export 删除。详细映射与验证状态见 [Application services migration evidence](../../architecture/application-services-migration.md)。
 
 ### TP-5：拆包决策复盘与文档收敛
 

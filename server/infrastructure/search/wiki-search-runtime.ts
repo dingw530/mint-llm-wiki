@@ -1,5 +1,5 @@
 /** Transitional adapters: preserve existing provider configuration and runtime failure identities. */
-export { getAiSettings, getJevSettings } from '../../services/api/settingsService.js';
+export { getAiSettings, getJevSettings } from '../../application/settings/settings-service.js';
 export { createWikiVectorService, pruneWikiVectorOrphans } from '../../services/vector/index.js';
 export { baseRrfScore } from '../../services/rerank/legacyRerankProvider.js';
 export { rerankCandidates } from '../../services/rerank/index.js';

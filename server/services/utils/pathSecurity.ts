@@ -1,5 +1,5 @@
 import * as path from 'path';
-import * as settingsService from '../api/settingsService.js';
+import * as settingsService from '../../application/settings/settings-service.js';
 
 /**
  * 检查目标路径是否在允许的根目录范围内，防止路径穿越

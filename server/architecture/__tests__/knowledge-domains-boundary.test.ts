@@ -12,7 +12,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
   });
 
   it.each([
-    ['domains/wiki/wiki-service.ts', 'services/api/settingsService.ts', false],
+    ['domains/wiki/wiki-service.ts', 'application/settings/settings-service.ts', false],
     ['domains/skills/skill-service.ts', 'domains/wiki/wiki-service.ts', false],
     ['endpoints/definitions/wiki.ts', 'domains/wiki/wiki-service.ts', false],
     ['services/tools/SkillTool.ts', 'infrastructure/filesystem/skills-directory.ts', false],
@@ -44,7 +44,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ).toBeNull();
     expect(
       knowledgeDomainsBoundaryViolation({
-        importer: 'services/api/wikiVectorBackfillService.ts',
+        importer: 'application/wiki/wiki-vector-backfill-service.ts',
         target: 'domains/wiki/index.ts',
         typeOnly: false,
       }),
@@ -78,7 +78,11 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
       'services/adapters/apiAdapter.ts',
       false,
     ],
-    ['services/api/wikiIngestionJobService.ts', 'infrastructure/jobs/sqlite-job-store.ts', false],
+    [
+      'application/wiki/wiki-ingestion-job-service.ts',
+      'infrastructure/jobs/sqlite-job-store.ts',
+      false,
+    ],
     ['infrastructure/jobs/job-store.ts', 'infrastructure/jobs/sqlite-job-store.ts', false],
   ])('allows ingestion boundary %s -> %s', (importer, target, typeOnly) => {
     expect(knowledgeDomainsBoundaryViolation({ importer, target, typeOnly })).toBeNull();
@@ -97,7 +101,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
       false,
     ],
     [
-      'services/api/wikiVectorBackfillService.ts',
+      'application/wiki/wiki-vector-backfill-service.ts',
       'infrastructure/persistence/wiki-search-repository.ts',
       false,
     ],

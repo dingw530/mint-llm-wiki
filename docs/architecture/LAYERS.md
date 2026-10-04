@@ -37,6 +37,12 @@ middleware     services/, types (request processing)
 
 **Rule:** Each layer may only import from layers to its LEFT. Never skip layers (e.g., endpoints must not import repositories directly).
 
+### Application services (incremental migration)
+
+`server/application/` contains HTTP-agnostic use cases that coordinate domain APIs, Agent Runtime, persistence/configuration capabilities and existing process facades. Endpoint, route, CLI, Electron and runtime entry points may call these services; application modules do not own Express handlers or transport protocols. New application modules use kebab-case filenames. Legacy `server/services/api/` is being retired as its remaining modules move to `application/`, their owning domains, or infrastructure.
+
+`bootstrap/` continues to own process-scoped composition and resource lifecycle. Two inherited Settings reads from infrastructure still use the Settings application facade; this remains explicit migration debt and is not authorization for new infrastructure-to-application imports.
+
 ### Memory domain boundary (incremental migration)
 
 The existing top-level Server layer diagram describes the current broad layout. Memory migration adds a finer boundary without implying that the other Server domains have moved:
@@ -52,7 +58,7 @@ server/
 
 Memory domain implementation imports only its own domain modules, `infrastructure/`, explicit type-only `server/types.ts` contracts, and the shared pure token estimator. Memory-specific persistence and AI adapters are composed by `bootstrap/memory.ts`; application entry points do not import those implementations directly. Infrastructure may import Memory type contracts, never Memory runtime services. Other consumers use `domains/memory/index.ts`; tests may import internal modules for focused unit coverage. Literal dynamic imports and re-exports are checked with the same rule.
 
-`server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. This rule applies while the rest of `services/api/`, `repositories/`, and the server runtime remain in their current locations. Do not treat the Memory migration as completion of the wider Server structure proposal.
+`server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. This rule applies while other legacy services and the server runtime remain in their current locations. Do not treat the Memory migration as completion of the wider Server structure proposal.
 
 ### Routing domain boundary (incremental migration)
 
@@ -98,9 +104,11 @@ server/
 
 HTTP, CLI, Electron and message setup use `domains/conversations/index.ts`. The domain owns persisted conversation management and nullable metadata lookup, and may import only its own modules, its conversation repository/defaults adapter, type-only Server contracts and external packages such as UUID. Other production Server modules may not access this infrastructure directly. Test fixtures may use the repository to preserve explicit fixture ids.
 
-Message streaming, AgentRun and the request-time `conversationScopeLock.ts` reservations remain in their current locations. Memory space association also remains in its existing application adapter; this migration does not claim completion of all message/runtime or space-management responsibilities.
+Message streaming and AgentRun remain in their current locations. Request-time conversation reservations are now in `application/conversations/conversation-scope-lock.ts`; Memory space management is in `application/memory/memory-space-service.ts`. This migration does not claim completion of all message/runtime responsibilities.
 
 `server/architecture/conversations-boundary.ts` checks actual resolved imports, including literal dynamic imports. [Conversations migration evidence](conversations-domain-migration.md) records the scope and validation.
+
+Conversation slash-command metadata is normalized by `domains/conversations/slash-command.ts`, exported through the existing public index and used by both HTTP and Electron chat paths. It only creates constrained task context; actual tool selection, policy and approval still go through the existing Agent Runtime.
 
 ### Skills, knowledge graph and Wiki management boundaries
 
@@ -116,7 +124,7 @@ server/
   bootstrap/wiki-lifecycle.ts    # explicitly started, unref-ed lifecycle timer
 ```
 
-Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki owns source ingestion, compilation, commit recovery, and the background job state machine. Knowledge Graph owns cross-batch candidate generation. Staged source-file operations, ingestion commit records, and durable job queue/store/event adapters live under `infrastructure/`. `services/api/wikiIngestionJobService.ts` only composes the domain worker with existing HTTP/Electron dependencies. The Wiki compiler still uses shared Wiki page-writing helpers and the existing API adapter; cross-batch generation still reads Wiki source files directly and uses that API adapter. These are explicit migration bridges recorded in `knowledge-domains-boundary.ts` where applicable.
+Consumers use each domain's public `index.ts`. Domain rules access only their own infrastructure and approved shared contracts; the shared logger and graph ontology remain pure utility dependencies. Wiki owns source ingestion, compilation, commit recovery, and the background job state machine. Knowledge Graph owns cross-batch candidate generation. Staged source-file operations, ingestion commit records, and durable job queue/store/event adapters live under `infrastructure/`. `application/wiki/wiki-ingestion-job-service.ts` composes the domain worker with existing HTTP/Electron dependencies, and `application/wiki/wiki-vector-backfill-service.ts` owns the vector backfill use case. The Wiki compiler still uses shared Wiki page-writing helpers and the existing API adapter; cross-batch generation still reads Wiki source files directly and uses that API adapter. These are explicit migration bridges recorded in `knowledge-domains-boundary.ts` where applicable.
 
 The low-frequency lifecycle timer is composed by bootstrap and remains owned/drained by ServerRuntime. Importing the Wiki domain does not start a timer.
 
@@ -130,7 +138,45 @@ The low-frequency lifecycle timer is composed by bootstrap and remains owned/dra
 
 `infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. `infrastructure/search/wiki-search-runtime.ts` composes the existing settings, embedding/vector, rerank and resilience implementations as an explicit transitional adapter; those provider implementations are not relocated in this batch. Wiki file primitives remain in its filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
 
-The independent vector backfill job and WikiSearchTool still live in their legacy service/tool locations, but reach persistence through the Wiki public API; vector/rerank modules may reference storage contracts through type-only imports. Ingestion consumers and job status contracts use the Wiki public API. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
+The independent vector backfill job now lives in `application/wiki/wiki-vector-backfill-service.ts` and reaches Wiki persistence through the public API. WikiSearchTool remains in its legacy tool location; vector/rerank modules may reference storage contracts through type-only imports. Ingestion consumers and job status contracts use the Wiki public API. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
+
+### Model endpoint management boundary
+
+```text
+server/
+  domains/model-endpoints/                         # CRUD, activation, key handling and verification state
+  infrastructure/persistence/model-endpoint-repository.ts # existing model_endpoints SQLite storage
+```
+
+HTTP descriptors, settings and the Electron namespace export use `domains/model-endpoints/index.ts`. The domain may import only its own modules, its persistence implementation, type-only Server contracts and the existing pure encryption helper. Other production modules may not access model endpoint persistence directly. Test fixtures may use the repository.
+
+`syncLegacyEndpointSettings` keeps the settings form's existing partial writes, accepts its already encrypted key and preserves verification state. It does not substitute the CRUD update path, whose validation and verification invalidation are different. Provider/model networking is verified by `infrastructure/ai/model-connection-verification.ts` and composed with the adapter registry in `bootstrap/model-connections.ts`. Settings storage, HTTP descriptor registration and API/IPC names retain their existing layout and behavior.
+
+`model-endpoints-boundary.ts` checks resolved imports, re-exports and literal dynamic imports. [Model endpoint migration evidence](model-endpoints-domain-migration.md) records scope, risk, tests and history checks.
+
+### Tool security policy boundary
+
+`domains/tool-security/` owns Bash command blocking rules and typed configuration policy. Its `infrastructure/config/bash-security-settings.ts` adapter reads and writes only the existing `bashBlockedCommands` and `bashBlockedDirs` settings keys. HTTP configuration, Electron exports and Bash execution use the domain public index; they do not access settings storage directly. Command matching, built-in block patterns and approval flow are unchanged.
+
+`server/architecture/tool-security-boundary.ts` enforces the public entry and persistence ownership.
+
+### Settings, MCP and vector infrastructure migration
+
+Settings key/value persistence is under `infrastructure/config/settings-repository.ts`; the Settings use case is in `application/settings/settings-service.ts`, with endpoint and Electron contracts preserved. MCP server persistence and process-scoped connection lifecycle live in `infrastructure/persistence/mcp-server-repository.ts` and `infrastructure/mcp/mcp-client-manager.ts`. `bootstrap/mcp-client.ts` owns the manager instance, and `application/mcp/mcp-server-service.ts` keeps MCP configuration CRUD and connection coordination behind the endpoint descriptor.
+
+Model and vector connection verification are infrastructure capabilities composed from the existing adapter/settings dependencies. SQLite vector persistence and the experimental Chroma store live in `infrastructure/persistence/vector-repository.ts` and `infrastructure/search/chroma-vector-store.ts`; Wiki vector orchestration and public behavior remain behind their existing Wiki/application adapters. [Settings, MCP and vector migration evidence](settings-mcp-vector-migration.md) records moved files, callers and verification limits.
+
+### Remaining API application modules
+
+Approval continuation and its message-persistence adapter now live in `application/agent-runtime/`; conversation scope reservations and memory-space use cases live in `application/conversations/` and `application/memory/`. The Jev endpoint probe moved to `infrastructure/ai/jev-connection-verification.ts`. Redundant model/vector connection re-export shims were removed because callers already use the bootstrap or infrastructure entry points.
+
+[Application service migration evidence](application-services-migration.md) records the file map, high-impact callers and focused verification. Settings remains a CRITICAL-impact facade, so its move preserves all existing exports and read/write behavior.
+
+### Ingestion event transport
+
+The per-conversation ingestion stream lives under `http/streams/`; A2UI v0.9 task-card projection lives under `infrastructure/transports/` and uses the public Wiki job type. The stream retains the current Wiki ingestion application façade as a transition bridge. Business domains, Agent Runtime and infrastructure do not import the HTTP stream. `server/architecture/ingestion-transport-boundary.ts` checks these dependencies.
+
+[Three small module migrations](small-server-modules-migration.md) records the selected scope, impact, behavior constraints and verification.
 
 ## Client Layer Hierarchy
 
