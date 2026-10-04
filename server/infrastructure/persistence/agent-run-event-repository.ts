@@ -1,4 +1,4 @@
-import { getDb } from '../db.js';
+import { getDb } from '../../db.js';
 import type Database from 'better-sqlite3';
 import {
   AGENT_RUN_EVENT_SCHEMA_VERSION,
@@ -8,7 +8,7 @@ import {
   type PersistedAgentRunEvent,
   type RecoveryActionInput,
   type RecoveryActionRecord,
-} from '../agentRunPersistence.js';
+} from '../../agent-runtime/agent-run-persistence.js';
 
 export {
   AGENT_RUN_EVENT_SCHEMA_VERSION,
@@ -19,7 +19,7 @@ export {
   type RecoveryAction,
   type RecoveryActionInput,
   type RecoveryActionRecord,
-} from '../agentRunPersistence.js';
+} from '../../agent-runtime/agent-run-persistence.js';
 
 interface AgentRunEventRow {
   run_id: string;

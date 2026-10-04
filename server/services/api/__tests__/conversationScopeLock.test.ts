@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { agentRunRegistry, AgentRun } from '../../agentRun.js';
+import { agentRunRegistry, AgentRun } from '../../../agent-runtime/agent-run.js';
 import { isConversationScopeBusy, reserveConversationScope } from '../conversationScopeLock.js';
 
 afterEach(() => agentRunRegistry.clear());

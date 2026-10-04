@@ -3,11 +3,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const configuredDatabasePath = process.env.AI_CHAT_DB_PATH;
+
 describe('getDb initialization boundary', () => {
   afterEach(() => {
     vi.resetModules();
     vi.doUnmock('../migrations/index.js');
-    delete process.env.AI_CHAT_DB_PATH;
+    if (configuredDatabasePath) process.env.AI_CHAT_DB_PATH = configuredDatabasePath;
+    else delete process.env.AI_CHAT_DB_PATH;
   });
 
   it('closes and resets the singleton when migration initialization fails', async () => {

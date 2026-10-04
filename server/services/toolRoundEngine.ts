@@ -7,18 +7,13 @@ import type { AdapterStream, ApiAdapter, ParsedChunk } from './adapters/apiAdapt
 import { getAdapter } from './adapters/apiAdapter.js';
 import { executeTool, getToolResultSummary } from './toolOrchestration.js';
 import { createLogger } from '../utils/logger.js';
-import type { Sink } from './sink.js';
+import type { Sink } from '../agent-runtime/output-sink.js';
 import { retry } from './utils/retryWrapper.js';
-import type { ReactEventPayload } from './reactEvents.js';
+import type { ReactEventPayload } from '../agent-runtime/react-events.js';
 import { serializeToolResultForContext } from './utils/toolResultArtifact.js';
 import type { ApprovalResumeContext } from './tools/approvalStore.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
 import type { RuntimeContext } from './runtime/runtimeContext.js';
-
-// 导入 Adapter 实现
-import './adapters/openaiChatAdapter.js';
-import './adapters/anthropicAdapter.js';
-import './adapters/openaiResponsesAdapter.js';
 
 const log = createLogger('tool-loop');
 

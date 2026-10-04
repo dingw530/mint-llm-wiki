@@ -124,8 +124,8 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     vi.doMock('../aiProxy.js', () => ({
       streamChat: streamChatMock,
     }));
-    vi.doMock('../../agent-runtime/react-loop-core.js', () => ({
-      reactChat: reactChatMock,
+    vi.doMock('../../bootstrap/agent-runtime.js', () => ({
+      runAgentChat: reactChatMock,
     }));
 
     // Mock other dependencies
@@ -224,8 +224,8 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     vi.doMock('../aiProxy.js', () => ({
       streamChat: streamChatMock,
     }));
-    vi.doMock('../../agent-runtime/react-loop-core.js', () => ({
-      reactChat: reactChatMock,
+    vi.doMock('../../bootstrap/agent-runtime.js', () => ({
+      runAgentChat: reactChatMock,
     }));
 
     vi.doMock('../api/settingsService.js', () => ({
@@ -349,8 +349,8 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
     vi.doMock('../aiProxy.js', () => ({
       streamChat: streamChatMock,
     }));
-    vi.doMock('../../agent-runtime/react-loop-core.js', () => ({
-      reactChat: reactChatMock,
+    vi.doMock('../../bootstrap/agent-runtime.js', () => ({
+      runAgentChat: reactChatMock,
     }));
 
     vi.doMock('../api/settingsService.js', () => ({

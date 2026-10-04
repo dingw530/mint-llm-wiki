@@ -1,6 +1,6 @@
-import { agentRunEventRepository } from '../repositories/agentRunEventRepository.js';
-import { AgentRun, type AgentRunOptions } from './agentRun.js';
-import { attachLangfuseObserver } from './observability/langfuse.js';
+import { agentRunEventRepository } from '../infrastructure/persistence/agent-run-event-repository.js';
+import { AgentRun, type AgentRunOptions } from '../agent-runtime/agent-run.js';
+import { attachLangfuseObserver } from '../services/observability/langfuse.js';
 
 /** Creates a production AgentRun backed by the sole configured SQLite persistence adapter. */
 export function createDurableAgentRun(options: Omit<AgentRunOptions, 'eventRepository'>): AgentRun {

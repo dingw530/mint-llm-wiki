@@ -1,15 +1,15 @@
 import { toolApprovalStore, toolRegistry } from '../tools/index.js';
 import type { ApprovalAction } from '../tools/approvalStore.js';
 import { toolLoopEngine } from '../toolRoundEngine.js';
-import { reactChat } from '../../agent-runtime/react-loop-core.js';
-import { AccumulatingSink } from '../sink.js';
-import * as messageRepo from '../../repositories/messageRepository.js';
+import { runAgentChat } from '../../bootstrap/agent-runtime.js';
+import { AccumulatingSink } from '../../infrastructure/transports/sinks.js';
+import { persistApprovalContinuation } from './approval-message-persistence.js';
 import { v4 as uuidv4 } from 'uuid';
-import { ReactEventEmitter } from '../reactEvents.js';
-import type { Sink } from '../sink.js';
-import { agentRunRegistry } from '../agentRun.js';
-import type { AgentRun } from '../agentRun.js';
-import { subscribeReactEvents } from '../reactEvents.js';
+import { ReactEventEmitter } from '../../agent-runtime/react-events.js';
+import type { Sink } from '../../agent-runtime/output-sink.js';
+import { agentRunRegistry } from '../../agent-runtime/agent-run.js';
+import type { AgentRun } from '../../agent-runtime/agent-run.js';
+import { subscribeReactEvents } from '../../agent-runtime/react-events.js';
 import type { PendingToolApproval } from '../tools/approvalStore.js';
 
 class ReactEventSink extends AccumulatingSink {
@@ -153,7 +153,7 @@ async function continueActiveRun(
     };
   }
 
-  const continuation = await reactChat(
+  const continuation = await runAgentChat(
     [...request.resume.messages, execution.assistantMsg, execution.toolMsg],
     request.resume.settings,
     sink,
@@ -163,8 +163,7 @@ async function continueActiveRun(
     undefined,
     run,
   );
-  if (continuation.content)
-    persistContinuation(request.conversationId, continuation.content, continuation.reasoning);
+  persistApprovalContinuation(request.conversationId, continuation.content, continuation.reasoning);
 
   return {
     status: 'completed',
@@ -176,18 +175,6 @@ async function continueActiveRun(
       events: sink instanceof ReactEventSink ? sink.events : [],
     },
   };
-}
-
-/** Persists only the final assistant answer produced after an approval continuation. */
-function persistContinuation(conversationId: string, content: string, reasoning: string): void {
-  messageRepo.create({
-    id: uuidv4(),
-    conversationId,
-    role: 'assistant',
-    content,
-    reasoning: reasoning || null,
-    createdAt: new Date().toISOString(),
-  });
 }
 
 /**
@@ -254,7 +241,7 @@ export async function resolveToolApproval(
   if (!request.resume || !execution.succeeded) return response;
 
   const sink = new ReactEventSink();
-  const continuation = await reactChat(
+  const continuation = await runAgentChat(
     [...request.resume.messages, execution.assistantMsg, execution.toolMsg],
     request.resume.settings,
     sink,
@@ -263,16 +250,7 @@ export async function resolveToolApproval(
     conversationId,
   );
 
-  if (continuation.content) {
-    messageRepo.create({
-      id: uuidv4(),
-      conversationId,
-      role: 'assistant',
-      content: continuation.content,
-      reasoning: continuation.reasoning || null,
-      createdAt: new Date().toISOString(),
-    });
-  }
+  persistApprovalContinuation(conversationId, continuation.content, continuation.reasoning);
 
   return {
     ...response,
@@ -394,7 +372,7 @@ export async function streamToolApproval(
     return;
   }
 
-  const continuation = await reactChat(
+  const continuation = await runAgentChat(
     [...request.resume.messages, execution.assistantMsg, execution.toolMsg],
     request.resume.settings,
     sink,
@@ -403,16 +381,7 @@ export async function streamToolApproval(
     conversationId,
   );
 
-  if (continuation.content) {
-    messageRepo.create({
-      id: uuidv4(),
-      conversationId,
-      role: 'assistant',
-      content: continuation.content,
-      reasoning: continuation.reasoning || null,
-      createdAt: new Date().toISOString(),
-    });
-  }
+  persistApprovalContinuation(conversationId, continuation.content, continuation.reasoning);
 }
 
 function parseToolResult(content: string): unknown {

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AgentRun, AgentRunRegistry } from '../agentRun.js';
-import type { ReactEvent } from '../reactEvents.js';
+import { AgentRun, AgentRunRegistry } from '../agent-run.js';
+import type { ReactEvent } from '../react-events.js';
 
 describe('AgentRun', () => {
   it('commits recovery events before notifying subscribers', () => {

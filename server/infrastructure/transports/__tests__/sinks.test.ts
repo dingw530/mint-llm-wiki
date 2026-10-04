@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { AccumulatingSink, DeferredEndSink, IpcSink, TerminalSink } from '../sink.js';
+import { AccumulatingSink, DeferredEndSink, IpcSink, TerminalSink } from '../sinks.js';
 
 describe('AccumulatingSink', () => {
   it('should accumulate written data', () => {

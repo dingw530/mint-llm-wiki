@@ -13,7 +13,7 @@ describe('Conversations application boundary', () => {
   it.each([
     ['services/messageService.ts', 'infrastructure/persistence/conversation-repository.ts', false],
     ['domains/conversations/conversation-service.ts', 'repositories/settingsRepository.ts', false],
-    ['domains/conversations/conversation-service.ts', 'services/agentRun.ts', false],
+    ['domains/conversations/conversation-service.ts', 'agent-runtime/agent-run.ts', false],
     [
       'endpoints/definitions/conversations.ts',
       'domains/conversations/conversation-service.ts',

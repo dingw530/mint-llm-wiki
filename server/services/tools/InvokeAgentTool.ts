@@ -8,10 +8,10 @@
 import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext } from './BaseTool.js';
-import { reactChat } from '../../agent-runtime/react-loop-core.js';
+import { runAgentChat } from '../../bootstrap/agent-runtime.js';
 import * as agentService from '../../domains/agents/index.js';
 import * as settingsService from '../api/settingsService.js';
-import { AccumulatingSink } from '../sink.js';
+import { AccumulatingSink } from '../../infrastructure/transports/sinks.js';
 
 // ── 输入 Schema ──
 
@@ -140,7 +140,7 @@ ${agents || '(暂无可用 Worker)'}
     const sink = new AccumulatingSink();
 
     try {
-      const result = await reactChat(
+      const result = await runAgentChat(
         messages,
         settings,
         sink,

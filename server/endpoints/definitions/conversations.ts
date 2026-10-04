@@ -2,7 +2,7 @@ import * as conversationService from '../../domains/conversations/index.js';
 import { httpError } from '../helpers.js';
 import type { Request, Response } from 'express';
 import type { EndpointDescriptor } from '../types.js';
-import { ResSink } from '../../services/sink.js';
+import { ResSink } from '../../infrastructure/transports/sinks.js';
 import * as memorySpaceService from '../../services/api/memorySpaceService.js';
 
 /** 延迟加载摄入事件流，避免生成 endpoint manifest 时初始化摄入服务。 */

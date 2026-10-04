@@ -1,5 +1,5 @@
-import type { ReactEvent, ReactEventBase, ReactEventPayload } from './reactEvents.js';
-import type { AgentRunEventWriter, PersistedAgentRunEvent } from './agentRunPersistence.js';
+import type { ReactEvent, ReactEventBase, ReactEventPayload } from './react-events.js';
+import type { AgentRunEventWriter, PersistedAgentRunEvent } from './agent-run-persistence.js';
 
 export type AgentRunPhase =
   'running' | 'paused_for_approval' | 'completed' | 'failed' | 'cancelled';

@@ -3,7 +3,7 @@ import {
   buildAgentStatusMessage,
   isAgentStatusMessage,
   removeAgentStatusMessages,
-} from '../agentStatusBar.js';
+} from '../agent-status.js';
 
 const snapshot = {
   round: 2,

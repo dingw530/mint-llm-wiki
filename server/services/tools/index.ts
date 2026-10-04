@@ -74,9 +74,10 @@ export const builtinTools = [
  * 注册所有内置工具
  */
 export function initializeTools(): void {
+  if (toolsInitialized) return;
   toolRegistry.registerAll(builtinTools);
+  toolsInitialized = true;
   console.log(`[Tools] Initialized ${builtinTools.length} builtin tools`);
 }
 
-// 自动初始化
-initializeTools();
+let toolsInitialized = false;

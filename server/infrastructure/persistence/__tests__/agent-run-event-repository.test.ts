@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { runMigrations } from '../../migrations/index.js';
-import { AgentRunEventRepository } from '../agentRunEventRepository.js';
+import { runMigrations } from '../../../migrations/index.js';
+import { AgentRunEventRepository } from '../agent-run-event-repository.js';
 
 describe('AgentRunEventRepository', () => {
   let db: Database.Database;

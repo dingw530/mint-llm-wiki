@@ -9,32 +9,32 @@ const mockAdapter = {
   call: vi.fn(),
 };
 
-vi.mock('../adapters/apiAdapter.js', () => ({
+vi.mock('../../services/adapters/apiAdapter.js', () => ({
   getAdapter: vi.fn(() => mockAdapter as any),
   registerAdapter: vi.fn(),
 }));
 
-vi.mock('../toolRoundEngine.js', () => ({
+vi.mock('../../services/toolRoundEngine.js', () => ({
   toolLoopEngine: {
     executeRound: vi.fn(),
     executeToolCallWithRetry: vi.fn(),
   },
 }));
 
-vi.mock('../toolOrchestration.js', () => ({
+vi.mock('../../services/toolOrchestration.js', () => ({
   getAllToolDefinitions: vi.fn().mockResolvedValue([]),
   getToolCallSummary: vi.fn().mockReturnValue(undefined),
 }));
 
-vi.mock('../utils/contextWindow.js', () => ({
+vi.mock('../../services/utils/contextWindow.js', () => ({
   DEFAULT_CONTEXT_TOKEN_BUDGET: 100000,
   DEFAULT_OUTPUT_TOKEN_RESERVE: 4096,
   prepareContext: vi.fn(async (msgs) => msgs),
 }));
 
-import { reactChat } from '../../agent-runtime/react-loop-core.js';
-import { toolLoopEngine } from '../toolRoundEngine.js';
-import { getAdapter } from '../adapters/apiAdapter.js';
+import { runAgentChat as reactChat } from '../../bootstrap/agent-runtime.js';
+import { toolLoopEngine } from '../../services/toolRoundEngine.js';
+import { getAdapter } from '../../services/adapters/apiAdapter.js';
 
 describe('reactChat', () => {
   beforeEach(() => {
@@ -206,7 +206,7 @@ describe('reactChat', () => {
     };
     const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
     const contextMessages: any[] = [];
-    const { getToolCallSummary } = await import('../toolOrchestration.js');
+    const { getToolCallSummary } = await import('../../services/toolOrchestration.js');
     vi.mocked(getToolCallSummary).mockReturnValue('正在执行工具');
 
     vi.mocked(toolLoopEngine.executeRound)

@@ -6,32 +6,19 @@ import type {
   ToolCall,
   ToolDefinition,
 } from '../types.js';
-import { getAdapter } from '../services/adapters/apiAdapter.js';
-import { toolLoopEngine } from '../services/toolRoundEngine.js';
-import { getAllToolDefinitions, getToolCallSummary } from '../services/toolOrchestration.js';
-import type { Sink } from '../services/sink.js';
-import {
-  DEFAULT_CONTEXT_TOKEN_BUDGET,
-  DEFAULT_OUTPUT_TOKEN_RESERVE,
-  prepareContext,
-} from '../services/utils/contextWindow.js';
+import type { AgentRuntimePorts } from './contracts.js';
+import type { A2UIComposer } from '../services/a2ui/composer.js';
+import type { Sink } from './output-sink.js';
 import { v4 as uuidv4 } from 'uuid';
-import { ReactEventEmitter, subscribeReactEvents } from '../services/reactEvents.js';
-import type { ReactEventPayload } from '../services/reactEvents.js';
-import { type AgentRun, agentRunRegistry } from '../services/agentRun.js';
-import { createDurableAgentRun } from '../services/agentRunFactory.js';
-import { estimateMessagesTokens } from '../services/utils/tokenEstimator.js';
+import { ReactEventEmitter, subscribeReactEvents } from './react-events.js';
+import type { ReactEventPayload } from './react-events.js';
+import type { AgentRun } from './agent-run.js';
 import {
   buildAgentStatusMessage,
   removeAgentStatusMessages,
   type AgentToolBudget,
   type AgentStatusSnapshot,
-} from '../services/agentStatusBar.js';
-import { A2UIComposer } from '../services/a2ui/composer.js';
-import {
-  withLangfuseAgentContext,
-  withLangfuseRoundContext,
-} from '../services/observability/langfuse.js';
+} from './agent-status.js';
 import type { RuntimeContext } from '../services/runtime/runtimeContext.js';
 
 // ── 编辑距离相似度（用于循环检测） ──
@@ -203,14 +190,15 @@ function hasExhaustedToolBudget(
 /** 在每轮请求模型前压缩上下文，摘要提示词明确要求保留后续工具执行所需的事实。 */
 async function prepareRoundContext(
   messages: HistoryMessage[],
-  adapter: NonNullable<ReturnType<typeof getAdapter>>,
+  adapter: NonNullable<ReturnType<AgentRuntimePorts['getAdapter']>>,
   settings: AiSettings,
   apiUrl: string,
   apiKey: string,
+  ports: AgentRuntimePorts,
   signal?: AbortSignal,
 ): Promise<HistoryMessage[]> {
-  return prepareContext(messages, {
-    maxTokens: DEFAULT_CONTEXT_TOKEN_BUDGET - DEFAULT_OUTPUT_TOKEN_RESERVE,
+  return ports.prepareContext(messages, {
+    maxTokens: ports.contextTokenBudget - ports.outputTokenReserve,
     summarize: async (olderMessages) => {
       const source = olderMessages
         .map((message) => {
@@ -236,53 +224,159 @@ async function prepareRoundContext(
   });
 }
 
-/** 并发执行本轮工具调用，同时保留原始索引以便恢复 assistant/tool 消息顺序。 */
+interface ToolCallExecutionContext {
+  runId: string;
+  round: number;
+  currentMessages: HistoryMessage[];
+  settings: AiSettings;
+  agent?: string;
+  conversationId?: string;
+  maxRetries: number;
+  signal?: AbortSignal;
+  events: ReactEventEmitter;
+  state: ReactRunState;
+  maxRounds: number;
+  runStartedAt: number;
+  executionPolicy?: ReactExecutionPolicy;
+  runtimeContext?: RuntimeContext;
+  ports: AgentRuntimePorts;
+}
+
+/** Run tool calls concurrently while retaining their original context order. */
 async function executeToolCalls(
   toolCalls: ToolCall[],
   result: StreamResult,
-  context: {
-    runId: string;
-    round: number;
-    currentMessages: HistoryMessage[];
-    settings: AiSettings;
-    agent?: string;
-    conversationId?: string;
-    maxRetries: number;
-    signal?: AbortSignal;
-    events: ReactEventEmitter;
-    state: ReactRunState;
-    maxRounds: number;
-    runStartedAt: number;
-    executionPolicy?: ReactExecutionPolicy;
-    runtimeContext?: RuntimeContext;
-  },
+  context: ToolCallExecutionContext,
 ): Promise<ToolExecutionResult[]> {
-  const { state, events } = context;
   return Promise.all(
-    toolCalls.map(async (originalCall, index) => {
-      const callId = originalCall.id || `${context.runId}:r${context.round}:c${index}`;
-      const toolCall = { ...originalCall, id: callId };
-      const startedAt = Date.now();
-      const canExecute = reserveToolCall(
-        toolCall.function.name,
-        state,
-        context.executionPolicy,
-        context.round,
-      );
-      events.emit({
-        type: 'tool_call_start',
-        state: 'executing_tools',
+    toolCalls.map((toolCall, index) => executeOneToolCall(toolCall, index, result, context)),
+  );
+}
+
+async function executeOneToolCall(
+  originalCall: ToolCall,
+  index: number,
+  result: StreamResult,
+  context: ToolCallExecutionContext,
+): Promise<ToolExecutionResult> {
+  const callId = originalCall.id || `${context.runId}:r${context.round}:c${index}`;
+  const toolCall = { ...originalCall, id: callId };
+  const startedAt = Date.now();
+  const allowed = reserveToolCall(
+    toolCall.function.name,
+    context.state,
+    context.executionPolicy,
+    context.round,
+  );
+  emitToolCallStarted(toolCall, callId, context);
+  if (!allowed)
+    return budgetRejectedToolResult(toolCall, callId, index, result, startedAt, context);
+
+  const { execution, attempts } = await executeToolCallWithRetries(toolCall, result, context);
+  emitToolCallOutcome(toolCall, callId, attempts, execution, startedAt, context);
+  return {
+    index,
+    assistantMsg: execution.assistantMsg,
+    toolMsg: execution.toolMsg,
+    approvalRequired: execution.approvalRequired,
+    rawResult: execution.rawResult,
+  };
+}
+
+function emitToolCallStarted(
+  toolCall: ToolCall,
+  callId: string,
+  context: ToolCallExecutionContext,
+): void {
+  const { state, events, round } = context;
+  events.emit({
+    type: 'tool_call_start',
+    state: 'executing_tools',
+    round,
+    callId,
+    toolName: toolCall.function.name,
+    arguments: parseToolArguments(toolCall.function.arguments),
+    summary: context.ports.getToolCallSummary(toolCall),
+  });
+  state.currentTool = toolCall.function.name;
+  events.emit({
+    type: 'agent_status',
+    ...getAgentStatus(
+      state,
+      'executing_tools',
+      round,
+      context.maxRounds,
+      context.runStartedAt,
+      context.executionPolicy,
+    ),
+  });
+}
+
+function budgetRejectedToolResult(
+  toolCall: ToolCall,
+  callId: string,
+  index: number,
+  result: StreamResult,
+  startedAt: number,
+  context: ToolCallExecutionContext,
+): ToolExecutionResult {
+  const message = `评测工具预算已用尽，已拦截 ${toolCall.function.name}。请基于已有结果直接回答，不要继续调用工具。`;
+  context.events.emit({
+    type: 'tool_call_end',
+    round: context.round,
+    callId,
+    toolName: toolCall.function.name,
+    result: message,
+    duration: Date.now() - startedAt,
+    status: 'success',
+    summary: '已达到评测工具预算，未执行该调用',
+  });
+  context.state.forceFinalAnswer = true;
+  context.state.budgetExhausted = true;
+  return {
+    index,
+    assistantMsg: {
+      role: 'assistant',
+      content: '',
+      tool_calls: [toolCall],
+      reasoning: result.reasoning || undefined,
+    },
+    toolMsg: { role: 'tool', tool_call_id: toolCall.id, content: message },
+  };
+}
+
+async function executeToolCallWithRetries(
+  toolCall: ToolCall,
+  result: StreamResult,
+  context: ToolCallExecutionContext,
+): Promise<{
+  execution: Awaited<ReturnType<AgentRuntimePorts['executeToolCallWithRetry']>>;
+  attempts: number;
+}> {
+  let attempts = 0;
+  const execution = await context.ports.executeToolCallWithRetry(
+    toolCall,
+    result.reasoning,
+    context.maxRetries,
+    (attempt, error) => {
+      attempts = attempt;
+      context.state.retryCount += 1;
+      context.state.lastError = error.message.substring(0, 200);
+      context.events.emit({
+        type: 'tool_call_error',
         round: context.round,
-        callId,
+        callId: toolCall.id,
         toolName: toolCall.function.name,
-        arguments: parseToolArguments(toolCall.function.arguments),
-        summary: getToolCallSummary(toolCall),
+        error: error.message.substring(0, 200),
+        retryCount: attempt,
+        maxRetries: context.maxRetries,
+        phase: 'retrying',
+        status: 'retrying',
       });
-      state.currentTool = toolCall.function.name;
-      events.emit({
+      context.events.emit({
         type: 'agent_status',
         ...getAgentStatus(
-          state,
+          context.state,
           'executing_tools',
           context.round,
           context.maxRounds,
@@ -290,134 +384,78 @@ async function executeToolCalls(
           context.executionPolicy,
         ),
       });
-
-      if (!canExecute) {
-        const message = `评测工具预算已用尽，已拦截 ${toolCall.function.name}。请基于已有结果直接回答，不要继续调用工具。`;
-        events.emit({
-          type: 'tool_call_end',
-          round: context.round,
-          callId,
-          toolName: toolCall.function.name,
-          result: message,
-          duration: Date.now() - startedAt,
-          status: 'success',
-          summary: '已达到评测工具预算，未执行该调用',
-        });
-        state.forceFinalAnswer = true;
-        state.budgetExhausted = true;
-        return {
-          index,
-          assistantMsg: {
-            role: 'assistant',
-            content: '',
-            tool_calls: [toolCall],
-            reasoning: result.reasoning || undefined,
-          },
-          toolMsg: { role: 'tool', tool_call_id: toolCall.id, content: message },
-        };
-      }
-
-      let attempts = 0;
-      const execution = await toolLoopEngine.executeToolCallWithRetry(
-        toolCall,
-        result.reasoning,
-        context.maxRetries,
-        (attempt, error) => {
-          attempts = attempt;
-          state.retryCount += 1;
-          state.lastError = error.message.substring(0, 200);
-          events.emit({
-            type: 'tool_call_error',
-            round: context.round,
-            callId,
-            toolName: toolCall.function.name,
-            error: error.message.substring(0, 200),
-            retryCount: attempt,
-            maxRetries: context.maxRetries,
-            phase: 'retrying',
-            status: 'retrying',
-          });
-          events.emit({
-            type: 'agent_status',
-            ...getAgentStatus(
-              state,
-              'executing_tools',
-              context.round,
-              context.maxRounds,
-              context.runStartedAt,
-              context.executionPolicy,
-            ),
-          });
-        },
-        context.conversationId,
-        {
-          approvalContext: {
-            runId: context.events.runId,
-            messages: cloneMessages(context.currentMessages),
-            settings: context.settings,
-            agent: context.agent,
-            reasoning: result.reasoning,
-          },
-          runtimeContext: context.runtimeContext,
-        },
-      );
-      // 工具可能并发完成；事件按完成时间发送，但消息稍后按 index 排序回填上下文。
-      const duration = Date.now() - startedAt;
-      const resultStr = execution.toolMsg.content.substring(0, 2000);
-
-      if (execution.approvalRequired) {
-        events.emit({
-          type: 'approval_required',
-          round: context.round,
-          callId,
-          toolName: toolCall.function.name,
-          approvalId: execution.approvalRequired.approvalId,
-          reason: execution.approvalRequired.reason,
-        });
-        events.emit({
-          type: 'tool_call_error',
-          round: context.round,
-          callId,
-          toolName: toolCall.function.name,
-          error: execution.approvalRequired.reason,
-          retryCount: attempts,
-          phase: 'final',
-          status: 'approval_required',
-        });
-      } else if (execution.succeeded) {
-        state.lastError = undefined;
-        events.emit({
-          type: 'tool_call_end',
-          round: context.round,
-          callId,
-          toolName: toolCall.function.name,
-          result: resultStr,
-          duration,
-          status: 'success',
-          summary: execution.resultSummary,
-        });
-      } else {
-        state.lastError = resultStr;
-        events.emit({
-          type: 'tool_call_error',
-          round: context.round,
-          callId,
-          toolName: toolCall.function.name,
-          error: resultStr,
-          retryCount: attempts,
-          phase: 'final',
-          status: 'failed',
-        });
-      }
-      return {
-        index,
-        assistantMsg: execution.assistantMsg,
-        toolMsg: execution.toolMsg,
-        approvalRequired: execution.approvalRequired,
-        rawResult: execution.rawResult,
-      };
-    }),
+    },
+    context.conversationId,
+    {
+      approvalContext: {
+        runId: context.events.runId,
+        messages: cloneMessages(context.currentMessages),
+        settings: context.settings,
+        agent: context.agent,
+        reasoning: result.reasoning,
+      },
+      runtimeContext: context.runtimeContext,
+    },
   );
+  return { execution, attempts };
+}
+
+function emitToolCallOutcome(
+  toolCall: ToolCall,
+  callId: string,
+  attempts: number,
+  execution: Awaited<ReturnType<AgentRuntimePorts['executeToolCallWithRetry']>>,
+  startedAt: number,
+  context: ToolCallExecutionContext,
+): void {
+  const duration = Date.now() - startedAt;
+  const result = execution.toolMsg.content.substring(0, 2000);
+  if (execution.approvalRequired) {
+    context.events.emit({
+      type: 'approval_required',
+      round: context.round,
+      callId,
+      toolName: toolCall.function.name,
+      approvalId: execution.approvalRequired.approvalId,
+      reason: execution.approvalRequired.reason,
+    });
+    context.events.emit({
+      type: 'tool_call_error',
+      round: context.round,
+      callId,
+      toolName: toolCall.function.name,
+      error: execution.approvalRequired.reason,
+      retryCount: attempts,
+      phase: 'final',
+      status: 'approval_required',
+    });
+    return;
+  }
+  if (execution.succeeded) {
+    context.state.lastError = undefined;
+    context.events.emit({
+      type: 'tool_call_end',
+      round: context.round,
+      callId,
+      toolName: toolCall.function.name,
+      result,
+      duration,
+      status: 'success',
+      summary: execution.resultSummary,
+    });
+    return;
+  }
+  context.state.lastError = result;
+  context.events.emit({
+    type: 'tool_call_error',
+    round: context.round,
+    callId,
+    toolName: toolCall.function.name,
+    error: result,
+    retryCount: attempts,
+    phase: 'final',
+    status: 'failed',
+  });
 }
 
 /** 预留一次工具调用名额；被拒绝的调用不计入已消耗预算。 */
@@ -466,12 +504,427 @@ function cloneMessages(messages: HistoryMessage[]): HistoryMessage[] {
   }));
 }
 
+interface PreparedModelExecution {
+  adapter: NonNullable<ReturnType<AgentRuntimePorts['getAdapter']>>;
+  tools: ToolDefinition[];
+}
+
+interface ModelRoundInput {
+  messages: HistoryMessage[];
+  settings: AiSettings;
+  tools?: ToolDefinition[];
+  adapter: NonNullable<ReturnType<AgentRuntimePorts['getAdapter']>>;
+  signal?: AbortSignal;
+  runtimeContext?: RuntimeContext;
+  label: string;
+  run: AgentRun;
+  runId: string;
+  round: number;
+  events: ReactEventEmitter;
+  composer: A2UIComposer;
+  ports: AgentRuntimePorts;
+}
+
+interface ModelRoundOutput {
+  result: StreamResult;
+  answerStreamedThisRound: boolean;
+}
+
+function emitRunFailure(events: ReactEventEmitter, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  events.emit({ type: 'run_failed', state: 'failed', error: message });
+}
+
+/** Resolve the model adapter and tool catalog before entering the round loop. */
+async function prepareModelExecution(
+  settings: AiSettings,
+  agent: string | undefined,
+  ports: AgentRuntimePorts,
+  events: ReactEventEmitter,
+): Promise<PreparedModelExecution | undefined> {
+  if (!settings.apiUrl || !settings.apiKey) {
+    emitRunFailure(events, new Error('API URL or API Key not configured'));
+    return undefined;
+  }
+  const adapter = ports.getAdapter(settings.apiType || 'openai-chat');
+  if (!adapter) {
+    emitRunFailure(events, new Error(`Unsupported API type: ${settings.apiType}`));
+    return undefined;
+  }
+  try {
+    return { adapter, tools: await ports.getToolDefinitions(agent) };
+  } catch (error) {
+    emitRunFailure(events, error);
+    return undefined;
+  }
+}
+
+function prepareRoundMessages(
+  messages: HistoryMessage[],
+  state: ReactRunState,
+  round: number,
+  maxRounds: number,
+  runStartedAt: number,
+  executionPolicy: ReactExecutionPolicy | undefined,
+  events: ReactEventEmitter,
+): HistoryMessage[] {
+  const status = getAgentStatus(
+    state,
+    'awaiting_model',
+    round,
+    maxRounds,
+    runStartedAt,
+    executionPolicy,
+  );
+  const nextMessages = [...removeAgentStatusMessages(messages), buildAgentStatusMessage(status)];
+  events.emit({ type: 'agent_status', ...status });
+  events.emit({ type: 'round_started', state: 'awaiting_model', round });
+  return nextMessages;
+}
+
+async function executeModelRound(input: ModelRoundInput): Promise<ModelRoundOutput | undefined> {
+  let answerStreamedThisRound = false;
+  try {
+    const result = await input.ports.withRoundContext(input.run, input.round, () =>
+      input.ports.executeRound({
+        messages: input.messages,
+        settings: input.settings,
+        tools: input.tools,
+        adapter: input.adapter,
+        signal: input.signal,
+        runtimeContext: input.runtimeContext,
+        label: input.label,
+        emitEvent: (event: ReactEventPayload) => {
+          if ((event.type === 'answer' || event.type === 'thought') && event.content) {
+            answerStreamedThisRound = true;
+            emitComposedAnswer(
+              input.composer,
+              input.events,
+              input.runId,
+              input.round,
+              event.content,
+            );
+            return;
+          }
+          input.events.emit({
+            ...event,
+            ...(event.type === 'thought' || event.type === 'answer' ? { round: input.round } : {}),
+          } as ReactEventPayload);
+        },
+      }),
+    );
+    return { result, answerStreamedThisRound };
+  } catch (error) {
+    console.error('[reactChat] executeRound failed:', error);
+    emitRunFailure(input.events, error);
+    return undefined;
+  }
+}
+
+function completeAnswerRound(
+  result: StreamResult,
+  currentMessages: HistoryMessage[],
+  totalUsage: TokenUsage | undefined,
+  state: ReactRunState,
+  maxRounds: number,
+  round: number,
+  runStartedAt: number,
+  executionPolicy: ReactExecutionPolicy | undefined,
+  composer: A2UIComposer,
+  events: ReactEventEmitter,
+  runId: string,
+  answerStreamed: boolean,
+  ports: AgentRuntimePorts,
+): void {
+  if (!answerStreamed && result.content)
+    emitComposedAnswer(composer, events, runId, round, result.content);
+  emitComposedAnswer(composer, events, runId, round, '', true);
+  state.finalContent = composer.sanitizeContent(result.content);
+  state.finalReasoning = result.reasoning;
+  state.streamedAsAnswer = true;
+  events.emit({
+    type: 'agent_status',
+    ...getAgentStatus(state, 'completed', round, maxRounds, runStartedAt, executionPolicy),
+  });
+  events.emit({
+    type: 'run_completed',
+    state: 'completed',
+    content: state.finalContent,
+    reasoning: state.finalReasoning,
+    ...(totalUsage?.totalTokens === undefined
+      ? {
+          estimatedTokens: ports.estimateMessagesTokens([
+            ...currentMessages,
+            { role: 'assistant', content: state.finalContent, reasoning: state.finalReasoning },
+          ]),
+        }
+      : totalUsage),
+  });
+}
+
+function appendToolResultsToContext(
+  toolCalls: ToolCall[],
+  toolResults: ToolExecutionResult[],
+  composer: A2UIComposer,
+  runId: string,
+  round: number,
+  currentMessages: HistoryMessage[],
+): void {
+  toolResults
+    .sort((left, right) => left.index - right.index)
+    .forEach((toolResult) => {
+      const toolCall = toolCalls[toolResult.index];
+      const uiResult = composer.handle({
+        runId,
+        round,
+        event: {
+          kind: 'tool_result',
+          toolName: toolCall.function.name,
+          toolCallId: toolCall.id,
+          result: toolResult.toolMsg.content,
+        },
+      });
+      if (toolResult.rawResult !== undefined) {
+        composer.captureToolResult(toolCall.function.name, toolResult.rawResult, {
+          runId,
+          round,
+          toolCallId: toolCall.id,
+        });
+      }
+      if (uiResult.contextResult) toolResult.toolMsg.content = uiResult.contextResult;
+      currentMessages.push(toolResult.assistantMsg, toolResult.toolMsg);
+    });
+}
+
+function markRepeatedToolLoop(
+  toolCalls: ToolCall[],
+  recentCallSignatures: string[],
+  state: ReactRunState,
+  events: ReactEventEmitter,
+  round: number,
+  maxRounds: number,
+  runStartedAt: number,
+  executionPolicy: ReactExecutionPolicy | undefined,
+): void {
+  const signature = toolCalls
+    .map((toolCall) => `${toolCall.function.name}:${toolCall.function.arguments}`)
+    .sort()
+    .join('|');
+  recentCallSignatures.push(signature);
+  if (recentCallSignatures.length < 3) return;
+  const lastThree = recentCallSignatures.slice(-3);
+  if (!lastThree.every((item) => levenshteinSimilarity(item, lastThree[0]) > 0.7)) return;
+  state.forceFinalAnswer = true;
+  events.emit({
+    type: 'agent_status',
+    ...getAgentStatus(state, 'finalizing', round, maxRounds, runStartedAt, executionPolicy),
+  });
+  events.emit({
+    type: 'loop_detected',
+    state: 'finalizing',
+    round,
+    message: '检测到重复工具调用，强制生成最终答案',
+  });
+}
+
+function finishReactRun(
+  signal: AbortSignal | undefined,
+  state: ReactRunState,
+  totalUsage: TokenUsage | undefined,
+  composer: A2UIComposer,
+  events: ReactEventEmitter,
+): void {
+  if (events.isTerminal) return;
+  if (signal?.aborted) {
+    events.emit({ type: 'run_cancelled', state: 'cancelled' });
+    return;
+  }
+  if (state.streamedAsAnswer || state.awaitingApproval) return;
+  if (state.finalReasoning) events.emit({ type: 'thought', reasoning: state.finalReasoning });
+  events.emit({ type: 'answer_ready' });
+  events.emit({
+    type: 'run_completed',
+    state: 'completed',
+    content: composer.sanitizeContent(state.finalContent),
+    reasoning: state.finalReasoning,
+    ...(totalUsage?.totalTokens === undefined ? {} : totalUsage),
+  });
+}
+
+interface ReactExecutionState {
+  currentMessages: HistoryMessage[];
+  totalUsage?: TokenUsage;
+}
+
+interface ReactLoopContext {
+  settings: AiSettings;
+  run: AgentRun;
+  runId: string;
+  agent?: string;
+  signal?: AbortSignal;
+  conversationId?: string;
+  executionPolicy?: ReactExecutionPolicy;
+  runtimeContext?: RuntimeContext;
+  ports: AgentRuntimePorts;
+  events: ReactEventEmitter;
+  composer: A2UIComposer;
+  state: ReactRunState;
+  prepared: PreparedModelExecution;
+  execution: ReactExecutionState;
+}
+
+/** Process one model round, preserving model/tool/terminal event ordering. */
+async function executeReactRound(
+  context: ReactLoopContext,
+  round: number,
+  maxRounds: number,
+  maxRetries: number,
+  runStartedAt: number,
+  recentCallSignatures: string[],
+): Promise<boolean> {
+  if (hasExhaustedToolBudget(context.state, context.executionPolicy)) {
+    context.state.forceFinalAnswer = true;
+    context.state.budgetExhausted = true;
+  }
+  if (context.signal?.aborted) {
+    context.events.emit({ type: 'run_cancelled', state: 'cancelled' });
+    return true;
+  }
+  context.execution.currentMessages = await prepareRoundContext(
+    context.execution.currentMessages,
+    context.prepared.adapter,
+    context.settings,
+    context.settings.apiUrl,
+    context.settings.apiKey,
+    context.ports,
+    context.signal,
+  );
+  const isLast = context.state.forceFinalAnswer || round === maxRounds;
+  const isAnswerRound = isLast || context.state.toolCount > 0;
+  context.execution.currentMessages = prepareRoundMessages(
+    context.execution.currentMessages,
+    context.state,
+    round,
+    maxRounds,
+    runStartedAt,
+    context.executionPolicy,
+    context.events,
+  );
+  const output = await executeModelRound({
+    messages: context.execution.currentMessages,
+    settings: context.settings,
+    tools: isLast ? undefined : context.prepared.tools,
+    adapter: context.prepared.adapter,
+    signal: context.signal,
+    runtimeContext: context.runtimeContext,
+    label: isAnswerRound ? 'react-answer' : 'react-thought',
+    run: context.run,
+    runId: context.runId,
+    round,
+    events: context.events,
+    composer: context.composer,
+    ports: context.ports,
+  });
+  if (!output) return true;
+
+  context.execution.totalUsage = addUsage(context.execution.totalUsage, output.result.usage);
+  const toolCalls =
+    output.result.toolCalls?.filter((toolCall): toolCall is ToolCall => Boolean(toolCall)) || null;
+  if (!toolCalls?.length) {
+    completeAnswerRound(
+      output.result,
+      context.execution.currentMessages,
+      context.execution.totalUsage,
+      context.state,
+      maxRounds,
+      round,
+      runStartedAt,
+      context.executionPolicy,
+      context.composer,
+      context.events,
+      context.runId,
+      output.answerStreamedThisRound,
+      context.ports,
+    );
+    return true;
+  }
+  return executeReactToolRound(
+    context,
+    toolCalls,
+    output.result,
+    round,
+    maxRounds,
+    maxRetries,
+    runStartedAt,
+    recentCallSignatures,
+  );
+}
+
+/** Execute the tool round and decide whether the model loop should continue. */
+async function executeReactToolRound(
+  context: ReactLoopContext,
+  toolCalls: ToolCall[],
+  result: StreamResult,
+  round: number,
+  maxRounds: number,
+  maxRetries: number,
+  runStartedAt: number,
+  recentCallSignatures: string[],
+): Promise<boolean> {
+  const toolResults = await executeToolCalls(toolCalls, result, {
+    runId: context.runId,
+    round,
+    currentMessages: context.execution.currentMessages,
+    settings: context.settings,
+    agent: context.agent,
+    conversationId: context.conversationId,
+    maxRetries,
+    signal: context.signal,
+    events: context.events,
+    state: context.state,
+    maxRounds,
+    runStartedAt,
+    executionPolicy: context.executionPolicy,
+    runtimeContext: context.runtimeContext,
+    ports: context.ports,
+  });
+  if (toolResults.some((toolResult) => toolResult.approvalRequired)) {
+    context.state.awaitingApproval = true;
+    return true;
+  }
+  appendToolResultsToContext(
+    toolCalls,
+    toolResults,
+    context.composer,
+    context.runId,
+    round,
+    context.execution.currentMessages,
+  );
+  context.prepared.tools = await context.ports.getToolDefinitions(context.agent);
+  if (context.signal?.aborted) {
+    context.events.emit({ type: 'run_cancelled', state: 'cancelled' });
+    return true;
+  }
+  markRepeatedToolLoop(
+    toolCalls,
+    recentCallSignatures,
+    context.state,
+    context.events,
+    round,
+    maxRounds,
+    runStartedAt,
+    context.executionPolicy,
+  );
+  return false;
+}
+
 // ── ReAct 循环引擎 ──
 /** Executes the ReAct loop against an AgentRun without depending on any transport sink. */
 export async function executeReactRun(
   messages: HistoryMessage[],
   settings: AiSettings,
   run: AgentRun,
+  ports: AgentRuntimePorts,
   agent?: string,
   signal?: AbortSignal,
   conversationId?: string,
@@ -480,279 +933,53 @@ export async function executeReactRun(
 ): Promise<StreamResult> {
   const runId = run.runId;
   const events = new ReactEventEmitter(run);
-  const a2uiComposer = new A2UIComposer();
-  const fail = (error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    events.emit({ type: 'run_failed', state: 'failed', error: message });
-  };
-
-  const { apiUrl, apiKey } = settings;
-  if (!apiUrl || !apiKey) {
-    fail(new Error('API URL or API Key not configured'));
+  const composer = ports.createComposer();
+  const prepared = await prepareModelExecution(settings, agent, ports, events);
+  if (!prepared)
     return { content: '', reasoning: '', toolCalls: null, uiBlocks: [], wikiReferences: [] };
-  }
 
-  const adapter = getAdapter(settings.apiType || 'openai-chat');
-  if (!adapter) {
-    fail(new Error(`Unsupported API type: ${settings.apiType}`));
-    return { content: '', reasoning: '', toolCalls: null, uiBlocks: [], wikiReferences: [] };
-  }
-
-  const maxIterations = Math.max(1, Math.min(20, settings.reactMaxIterations ?? 5));
+  const maxRounds = Math.max(1, Math.min(20, settings.reactMaxIterations ?? 5));
   const maxRetries = Math.max(0, Math.min(10, settings.toolMaxRetries ?? 5));
-
-  let tools: ToolDefinition[] = [];
-  try {
-    tools = await getAllToolDefinitions(agent);
-  } catch (error) {
-    fail(error);
-    return { content: '', reasoning: '', toolCalls: null, uiBlocks: [], wikiReferences: [] };
-  }
-
-  let currentMessages: HistoryMessage[] = [...messages];
   const state = createRunState();
-  let iteration = 0;
-  let totalUsage: TokenUsage | undefined;
+  const context: ReactLoopContext = {
+    settings,
+    run,
+    runId,
+    agent,
+    signal,
+    conversationId,
+    executionPolicy,
+    runtimeContext,
+    ports,
+    events,
+    composer,
+    state,
+    prepared,
+    execution: { currentMessages: [...messages] },
+  };
   const recentCallSignatures: string[] = [];
   const runStartedAt = Date.now();
 
-  while (iteration < maxIterations && !events.isTerminal) {
-    const round = iteration + 1;
-    if (hasExhaustedToolBudget(state, executionPolicy)) {
-      state.forceFinalAnswer = true;
-      state.budgetExhausted = true;
-    }
-    if (signal?.aborted) {
-      events.emit({ type: 'run_cancelled', state: 'cancelled' });
-      break;
-    }
-
-    currentMessages = await prepareRoundContext(
-      currentMessages,
-      adapter,
-      settings,
-      apiUrl,
-      apiKey,
-      signal,
-    );
-
-    // 检测到重复调用或预算耗尽后，将下一次模型请求标记为最终回答，避免继续消耗工具轮次。
-    const isLast = state.forceFinalAnswer || iteration === maxIterations - 1;
-    // 模型的 content 统一作为回答流输出；reasoning 仍作为思考事件输出。
-    // 这样首轮无工具调用时也能保留回答的增量输出，避免 thought/answer 重复发送正文。
-    const isAnswerRound = isLast || state.toolCount > 0;
-    const label = isAnswerRound ? 'react-answer' : 'react-thought';
-    currentMessages = [
-      ...removeAgentStatusMessages(currentMessages),
-      buildAgentStatusMessage(
-        getAgentStatus(
-          state,
-          'awaiting_model',
-          round,
-          maxIterations,
-          runStartedAt,
-          executionPolicy,
-        ),
-      ),
-    ];
-    events.emit({
-      type: 'agent_status',
-      ...getAgentStatus(
-        state,
-        'awaiting_model',
-        round,
-        maxIterations,
-        runStartedAt,
-        executionPolicy,
-      ),
-    });
-    events.emit({ type: 'round_started', state: 'awaiting_model', round });
-
-    let result: StreamResult;
-    let answerStreamedThisRound = false;
-    try {
-      result = await withLangfuseRoundContext(run, round, () =>
-        toolLoopEngine.executeRound(
-          {
-            messages: currentMessages,
-            settings,
-            tools: isLast ? undefined : tools,
-            adapter,
-            signal,
-            runtimeContext,
-            label,
-            emitEvent: (event: ReactEventPayload) => {
-              if (event.type === 'answer' && event.content) {
-                answerStreamedThisRound = true;
-                emitComposedAnswer(a2uiComposer, events, runId, round, event.content);
-                return;
-              }
-              if (event.type === 'thought' && event.content) {
-                answerStreamedThisRound = true;
-                emitComposedAnswer(a2uiComposer, events, runId, round, event.content);
-                return;
-              }
-              events.emit({
-                ...event,
-                ...(event.type === 'thought' || event.type === 'answer' ? { round } : {}),
-              } as ReactEventPayload);
-            },
-          },
-          undefined,
-        ),
-      );
-    } catch (error) {
-      console.error('[reactChat] executeRound failed:', error);
-      fail(error);
-      break;
-    }
-    totalUsage = addUsage(totalUsage, result.usage);
-
-    const toolCalls =
-      result.toolCalls?.filter((toolCall): toolCall is ToolCall => Boolean(toolCall)) || null;
-
-    if (!toolCalls || toolCalls.length === 0) {
-      if (!answerStreamedThisRound && result.content) {
-        emitComposedAnswer(a2uiComposer, events, runId, round, result.content);
-      }
-      emitComposedAnswer(a2uiComposer, events, runId, round, '', true);
-      state.finalContent = a2uiComposer.sanitizeContent(result.content);
-      state.finalReasoning = result.reasoning;
-      state.streamedAsAnswer = true;
-      events.emit({
-        type: 'agent_status',
-        ...getAgentStatus(state, 'completed', round, maxIterations, runStartedAt, executionPolicy),
-      });
-      events.emit({
-        type: 'run_completed',
-        state: 'completed',
-        content: state.finalContent,
-        reasoning: state.finalReasoning,
-        ...(totalUsage?.totalTokens === undefined
-          ? {
-              estimatedTokens: estimateMessagesTokens([
-                ...currentMessages,
-                { role: 'assistant', content: state.finalContent, reasoning: state.finalReasoning },
-              ]),
-            }
-          : totalUsage),
-      });
-      break;
-    }
-
-    const toolResults = await executeToolCalls(toolCalls, result, {
-      runId,
-      round,
-      currentMessages,
-      settings,
-      agent,
-      conversationId,
+  for (let iteration = 0; iteration < maxRounds && !events.isTerminal; iteration += 1) {
+    const shouldStop = await executeReactRound(
+      context,
+      iteration + 1,
+      maxRounds,
       maxRetries,
-      signal,
-      events,
-      state,
-      maxRounds: maxIterations,
       runStartedAt,
-      executionPolicy,
-      runtimeContext,
-    });
-
-    if (toolResults.some((result) => result.approvalRequired)) {
-      // 审批请求需要由外部流程恢复，当前运行不能继续追加工具结果或再次请求模型。
-      state.awaitingApproval = true;
-      break;
-    }
-
-    toolResults
-      .sort((left, right) => left.index - right.index)
-      .forEach((toolResult) => {
-        const toolCall = toolCalls[toolResult.index];
-        const uiResult = a2uiComposer.handle({
-          runId,
-          round,
-          event: {
-            kind: 'tool_result',
-            toolName: toolCall.function.name,
-            toolCallId: toolCall.id,
-            result: toolResult.toolMsg.content,
-          },
-        });
-        if (toolResult.rawResult !== undefined) {
-          a2uiComposer.captureToolResult(toolCall.function.name, toolResult.rawResult, {
-            runId,
-            round,
-            toolCallId: toolCall.id,
-          });
-        }
-        if (uiResult.contextResult) toolResult.toolMsg.content = uiResult.contextResult;
-        currentMessages.push(toolResult.assistantMsg, toolResult.toolMsg);
-      });
-
-    // discover/load 工具可能在本轮改变可用 MCP 工具集；下一轮使用最新定义。
-    tools = await getAllToolDefinitions(agent);
-
-    if (signal?.aborted) {
-      events.emit({ type: 'run_cancelled', state: 'cancelled' });
-      break;
-    }
-
-    const signature = toolCalls
-      .map((tc) => `${tc.function.name}:${tc.function.arguments}`)
-      .sort()
-      .join('|');
-    recentCallSignatures.push(signature);
-
-    if (recentCallSignatures.length >= 3) {
-      const last3 = recentCallSignatures.slice(-3);
-      // 参数可能只发生小幅变化，因此使用相似度而非字符串完全相等来识别循环。
-      if (last3.every((s) => levenshteinSimilarity(s, last3[0]) > 0.7)) {
-        state.forceFinalAnswer = true;
-        events.emit({
-          type: 'agent_status',
-          ...getAgentStatus(
-            state,
-            'finalizing',
-            round,
-            maxIterations,
-            runStartedAt,
-            executionPolicy,
-          ),
-        });
-        events.emit({
-          type: 'loop_detected',
-          state: 'finalizing',
-          round,
-          message: '检测到重复工具调用，强制生成最终答案',
-        });
-      }
-    }
-
-    iteration++;
+      recentCallSignatures,
+    );
+    if (shouldStop) break;
   }
 
-  if (!events.isTerminal) {
-    if (signal?.aborted) {
-      events.emit({ type: 'run_cancelled', state: 'cancelled' });
-    } else if (!state.streamedAsAnswer && !state.awaitingApproval) {
-      if (state.finalReasoning) events.emit({ type: 'thought', reasoning: state.finalReasoning });
-      events.emit({ type: 'answer_ready' });
-      events.emit({
-        type: 'run_completed',
-        state: 'completed',
-        content: a2uiComposer.sanitizeContent(state.finalContent),
-        reasoning: state.finalReasoning,
-        ...(totalUsage?.totalTokens === undefined ? {} : totalUsage),
-      });
-    }
-  }
-
+  finishReactRun(signal, state, context.execution.totalUsage, composer, events);
   return {
     content: state.finalContent,
     reasoning: state.finalReasoning,
     toolCalls: null,
-    uiBlocks: a2uiComposer.getBlocks(),
-    wikiReferences: a2uiComposer.getDisplayReferences(),
-    usage: totalUsage,
+    uiBlocks: composer.getBlocks(),
+    wikiReferences: composer.getDisplayReferences(),
+    usage: context.execution.totalUsage,
   };
 }
 
@@ -777,6 +1004,7 @@ export async function reactChat(
   messages: HistoryMessage[],
   settings: AiSettings,
   sink: Sink,
+  ports: AgentRuntimePorts,
   agent?: string,
   signal?: AbortSignal,
   conversationId?: string,
@@ -784,17 +1012,18 @@ export async function reactChat(
   existingRun?: AgentRun,
   runtimeContext?: RuntimeContext,
 ): Promise<StreamResult> {
-  const run = existingRun || createDurableAgentRun({ runId: uuidv4(), conversationId });
-  if (!existingRun) agentRunRegistry.register(run);
+  const run = existingRun || ports.createRun({ runId: uuidv4(), conversationId });
+  if (!existingRun) ports.registerRun(run);
   const detachSink = subscribeReactEvents(run, sink);
   if (run.getSnapshot().sequence === 0)
     new ReactEventEmitter(run).emit({ type: 'run_started', state: 'running' });
   try {
-    return await withLangfuseAgentContext(run, () =>
+    return await ports.withRunContext(run, () =>
       executeReactRun(
         messages,
         settings,
         run,
+        ports,
         agent,
         signal,
         conversationId,

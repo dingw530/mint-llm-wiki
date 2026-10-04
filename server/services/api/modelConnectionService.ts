@@ -1,7 +1,4 @@
 import { getAdapter } from '../adapters/apiAdapter.js';
-import '../adapters/anthropicAdapter.js';
-import '../adapters/openaiChatAdapter.js';
-import '../adapters/openaiResponsesAdapter.js';
 
 export const SUPPORTED_API_TYPES = ['openai-chat', 'openai-responses', 'anthropic'] as const;
 export type SupportedApiType = (typeof SUPPORTED_API_TYPES)[number];

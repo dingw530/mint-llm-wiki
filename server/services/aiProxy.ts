@@ -3,20 +3,16 @@ import type { HistoryMessage, AiSettings, StreamResult, TokenUsage } from '../ty
 import type { AdapterStream, ApiAdapter } from './adapters/apiAdapter.js';
 import { getAdapter } from './adapters/apiAdapter.js';
 import { toolLoopEngine, parseSSEStream } from './toolRoundEngine.js';
-import type { Sink } from './sink.js';
+import type { Sink } from '../agent-runtime/output-sink.js';
 import { getErrorMessage } from '../utils/typeGuards.js';
-import { type AgentRun, agentRunRegistry } from './agentRun.js';
-import { createDurableAgentRun } from './agentRunFactory.js';
-import { ReactEventEmitter, subscribeReactEvents } from './reactEvents.js';
-import type { ReactEventPayload } from './reactEvents.js';
+import { type AgentRun, agentRunRegistry } from '../agent-runtime/agent-run.js';
+import { createDurableAgentRun } from '../bootstrap/agent-run-factory.js';
+import { ReactEventEmitter, subscribeReactEvents } from '../agent-runtime/react-events.js';
+import type { ReactEventPayload } from '../agent-runtime/react-events.js';
 import { estimateMessagesTokens } from './utils/tokenEstimator.js';
 import { randomUUID } from 'node:crypto';
 import { withLangfuseAgentContext } from './observability/langfuse.js';
-
-// 导入 Adapter 实现（触发 registerAdapter 自注册）
-import './adapters/openaiChatAdapter.js';
-import './adapters/anthropicAdapter.js';
-import './adapters/openaiResponsesAdapter.js';
+import { initializeAgentRuntime } from '../bootstrap/agent-runtime.js';
 
 function getApiAdapter(settings: AiSettings): ApiAdapter {
   const adapter = getAdapter(settings.apiType || 'openai-chat');
@@ -50,6 +46,7 @@ export async function streamChat(
   conversationId?: string,
   existingRun?: AgentRun,
 ): Promise<StreamResult> {
+  await initializeAgentRuntime();
   const run = existingRun || createDurableAgentRun({ runId: randomUUID(), conversationId });
   if (!existingRun) agentRunRegistry.register(run);
   const detachSink = subscribeReactEvents(run, sink);

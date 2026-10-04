@@ -8,15 +8,10 @@
 
 import type { Response as ExpressResponse } from 'express';
 import chalk from 'chalk';
-import type { ReactEvent } from './reactEvents.js';
+import type { ReactEvent } from '../../agent-runtime/react-events.js';
+import type { Sink } from '../../agent-runtime/output-sink.js';
 
-export interface Sink {
-  write(data: string): void;
-  writeEvent?(event: ReactEvent): void;
-  end(): void;
-  get headersSent(): boolean;
-  get writableEnded(): boolean;
-}
+export type { Sink } from '../../agent-runtime/output-sink.js';
 
 /**
  * 延迟底层流结束，确保响应完成后的持久化工作先执行。

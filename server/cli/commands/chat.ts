@@ -4,7 +4,7 @@
 import chalk from 'chalk';
 import * as conversationService from '../../domains/conversations/index.js';
 import * as messageService from '../../services/messageService.js';
-import { TerminalSink, AccumulatingSink } from '../../services/sink.js';
+import { TerminalSink, AccumulatingSink } from '../../infrastructure/transports/sinks.js';
 
 export async function handleChat(
   message?: string,

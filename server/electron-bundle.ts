@@ -7,7 +7,7 @@
  * 确保动态 require()（如 better-sqlite3 wrapper）在 ESM 环境下可用。
  */
 export { shutdownServer, startServer, startServerRuntime } from './index.js';
-export { IpcSink } from './services/sink.js';
+export { IpcSink } from './infrastructure/transports/sinks.js';
 export { endpointRegistry, registerIpcHandlers } from './endpoints/index.js';
 export { conversationsIpcOnlyEndpoints } from './endpoints/definitions/conversations.js';
 export * as messageService from './services/messageService.js';

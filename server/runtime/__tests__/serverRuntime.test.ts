@@ -3,6 +3,7 @@ import { ServerRuntime } from '../serverRuntime.js';
 
 const dependencies = vi.hoisted(() => ({
   cleanupArtifacts: vi.fn().mockResolvedValue(undefined),
+  initializeAgentRuntime: vi.fn().mockResolvedValue(undefined),
   listSkills: vi.fn().mockResolvedValue([]),
   mcpInitialize: vi.fn().mockResolvedValue(undefined),
   mcpShutdown: vi.fn().mockResolvedValue(undefined),
@@ -19,6 +20,9 @@ const dependencies = vi.hoisted(() => ({
 
 vi.mock('../../services/utils/toolResultArtifact.js', () => ({
   cleanupArtifacts: dependencies.cleanupArtifacts,
+}));
+vi.mock('../../bootstrap/agent-runtime.js', () => ({
+  initializeAgentRuntime: dependencies.initializeAgentRuntime,
 }));
 vi.mock('../../domains/skills/index.js', () => ({ listSkills: dependencies.listSkills }));
 vi.mock('../../services/api/mcpService.js', () => ({
@@ -42,7 +46,7 @@ vi.mock('../../services/observability/langfuse.js', () => ({
   flushLangfuseTracing: dependencies.flushLangfuse,
 }));
 vi.mock('../../db.js', () => ({ closeDb: dependencies.closeDb }));
-vi.mock('../../services/agentRun.js', () => ({
+vi.mock('../../agent-runtime/agent-run.js', () => ({
   agentRunRegistry: { cancelAll: dependencies.cancelAllRuns },
 }));
 vi.mock('../../utils/logger.js', () => ({
@@ -85,6 +89,10 @@ describe('ServerRuntime', () => {
     expect(runtime.state).toBe('running');
     expect(runtime.port).toBe(3456);
     expect(app.listen).toHaveBeenCalledTimes(1);
+    expect(dependencies.initializeAgentRuntime).toHaveBeenCalledTimes(1);
+    expect(dependencies.initializeAgentRuntime.mock.invocationCallOrder[0]).toBeLessThan(
+      app.listen.mock.invocationCallOrder[0],
+    );
     expect(dependencies.initializeMemoryIndex).toHaveBeenCalledTimes(1);
     expect(dependencies.initializeMemoryIndex.mock.invocationCallOrder[0]).toBeLessThan(
       dependencies.startMemory.mock.invocationCallOrder[0],

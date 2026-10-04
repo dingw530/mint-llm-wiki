@@ -1,7 +1,7 @@
 import type { Express } from 'express';
 import type { Server } from 'node:http';
 import { closeDb } from '../db.js';
-import { agentRunRegistry } from '../services/agentRun.js';
+import { agentRunRegistry } from '../agent-runtime/agent-run.js';
 import { listSkills } from '../domains/skills/index.js';
 import { mcpService } from '../services/api/mcpService.js';
 import {
@@ -13,6 +13,7 @@ import { wikiIngestionJobService } from '../services/api/wikiIngestionJobService
 import { startWikiLifecycleProcessing } from '../bootstrap/wiki-lifecycle.js';
 import { flushLangfuseTracing } from '../services/observability/langfuse.js';
 import { cleanupArtifacts } from '../services/utils/toolResultArtifact.js';
+import { initializeAgentRuntime } from '../bootstrap/agent-runtime.js';
 import { getAddressPort, getErrorMessage } from '../utils/typeGuards.js';
 import { createLogger } from '../utils/logger.js';
 
@@ -74,6 +75,7 @@ export class ServerRuntime {
   private async startInternal(): Promise<void> {
     this.stateValue = 'starting';
     try {
+      await initializeAgentRuntime();
       await cleanupArtifacts({ mode: 'startup' }).catch((error: unknown) => {
         log.warn('startup artifact cleanup failed; continuing', { error: getErrorMessage(error) });
       });

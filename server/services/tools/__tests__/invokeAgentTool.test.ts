@@ -11,13 +11,13 @@ vi.mock('../../api/settingsService.js', () => ({
   getAiSettings: vi.fn(),
 }));
 
-vi.mock('../../../agent-runtime/react-loop-core.js', () => ({
-  reactChat: vi.fn(),
+vi.mock('../../../bootstrap/agent-runtime.js', () => ({
+  runAgentChat: vi.fn(),
 }));
 
 import * as agentService from '../../../domains/agents/index.js';
 import * as settingsService from '../../api/settingsService.js';
-import { reactChat } from '../../../agent-runtime/react-loop-core.js';
+import { runAgentChat as reactChat } from '../../../bootstrap/agent-runtime.js';
 import { InvokeAgentTool } from '../InvokeAgentTool.js';
 
 const ctx = { conversationId: 'test-conv' };

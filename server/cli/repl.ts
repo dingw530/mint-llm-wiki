@@ -5,7 +5,7 @@ import * as readline from 'node:readline';
 import chalk from 'chalk';
 import * as conversationService from '../domains/conversations/index.js';
 import * as messageService from '../services/messageService.js';
-import { TerminalSink } from '../services/sink.js';
+import { TerminalSink } from '../infrastructure/transports/sinks.js';
 
 export async function runRepl(startConvId?: string): Promise<void> {
   let convId = startConvId || conversationService.create({ title: 'CLI Chat' }).id;

@@ -2,13 +2,13 @@
 
 ## 文档信息
 
-| 属性 | 值 |
-|---|---|
-| 文档编号 | PLAN-20260929-001 |
-| 状态 | 提案，待评审 |
-| 创建日期 | 2026-09-29 |
-| 关联设计 | [design-doc.md](design-doc.md) |
-| 追溯 | [traceability.md](traceability.md) |
+| 属性     | 值                                 |
+| -------- | ---------------------------------- |
+| 文档编号 | PLAN-20260929-001                  |
+| 状态     | 执行中                             |
+| 创建日期 | 2026-09-29                         |
+| 关联设计 | [design-doc.md](design-doc.md)     |
+| 追溯     | [traceability.md](traceability.md) |
 
 ## 完成定义
 
@@ -22,7 +22,7 @@
 - 范围：`server/` 的职责组织、内部导入边界、相关测试/构建配置及架构文档。
 - 不含：产品行为、schema/API/SSE 变更、客户端重构、依赖新增和 workspace 拆分。
 - 前置：每个 TP 开始前刷新/确认 GitNexus；检查 `git status` 并保留既有工作区改动；遵循 AGENTS 的格式、类型和构建要求。
-- 正式执行前，将本计划和 traceability 状态从“提案/待评审”更新为“执行中”，并锁定首批领域及允许路径。
+- 每个子批次开始前刷新/确认 GitNexus，记录影响范围并锁定允许路径；TP-4A 已按用户明确指令进入执行。
 
 ## 分阶段任务
 
@@ -56,12 +56,30 @@
 
 ### TP-4：高耦合运行时与入口边界收敛
 
-- 状态：待启动（需单独设计审查）
-- 关联：DS-3，AC-2、AC-3、AC-4
+- 状态：进行中（TP-4E 验证）
+- 关联：DS-3，AC-2、AC-3、AC-4、AC-6～AC-9
 - 工作：基于 TP-1 结果处理 `reactLoopCore`、`ServerRuntime`、`app.ts` 的职责和依赖；先提取清晰接口/模块职责，再按需要移动文件。不得把 CRITICAL impact 当作普通搬迁处理。
 - 产出：运行时/装配边界调整及契约说明；若发现需改变 API 或行为，暂停并开新变更范围。
 - Probe：高影响符号 impact、React/AgentRun/SSE focused suites、启动/关闭测试、typecheck/build、MCP/CLI/Electron bundle 检查。
 - 证据：高风险审查记录和上述探针结果。
+
+#### TP-4 子批次（2026-10-04 设计补充）
+
+按 TP-4A → TP-4B → TP-4C → TP-4D → TP-4E 顺序执行。实现已依次完成前四批；TP-4E 正在进行 build、入口与 Git 历史验证。实际文件清单和证据记录在本节执行记录中。
+
+| 子任务                    | 状态       | 工作与路径范围                                                                                                     | AC                           | 证据                                                                                                    |
+| ------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| TP-4A：执行契约与显式装配 | 已完成     | 新增 Runtime ports/bootstrap；adapter 与工具注册改为幂等显式初始化；RunFactory 绑定移到 bootstrap                  | AC-2、AC-4、AC-6             | Runtime composition 测试、bootstrap 幂等测试、依赖边界测试、Server typecheck                            |
+| TP-4B：ReAct 状态机拆分   | 已完成     | `react-loop-core.ts` 承载 ReAct 状态机、预算、循环检测、上下文准备、结果归并及收尾                                 | AC-3、AC-4、AC-8             | 固定 adapter/tool stub 的 Runtime suite；预算、重试、取消、事件序列及并发结果顺序测试                   |
+| TP-4C：生命周期与恢复     | 已完成     | AgentRun/events/recovery reducer 迁入 Runtime；SQLite 仓储进入 infrastructure；factory 在 bootstrap 绑定 observer  | AC-2、AC-4、AC-7             | AgentRun/事件仓储/恢复/审批 focused tests；写入顺序、唯一终态、快照复制和未知工具结果测试               |
+| TP-4D：输出与工具适配     | 已完成     | 输出契约与 HTTP/IPC/CLI 实现分离；审批 continuation 的消息落库提为单独应用适配；A2UI/Langfuse/MCP 保持显式能力端口 | AC-3、AC-4、AC-7、AC-8、AC-9 | sink/message/approval/security/A2UI tests；审批恢复保持 runId/sequence；ServerRuntime shutdown 测试     |
+| TP-4E：公共入口与目录搬迁 | 验证进行中 | 模块迁至 kebab-case `agent-runtime/`；生产入口使用 bootstrap；旧 `services/reactLoopCore.ts` facade 已删除         | AC-2、AC-3、AC-4、AC-6、AC-9 | 引用盘点、边界测试、typecheck/build、CLI/eval smoke、MCP/Electron bundle 通过；Git 历史核验与提交待收敛 |
+
+各子批次采用相关源码目录下的既有 Vitest 用例为回归基线，只补足现有证据未覆盖的契约。重点覆盖：无工具流式回答、单/多工具往返、预算耗尽、重复调用、模型/工具失败及重试、取消、审批 approve/deny/过期/重复、重启后未知工具结果、上下文压缩、A2UI 引用和 token usage。验收比较语义事件及调用次数，不要求随机 runId 或时间戳相同；测试使用受控 provider/tool stub，不隐式发送真实知识库内容。
+
+每批完成后运行对应 focused suites、Server typecheck/build、边界与格式检查；涉及具体交付入口时补对应 bundle/smoke。最终以正常 `verify:source` 和入口证据收敛。真实提供商行为或某交付入口未验证时明确登记，不能由 mock/bundle 成功推定运行验收通过。
+
+2026-10-04 的评估结果为 AgentRun CRITICAL、`executeReactRun` UNKNOWN，且图查询有异常路径；启动任何子批次前必须重新确认该批 impact 与源码引用范围。不得把上述图结果当作普通目录移动的许可。
 
 ### TP-5：拆包决策复盘与文档收敛
 
@@ -81,14 +99,26 @@
 
 ## 验收映射
 
-| AC | TP | 证据 |
-|---|---|---|
-| AC-1 | TP-1、TP-5 | 架构职责图、规则检查、审阅记录 |
-| AC-2 | TP-2、TP-3、TP-4 | impact、引用/入口清单、typecheck/build |
-| AC-3 | TP-2、TP-3、TP-4 | focused tests、启动/打包探针 |
-| AC-4 | TP-1 至 TP-5 | 架构边界检查和循环依赖检查 |
-| AC-5 | TP-5 | 复盘决策记录 |
+| AC   | TP               | 证据                                                |
+| ---- | ---------------- | --------------------------------------------------- |
+| AC-1 | TP-1、TP-5       | 架构职责图、规则检查、审阅记录                      |
+| AC-2 | TP-2、TP-3、TP-4 | impact、引用/入口清单、typecheck/build              |
+| AC-3 | TP-2、TP-3、TP-4 | focused tests、启动/打包探针                        |
+| AC-4 | TP-1 至 TP-5     | 架构边界检查和循环依赖检查                          |
+| AC-5 | TP-5             | 复盘决策记录                                        |
+| AC-6 | TP-4A、TP-4E     | 无副作用导入、幂等装配、Runtime 端口与依赖检查      |
+| AC-7 | TP-4C、TP-4D     | 事件持久化顺序、审批身份、恢复与未知副作用证据      |
+| AC-8 | TP-4B、TP-4D     | 预算/重试调用计数、并发结果排序、取消与目录刷新轨迹 |
+| AC-9 | TP-4D、TP-4E     | transport、消息保存/流关闭顺序及各入口验收          |
 
 ## 执行记录
 
-当前为提案阶段，尚未开始代码变更或验证。评审通过后按 TP 追加状态、日期、实际文件、命令结果、偏差与风险。
+此前分批领域迁移的事实与证据记录在 `docs/architecture/*-migration.md` 及对应专项中；本次不将这些事实自动判为原提案所有 TP/AC 已完成。
+
+2026-10-04：TP-4A～TP-4D 完成实现，TP-4E 验证进行中。新增/迁移文件包括 `server/agent-runtime/{agent-run,agent-run-persistence,agent-run-recovery-reducer,agent-status,contracts,output-sink,react-events,react-loop-core}.ts`、`server/bootstrap/{agent-run-factory,agent-runtime}.ts`、`server/infrastructure/persistence/agent-run-event-repository.ts` 和 `server/infrastructure/transports/sinks.ts`。旧 ReAct facade 已移除，HTTP 应用服务、CLI/eval、InvokeAgentTool 与审批 continuation 统一调用 bootstrap API。
+
+已通过：`npm run verify:source`（typecheck、Server/client/eval 全量测试、engineering tests、全仓 lint 和 Server/eval/client 构建）；14 个 focused Vitest 文件/114 项通过；MCP bundle、Electron Server bundle、CLI `--help`、eval import smoke；Prettier、边界测试和 `git diff --check`。最初全量 Server suite 在 sandbox 监听权限和数据库环境污染下失败；为确保测试隔离，修复 `dbInitialization.test.ts` 对 `AI_CHAT_DB_PATH` 的环境恢复，并在允许本机 loopback 的验证环境下重跑完整 `verify:source`，最终全配置通过。
+
+GitNexus 1.6.12 已重建当前仓库索引（17,287 nodes、33,927 edges、847 flows；全局流程采样有截断警告）。精确 impact：`AgentRun` CRITICAL（73 symbols、12 affected processes）；`executeReactRun` CRITICAL（9 symbols、10 affected processes）；`runAgentChat` CRITICAL（12 symbols、9 affected processes）。未用 shared-axis 值豁免 CRITICAL；按静态入口清单及工具/审批/恢复/ReAct/runtime 定向测试、bundle 和完整源验证核验。`detect-changes --scope all` 报告 49 changed files、59 symbols、76 affected processes，risk CRITICAL；结果包含未提交的文档索引修改，提交只纳入本提案证据与 Server Runtime 实现，排除 plugin/MCP 和其他无关路径。
+
+历史核验：独立提交 `3bd3fda refactor(agent-runtime): move ReAct core with history` 以 96% rename 将原 `services/reactLoopCore.ts` 移至 `agent-runtime/react-loop-core.ts`；`git log --follow` 已从新路径追溯回来源文件历史。最终 Runtime 重构与入口切换作为后续提交，避免职责改造降低该迁移提交的 rename 相似度。最终 staged diff 与正常 Hook 提交仍待完成。

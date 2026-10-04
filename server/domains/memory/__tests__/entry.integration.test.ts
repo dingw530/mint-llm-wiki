@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../services/aiProxy.js', () => ({ streamChat: mocks.streamChat }));
-vi.mock('../../../agent-runtime/react-loop-core.js', () => ({ reactChat: mocks.reactChat }));
+vi.mock('../../../bootstrap/agent-runtime.js', () => ({ runAgentChat: mocks.reactChat }));
 vi.mock('../../../services/toolOrchestration.js', () => ({
   getAllToolDefinitions: mocks.getAllToolDefinitions,
 }));
@@ -30,9 +30,9 @@ import * as memoryScopeRepository from '../../../infrastructure/persistence/memo
 import * as memoryRepository from '../../../infrastructure/persistence/memory-repository.js';
 import * as settingsRepository from '../../../repositories/settingsRepository.js';
 import * as conversationRepository from '../../../infrastructure/persistence/conversation-repository.js';
-import { agentRunRegistry } from '../../../services/agentRun.js';
+import { agentRunRegistry } from '../../../agent-runtime/agent-run.js';
 import type { AiSettings, HistoryMessage, StreamResult } from '../../../types.js';
-import type { Sink } from '../../../services/sink.js';
+import type { Sink } from '../../../agent-runtime/output-sink.js';
 import { sendMessage } from '../../../services/messageService.js';
 import { prepareContext } from '../../../services/utils/contextWindow.js';
 

@@ -6,6 +6,7 @@ import {
   toolRegistry as runtimeRegistry,
   toolExecutor,
   toolApprovalStore,
+  initializeTools,
 } from './tools/index.js';
 import { getApprovalScopePath } from './tools/approvalStore.js';
 import type { ApprovalResumeContext } from './tools/approvalStore.js';
@@ -13,6 +14,7 @@ import type { RuntimeContext } from './runtime/runtimeContext.js';
 
 // 获取 Agent 可用的工具定义列表
 export async function getAllToolDefinitions(agentId?: string): Promise<ToolDefinition[]> {
+  initializeTools();
   const tools: ToolDefinition[] = [];
 
   // 全局工具，所有 Agent 可用
@@ -151,6 +153,7 @@ export async function executeToolDetailed(
   conversationId = '',
   options: ExecuteToolOptions = {},
 ) {
+  initializeTools();
   const { name } = toolCall.function;
 
   if (isLegacyMcpEnabled()) syncMcpTools();

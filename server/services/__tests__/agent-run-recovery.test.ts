@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { describe, expect, it } from 'vitest';
 import { runMigrations } from '../../migrations/index.js';
-import { AgentRunEventRepository } from '../../repositories/agentRunEventRepository.js';
+import { AgentRunEventRepository } from '../../infrastructure/persistence/agent-run-event-repository.js';
 import {
   listRecoverableRuns,
   recoverOpenAgentRuns,

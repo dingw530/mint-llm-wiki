@@ -7,8 +7,8 @@ import {
   type LangfuseTool,
   startObservation,
 } from '@langfuse/tracing';
-import type { AgentRun } from '../agentRun.js';
-import type { ReactEvent } from '../reactEvents.js';
+import type { AgentRun } from '../../agent-runtime/agent-run.js';
+import type { ReactEvent } from '../../agent-runtime/react-events.js';
 import { createLogger } from '../../utils/logger.js';
 
 const observers = new WeakMap<AgentRun, LangfuseRunObserver>();

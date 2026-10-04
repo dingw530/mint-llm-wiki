@@ -14,11 +14,11 @@ import { getErrorMessage } from '../utils/typeGuards.js';
 import * as agentService from '../domains/agents/index.js';
 import { routingService } from '../bootstrap/routing.js';
 import { streamChat } from './aiProxy.js';
-import { reactChat } from '../agent-runtime/react-loop-core.js';
+import { runAgentChat } from '../bootstrap/agent-runtime.js';
 import { getAllToolDefinitions } from './toolOrchestration.js';
 import type { HttpError, HistoryMessage } from '../types.js';
-import { DeferredEndSink } from './sink.js';
-import type { Sink } from './sink.js';
+import { DeferredEndSink } from '../infrastructure/transports/sinks.js';
+import type { Sink } from '../agent-runtime/output-sink.js';
 import { parseFile, isSupportedFile } from './utils/fileParseService.js';
 import { streamToolApproval } from './api/toolApprovalService.js';
 import { reserveConversationScope } from './api/conversationScopeLock.js';
@@ -30,9 +30,9 @@ import {
   DEFAULT_CONTEXT_TOKEN_BUDGET,
   DEFAULT_OUTPUT_TOKEN_RESERVE,
 } from './utils/contextWindow.js';
-import { type AgentRun, agentRunRegistry } from './agentRun.js';
-import { createDurableAgentRun } from './agentRunFactory.js';
-import { ReactEventEmitter } from './reactEvents.js';
+import { type AgentRun, agentRunRegistry } from '../agent-runtime/agent-run.js';
+import { createDurableAgentRun } from '../bootstrap/agent-run-factory.js';
+import { ReactEventEmitter } from '../agent-runtime/react-events.js';
 import {
   buildSlashCommandContext,
   validateSlashCommand,
@@ -129,7 +129,7 @@ export async function streamRecoveryAction(
   new ReactEventEmitter(run).emit({ type: 'run_started', state: 'running' });
   try {
     if (origin.executionMode === 'react') {
-      await reactChat(
+      await runAgentChat(
         requestMessages,
         settings,
         sink,
@@ -323,7 +323,7 @@ async function sendMessageRequest(
       reasoning: fullReasoning,
       uiBlocks: fullUiBlocks,
     } = useReact
-      ? await reactChat(
+      ? await runAgentChat(
           requestMessages,
           settings,
           deferredSink,

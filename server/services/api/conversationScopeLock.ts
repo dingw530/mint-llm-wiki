@@ -1,4 +1,4 @@
-import { agentRunRegistry } from '../agentRun.js';
+import { agentRunRegistry } from '../../agent-runtime/agent-run.js';
 
 const reservedConversations = new Set<string>();
 

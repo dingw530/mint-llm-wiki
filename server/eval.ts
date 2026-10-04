@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { AiSettings, HistoryMessage, PersistedUiBlock } from './types.js';
-import { reactChat } from './agent-runtime/react-loop-core.js';
+import { runAgentChat } from './bootstrap/agent-runtime.js';
 import { parseWikiPage } from './services/utils/wikiShared.js';
 import * as settingsService from './services/api/settingsService.js';
-import type { ReactEvent } from './services/reactEvents.js';
-import { AccumulatingSink } from './services/sink.js';
+import type { ReactEvent } from './agent-runtime/react-events.js';
+import { AccumulatingSink } from './infrastructure/transports/sinks.js';
 import type { ReactExecutionPolicy } from './agent-runtime/react-loop-core.js';
-import { agentRunRegistry } from './services/agentRun.js';
-import { createDurableAgentRun } from './services/agentRunFactory.js';
+import { agentRunRegistry } from './agent-runtime/agent-run.js';
+import { createDurableAgentRun } from './bootstrap/agent-run-factory.js';
 import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
 import { getWikiVectorHealth } from './domains/wiki/index.js';
 import * as agentService from './domains/agents/index.js';
@@ -277,7 +277,7 @@ export function createReactExecutor(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: evalCase.input },
     ];
-    const result = await reactChat(
+    const result = await runAgentChat(
       messages,
       settings,
       sink,
