@@ -1,7 +1,7 @@
 import { toolApprovalStore, toolRegistry } from '../tools/index.js';
 import type { ApprovalAction } from '../tools/approvalStore.js';
 import { toolLoopEngine } from '../toolRoundEngine.js';
-import { reactChat } from '../reactLoopCore.js';
+import { reactChat } from '../../agent-runtime/react-loop-core.js';
 import { AccumulatingSink } from '../sink.js';
 import * as messageRepo from '../../repositories/messageRepository.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -46,11 +46,12 @@ function findPausedRun(request: PendingToolApproval, approvalId: string): AgentR
   const run = agentRunRegistry.get(runId);
   const snapshot = run?.getSnapshot();
   if (
-    !run
-    || snapshot?.conversationId !== request.conversationId
-    || snapshot.phase !== 'paused_for_approval'
-    || snapshot.approval?.approvalId !== approvalId
-  ) return undefined;
+    !run ||
+    snapshot?.conversationId !== request.conversationId ||
+    snapshot.phase !== 'paused_for_approval' ||
+    snapshot.approval?.approvalId !== approvalId
+  )
+    return undefined;
   return run;
 }
 
@@ -91,7 +92,11 @@ async function continueActiveRun(
 
   const tool = toolRegistry.get(request.toolCall.function.name);
   if (!tool) {
-    events.emit({ type: 'run_failed', state: 'failed', error: `Tool not found: ${request.toolCall.function.name}` });
+    events.emit({
+      type: 'run_failed',
+      state: 'failed',
+      error: `Tool not found: ${request.toolCall.function.name}`,
+    });
     detachSink();
     sink.end();
     return { status: 'failed', toolName: request.toolCall.function.name, error: 'Tool not found' };
@@ -120,7 +125,11 @@ async function continueActiveRun(
     events.emit({ type: 'run_completed', state: 'completed', content: '', reasoning: '' });
     detachSink();
     sink.end();
-    return { status: 'failed', toolName: request.toolCall.function.name, error: execution.toolMsg.content };
+    return {
+      status: 'failed',
+      toolName: request.toolCall.function.name,
+      error: execution.toolMsg.content,
+    };
   }
 
   events.emit({
@@ -137,7 +146,11 @@ async function continueActiveRun(
   if (!request.resume) {
     events.emit({ type: 'run_completed', state: 'completed', content: '', reasoning: '' });
     sink.end();
-    return { status: 'completed', toolName: request.toolCall.function.name, result: parseToolResult(execution.toolMsg.content) };
+    return {
+      status: 'completed',
+      toolName: request.toolCall.function.name,
+      result: parseToolResult(execution.toolMsg.content),
+    };
   }
 
   const continuation = await reactChat(
@@ -150,7 +163,8 @@ async function continueActiveRun(
     undefined,
     run,
   );
-  if (continuation.content) persistContinuation(request.conversationId, continuation.content, continuation.reasoning);
+  if (continuation.content)
+    persistContinuation(request.conversationId, continuation.content, continuation.reasoning);
 
   return {
     status: 'completed',
@@ -230,7 +244,7 @@ export async function resolveToolApproval(
   );
 
   const response = {
-    status: execution.succeeded ? 'completed' as const : 'failed' as const,
+    status: execution.succeeded ? ('completed' as const) : ('failed' as const),
     approvalId,
     toolName: request.toolCall.function.name,
     result: execution.succeeded ? parseToolResult(execution.toolMsg.content) : undefined,
@@ -285,7 +299,13 @@ export async function streamToolApproval(
 ): Promise<void> {
   const request = toolApprovalStore.consume(conversationId, approvalId, action);
   if (!request) {
-    sink.write(JSON.stringify({ type: 'run_failed', state: 'failed', error: '审批不存在、已过期或已被消费' }));
+    sink.write(
+      JSON.stringify({
+        type: 'run_failed',
+        state: 'failed',
+        error: '审批不存在、已过期或已被消费',
+      }),
+    );
     sink.end();
     return;
   }
@@ -293,7 +313,13 @@ export async function streamToolApproval(
   const activeRunResult = await continueActiveRun(request, approvalId, action, sink);
   if (activeRunResult) return;
   if (request.resume?.runId) {
-    sink.write(JSON.stringify({ type: 'run_failed', state: 'failed', error: '关联的 AgentRun 已结束或不再等待此审批' }));
+    sink.write(
+      JSON.stringify({
+        type: 'run_failed',
+        state: 'failed',
+        error: '关联的 AgentRun 已结束或不再等待此审批',
+      }),
+    );
     sink.end();
     return;
   }
@@ -318,7 +344,11 @@ export async function streamToolApproval(
 
   const tool = toolRegistry.get(request.toolCall.function.name);
   if (!tool) {
-    events.emit({ type: 'run_failed', state: 'failed', error: `Tool not found: ${request.toolCall.function.name}` });
+    events.emit({
+      type: 'run_failed',
+      state: 'failed',
+      error: `Tool not found: ${request.toolCall.function.name}`,
+    });
     sink.end();
     return;
   }

@@ -32,7 +32,7 @@ vi.mock('../utils/contextWindow.js', () => ({
   prepareContext: vi.fn(async (msgs) => msgs),
 }));
 
-import { reactChat } from '../reactLoopCore.js';
+import { reactChat } from '../../agent-runtime/react-loop-core.js';
 import { toolLoopEngine } from '../toolRoundEngine.js';
 import { getAdapter } from '../adapters/apiAdapter.js';
 

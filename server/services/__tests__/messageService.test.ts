@@ -101,7 +101,7 @@ vi.mock('../aiProxy.js', () => ({
   streamChat: vi.fn(),
 }));
 
-vi.mock('../reactLoopCore.js', () => ({
+vi.mock('../../agent-runtime/react-loop-core.js', () => ({
   reactChat: vi.fn(),
 }));
 
@@ -119,7 +119,7 @@ import { enqueueMemoryProcessing } from '../../bootstrap/memory.js';
 import { evaluateMemoryGate } from '../../bootstrap/memory.js';
 import { routingService } from '../../bootstrap/routing.js';
 import { streamChat } from '../aiProxy.js';
-import { reactChat } from '../reactLoopCore.js';
+import { reactChat } from '../../agent-runtime/react-loop-core.js';
 import { getAllToolDefinitions } from '../toolOrchestration.js';
 import { agentRunRegistry } from '../agentRun.js';
 import { sendMessage, getMessages } from '../messageService.js';

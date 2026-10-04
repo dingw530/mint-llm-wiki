@@ -6,30 +6,33 @@ import type {
   ToolCall,
   ToolDefinition,
 } from '../types.js';
-import { getAdapter } from './adapters/apiAdapter.js';
-import { toolLoopEngine } from './toolRoundEngine.js';
-import { getAllToolDefinitions, getToolCallSummary } from './toolOrchestration.js';
-import type { Sink } from './sink.js';
+import { getAdapter } from '../services/adapters/apiAdapter.js';
+import { toolLoopEngine } from '../services/toolRoundEngine.js';
+import { getAllToolDefinitions, getToolCallSummary } from '../services/toolOrchestration.js';
+import type { Sink } from '../services/sink.js';
 import {
   DEFAULT_CONTEXT_TOKEN_BUDGET,
   DEFAULT_OUTPUT_TOKEN_RESERVE,
   prepareContext,
-} from './utils/contextWindow.js';
+} from '../services/utils/contextWindow.js';
 import { v4 as uuidv4 } from 'uuid';
-import { ReactEventEmitter, subscribeReactEvents } from './reactEvents.js';
-import type { ReactEventPayload } from './reactEvents.js';
-import { type AgentRun, agentRunRegistry } from './agentRun.js';
-import { createDurableAgentRun } from './agentRunFactory.js';
-import { estimateMessagesTokens } from './utils/tokenEstimator.js';
+import { ReactEventEmitter, subscribeReactEvents } from '../services/reactEvents.js';
+import type { ReactEventPayload } from '../services/reactEvents.js';
+import { type AgentRun, agentRunRegistry } from '../services/agentRun.js';
+import { createDurableAgentRun } from '../services/agentRunFactory.js';
+import { estimateMessagesTokens } from '../services/utils/tokenEstimator.js';
 import {
   buildAgentStatusMessage,
   removeAgentStatusMessages,
   type AgentToolBudget,
   type AgentStatusSnapshot,
-} from './agentStatusBar.js';
-import { A2UIComposer } from './a2ui/composer.js';
-import { withLangfuseAgentContext, withLangfuseRoundContext } from './observability/langfuse.js';
-import type { RuntimeContext } from './runtime/runtimeContext.js';
+} from '../services/agentStatusBar.js';
+import { A2UIComposer } from '../services/a2ui/composer.js';
+import {
+  withLangfuseAgentContext,
+  withLangfuseRoundContext,
+} from '../services/observability/langfuse.js';
+import type { RuntimeContext } from '../services/runtime/runtimeContext.js';
 
 // ── 编辑距离相似度（用于循环检测） ──
 function levenshteinSimilarity(a: string, b: string): number {

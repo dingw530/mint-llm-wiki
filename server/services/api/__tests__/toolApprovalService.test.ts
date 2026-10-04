@@ -3,12 +3,12 @@ import { z } from 'zod';
 import { BaseTool } from '../../tools/BaseTool.js';
 import { toolRegistry, toolApprovalStore } from '../../tools/index.js';
 import { resolveToolApproval } from '../toolApprovalService.js';
-import { reactChat } from '../../reactLoopCore.js';
+import { reactChat } from '../../../agent-runtime/react-loop-core.js';
 import * as conversationRepo from '../../../infrastructure/persistence/conversation-repository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRun, agentRunRegistry } from '../../agentRun.js';
 
-vi.mock('../../reactLoopCore.js', () => ({
+vi.mock('../../../agent-runtime/react-loop-core.js', () => ({
   reactChat: vi.fn(
     async (_messages, _settings, sink, _agent, _signal, _conversationId, _policy, existingRun) => {
       if (existingRun && typeof existingRun.publish === 'function') {

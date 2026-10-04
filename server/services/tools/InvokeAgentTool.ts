@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { BaseTool } from './BaseTool.js';
 import type { ToolContext } from './BaseTool.js';
-import { reactChat } from '../reactLoopCore.js';
+import { reactChat } from '../../agent-runtime/react-loop-core.js';
 import * as agentService from '../../domains/agents/index.js';
 import * as settingsService from '../api/settingsService.js';
 import { AccumulatingSink } from '../sink.js';

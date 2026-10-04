@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../services/aiProxy.js', () => ({ streamChat: mocks.streamChat }));
-vi.mock('../../../services/reactLoopCore.js', () => ({ reactChat: mocks.reactChat }));
+vi.mock('../../../agent-runtime/react-loop-core.js', () => ({ reactChat: mocks.reactChat }));
 vi.mock('../../../services/toolOrchestration.js', () => ({
   getAllToolDefinitions: mocks.getAllToolDefinitions,
 }));
