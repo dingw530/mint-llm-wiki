@@ -3,7 +3,7 @@ import { Router } from 'express';
 import * as conversationService from '../domains/conversations/index.js';
 import * as messageRepo from '../repositories/messageRepository.js';
 import * as settingsService from '../application/settings/settings-service.js';
-import { generateTitle } from '../services/aiProxy.js';
+import { generateTitle } from '../application/conversations/ai-proxy.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();

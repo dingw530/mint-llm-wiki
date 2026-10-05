@@ -17,10 +17,7 @@ import type {
   ParsedChunk,
 } from './api-adapter.js';
 import { AI_REQUEST_TIMEOUT_MS } from './api-adapter.js';
-import {
-  isLangfuseEnabled,
-  shouldCaptureLangfuseContent,
-} from '../../../services/observability/langfuse.js';
+import { isLangfuseEnabled, shouldCaptureLangfuseContent } from '../../observability/langfuse.js';
 
 type ModelFactory = (
   apiUrl: string,

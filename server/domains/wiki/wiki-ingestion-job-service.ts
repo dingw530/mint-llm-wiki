@@ -4,8 +4,11 @@ import type {
   ingestWikiSource,
   cleanupWikiIngestionJobStagedFiles,
 } from './wiki-ingestion-service.js';
-import { captureWikiPage } from '../../services/utils/wikiPageCapture.js';
-import { isSupportedFile, type parseFile } from '../../services/utils/fileParseService.js';
+import { captureWikiPage } from '../../infrastructure/filesystem/wiki-page-capture.js';
+import {
+  isSupportedFile,
+  type parseFile,
+} from '../../infrastructure/filesystem/file-parse-service.js';
 import { WikiUploadValidationError } from '../../infrastructure/filesystem/wiki-ingestion-files.js';
 import type {
   archiveWikiUpload,

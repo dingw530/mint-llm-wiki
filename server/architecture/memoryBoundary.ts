@@ -101,7 +101,7 @@ function isAllowedDomainDependency(edge: MemoryDependencyEdge): boolean {
   if (targetRelative.startsWith('domains/memory/') || targetRelative.startsWith('infrastructure/'))
     return true;
   if (targetRelative === 'types.ts' && edge.typeOnly) return true;
-  return targetRelative === 'services/utils/tokenEstimator.ts';
+  return targetRelative === 'utils/token-estimator.ts';
 }
 
 /** Collect resolved static and literal dynamic dependencies that cross Memory's public boundary. */

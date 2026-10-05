@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { CompiledPage } from '../services/utils/wikiShared.js';
+import type { CompiledPage } from '../infrastructure/filesystem/wiki-content.js';
 import type { WikiCompiledClaim } from '../domains/wiki/index.js';
 import type { AiSettings } from '../types.js';
 

@@ -14,8 +14,8 @@ describe('Small module migration boundaries', () => {
   });
 
   it.each([
-    ['services/tools/BashTool.ts', 'domains/tool-security/bash-security-service.ts', false],
-    ['services/tools/BashTool.ts', 'infrastructure/config/bash-security-settings.ts', false],
+    ['infrastructure/tools/bash-tool.ts', 'domains/tool-security/bash-security-service.ts', false],
+    ['infrastructure/tools/bash-tool.ts', 'infrastructure/config/bash-security-settings.ts', false],
     [
       'domains/tool-security/bash-security-service.ts',
       'infrastructure/config/settings-repository.ts',
@@ -32,7 +32,7 @@ describe('Small module migration boundaries', () => {
       'infrastructure/config/bash-security-settings.ts',
       false,
     ],
-    ['services/tools/BashTool.ts', 'domains/tool-security/index.ts', false],
+    ['infrastructure/tools/bash-tool.ts', 'domains/tool-security/index.ts', false],
     ['infrastructure/config/bash-security-settings.ts', 'domains/tool-security/index.ts', true],
   ])('allows a Tool security dependency %s -> %s', (importer, target, typeOnly) => {
     expect(toolSecurityBoundaryViolation({ importer, target, typeOnly })).toBeNull();

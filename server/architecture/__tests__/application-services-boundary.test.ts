@@ -19,15 +19,14 @@ function collectTypeScriptFiles(directory: string): string[] {
   return files;
 }
 
-describe('Application services migration boundary', () => {
-  it('leaves no TypeScript source or imports in the retired API service layer', () => {
+describe('Server services retirement boundary', () => {
+  it('leaves no TypeScript source or imports in the retired service layer', () => {
     const serverRoot = path.resolve(process.cwd());
     const edges = collectRoutingDependencies(serverRoot);
     const legacyFiles = edges.filter(
-      (edge) =>
-        edge.importer.startsWith('services/api/') || edge.target.startsWith('services/api/'),
+      (edge) => edge.importer.startsWith('services/') || edge.target.startsWith('services/'),
     );
-    const legacySources = collectTypeScriptFiles(path.join(serverRoot, 'services/api'));
+    const legacySources = collectTypeScriptFiles(path.join(serverRoot, 'services'));
     expect(legacySources).toEqual([]);
     expect(legacyFiles).toEqual([]);
   });

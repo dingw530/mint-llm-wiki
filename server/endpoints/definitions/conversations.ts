@@ -27,7 +27,7 @@ async function resolveApproval(
 
 /** Loads recovery state lazily so endpoint manifest generation remains side-effect free. */
 async function listRecoverableRuns(conversationId: string) {
-  const module = await import('../../services/agentRunRecoveryService.js');
+  const module = await import('../../application/agent-runtime/agent-run-recovery-service.js');
   return { runs: module.listRecoverableRuns(conversationId) };
 }
 
@@ -45,7 +45,7 @@ async function resolveRecoveryAction(
   if (typeof idempotencyKey !== 'string' || !idempotencyKey.trim()) {
     throw httpError(400, 'Recovery idempotencyKey is required');
   }
-  const module = await import('../../services/agentRunRecoveryService.js');
+  const module = await import('../../application/agent-runtime/agent-run-recovery-service.js');
   const recoveryAction = module.resolveRecoveryAction({
     conversationId,
     runId,
@@ -72,7 +72,7 @@ async function streamRecoveryAction(
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  const module = await import('../../services/messageService.js');
+  const module = await import('../../application/conversations/message-service.js');
   await module.streamRecoveryAction(conversationId, actionId, new ResSink(res));
 }
 

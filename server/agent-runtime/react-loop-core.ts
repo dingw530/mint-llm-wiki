@@ -19,7 +19,7 @@ import {
   type AgentToolBudget,
   type AgentStatusSnapshot,
 } from './agent-status.js';
-import type { RuntimeContext } from '../services/runtime/runtimeContext.js';
+import type { RuntimeContext } from './tooling/runtime-context.js';
 
 // ── 编辑距离相似度（用于循环检测） ──
 function levenshteinSimilarity(a: string, b: string): number {

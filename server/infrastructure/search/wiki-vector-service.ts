@@ -5,11 +5,7 @@ import { OpenAICompatibleEmbeddingProvider } from './vector/providers/openai-com
 import { createVectorService, type VectorService } from './vector/vector-service.js';
 import type { VectorStore } from './vector/ports.js';
 import type { OpenAICompatibleEmbeddingConfig } from './vector/types.js';
-import {
-  chromaReadPolicy,
-  chromaWritePolicy,
-  resilientCall,
-} from '../../services/resilience/index.js';
+import { chromaReadPolicy, chromaWritePolicy, resilientCall } from '../resilience/index.js';
 
 function protectChromaStore(
   store: VectorStore<WikiSearchDocumentInput>,

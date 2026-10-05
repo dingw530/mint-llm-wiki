@@ -5,7 +5,7 @@ import {
   resilientCall,
   type ExternalErrorCategory,
   embeddingPolicy,
-} from '../../../../services/resilience/index.js';
+} from '../../../resilience/index.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_BATCH_SIZE = 16;

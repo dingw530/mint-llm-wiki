@@ -6,4 +6,4 @@ export {
   normalizeWikiCategories,
   parseWikiPage,
   isSystemWikiPath,
-} from '../../services/utils/wikiShared.js';
+} from './wiki-content.js';

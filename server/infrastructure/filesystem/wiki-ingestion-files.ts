@@ -1,8 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { AiSettings } from '../../types.js';
-import { isSupportedFile } from '../../services/utils/fileParseService.js';
-import { isPathSafe } from '../../services/utils/pathSecurity.js';
+import { isSupportedFile } from './file-parse-service.js';
+import { isPathSafe } from './path-security.js';
 import type { WikiSourceSegment, WikiUploadInput } from '../../domains/wiki/index.js';
 
 export class WikiUploadValidationError extends Error {

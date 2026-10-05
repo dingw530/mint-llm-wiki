@@ -1,6 +1,6 @@
 import * as settingsRepo from '../../infrastructure/config/settings-repository.js';
 import * as endpointService from '../../domains/model-endpoints/index.js';
-import { encrypt, decrypt, maskApiKey } from '../../services/utils/encryption.js';
+import { encrypt, decrypt, maskApiKey } from '../../infrastructure/security/encryption.js';
 import type {
   RawSettings,
   SettingsInput,

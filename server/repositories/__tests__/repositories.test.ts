@@ -6,7 +6,7 @@ import * as graphRepo from '../../infrastructure/persistence/graph-repository.js
 import * as candidateRepo from '../../infrastructure/persistence/graph-candidate-repository.js';
 import * as routingLogRepo from '../../infrastructure/persistence/routing-log-repository.js';
 import * as endpointService from '../../domains/model-endpoints/index.js';
-import { encrypt } from '../../services/utils/encryption.js';
+import { encrypt } from '../../infrastructure/security/encryption.js';
 
 function cleanEndpoints() {
   endpointRepo.getAll().forEach((e) => {

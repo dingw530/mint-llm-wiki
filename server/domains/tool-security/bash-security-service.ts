@@ -97,3 +97,10 @@ export function checkCommand(command: string): CheckResult {
 
   return { allowed: true };
 }
+
+/** Classifies Bash commands that must not use an unisolated fallback. */
+export function isHighRiskBashCommand(command: string): boolean {
+  return /(^|\s)(rm|mv|chmod|chown|sudo|kill|pkill|shutdown|reboot)\b|\/etc\/|\/var\/|\/Users\/|\/home\//i.test(
+    command,
+  );
+}

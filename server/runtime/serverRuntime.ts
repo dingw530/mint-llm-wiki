@@ -11,11 +11,11 @@ import {
 } from '../bootstrap/memory.js';
 import { wikiIngestionJobService } from '../application/wiki/wiki-ingestion-job-service.js';
 import { startWikiLifecycleProcessing } from '../bootstrap/wiki-lifecycle.js';
-import { flushLangfuseTracing } from '../services/observability/langfuse.js';
-import { cleanupArtifacts } from '../services/utils/toolResultArtifact.js';
+import { flushLangfuseTracing } from '../infrastructure/observability/langfuse.js';
+import { cleanupArtifacts } from '../infrastructure/tools/tool-result-artifact.js';
 import { initializeAgentRuntime } from '../bootstrap/agent-runtime.js';
 import { getAddressPort, getErrorMessage } from '../utils/typeGuards.js';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '../infrastructure/observability/logger.js';
 
 export type RuntimeState = 'created' | 'starting' | 'running' | 'stopping' | 'stopped';
 

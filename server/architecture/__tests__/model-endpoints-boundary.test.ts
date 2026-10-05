@@ -38,7 +38,11 @@ describe('Model endpoints boundary', () => {
       'infrastructure/persistence/model-endpoint-repository.ts',
       false,
     ],
-    ['domains/model-endpoints/model-endpoint-service.ts', 'services/utils/encryption.ts', false],
+    [
+      'domains/model-endpoints/model-endpoint-service.ts',
+      'infrastructure/security/encryption.ts',
+      false,
+    ],
     ['domains/model-endpoints/model-endpoint-service.ts', 'types.ts', true],
     ['application/settings/settings-service.ts', 'domains/model-endpoints/index.ts', false],
     ['infrastructure/ai/client.ts', 'domains/model-endpoints/index.ts', true],

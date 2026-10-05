@@ -5,7 +5,7 @@ import {
   cleanupWikiIngestionJobStagedFiles,
   ingestWikiSource,
 } from '../../domains/wiki/index.js';
-import { parseFile } from '../../services/utils/fileParseService.js';
+import { parseFile } from '../../infrastructure/filesystem/file-parse-service.js';
 import {
   archiveWikiUpload,
   discardWikiStagedFile,

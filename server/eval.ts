@@ -3,14 +3,14 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { AiSettings, HistoryMessage, PersistedUiBlock } from './types.js';
 import { runAgentChat } from './bootstrap/agent-runtime.js';
-import { parseWikiPage } from './services/utils/wikiShared.js';
+import { parseWikiPage } from './infrastructure/filesystem/wiki-content.js';
 import * as settingsService from './application/settings/settings-service.js';
 import type { ReactEvent } from './agent-runtime/react-events.js';
 import { AccumulatingSink } from './infrastructure/transports/sinks.js';
 import type { ReactExecutionPolicy } from './agent-runtime/react-loop-core.js';
 import { agentRunRegistry } from './agent-runtime/agent-run.js';
 import { createDurableAgentRun } from './bootstrap/agent-run-factory.js';
-import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
+import { findWikiCitationMarkers } from './infrastructure/transports/a2ui/wiki-citation-markers.js';
 import { getWikiVectorHealth } from './domains/wiki/index.js';
 import * as agentService from './domains/agents/index.js';
 import { routingService } from './bootstrap/routing.js';
@@ -19,7 +19,7 @@ import {
   createRuntimeContext,
   type FeatureConfigInput,
   type RuntimeContext,
-} from './services/runtime/runtimeContext.js';
+} from './agent-runtime/tooling/runtime-context.js';
 export type { WikiIngestionRequest, WikiIngestionResult } from './domains/wiki/index.js';
 export { ingestWikiSource } from './domains/wiki/index.js';
 

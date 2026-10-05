@@ -18,7 +18,7 @@ const dependencies = vi.hoisted(() => ({
   cancelAllRuns: vi.fn(),
 }));
 
-vi.mock('../../services/utils/toolResultArtifact.js', () => ({
+vi.mock('../../infrastructure/tools/tool-result-artifact.js', () => ({
   cleanupArtifacts: dependencies.cleanupArtifacts,
 }));
 vi.mock('../../bootstrap/agent-runtime.js', () => ({
@@ -42,14 +42,14 @@ vi.mock('../../application/wiki/wiki-ingestion-job-service.js', () => ({
 vi.mock('../../bootstrap/wiki-lifecycle.js', () => ({
   startWikiLifecycleProcessing: dependencies.startWikiLifecycle,
 }));
-vi.mock('../../services/observability/langfuse.js', () => ({
+vi.mock('../../infrastructure/observability/langfuse.js', () => ({
   flushLangfuseTracing: dependencies.flushLangfuse,
 }));
 vi.mock('../../db.js', () => ({ closeDb: dependencies.closeDb }));
 vi.mock('../../agent-runtime/agent-run.js', () => ({
   agentRunRegistry: { cancelAll: dependencies.cancelAllRuns },
 }));
-vi.mock('../../utils/logger.js', () => ({
+vi.mock('../../infrastructure/observability/logger.js', () => ({
   createLogger: () => ({ info: vi.fn(), warn: vi.fn() }),
 }));
 vi.mock('../../utils/typeGuards.js', () => ({

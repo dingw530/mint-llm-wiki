@@ -1,4 +1,4 @@
-import { estimateTokens } from '../../services/utils/tokenEstimator.js';
+import { estimateTokens } from '../../utils/token-estimator.js';
 import {
   AUTO_CORE_MEMORY_KEYS,
   DEFAULT_MEMORY_CORE_TOKEN_BUDGET,

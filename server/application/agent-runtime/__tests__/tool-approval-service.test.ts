@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import { BaseTool } from '../../../services/tools/BaseTool.js';
-import { toolRegistry, toolApprovalStore } from '../../../services/tools/index.js';
+import { BaseTool } from '../../../agent-runtime/tooling/base-tool.js';
+import { toolRegistry } from '../tooling/tool-registry.js';
+import { toolApprovalStore } from '../tooling/tool-approval-store.js';
 import { resolveToolApproval } from '../tool-approval-service.js';
 import { runAgentChat as reactChat } from '../../../bootstrap/agent-runtime.js';
 import * as conversationRepo from '../../../infrastructure/persistence/conversation-repository.js';

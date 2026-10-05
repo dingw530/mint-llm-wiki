@@ -10,7 +10,7 @@ export { shutdownServer, startServer, startServerRuntime } from './index.js';
 export { IpcSink } from './infrastructure/transports/sinks.js';
 export { endpointRegistry, registerIpcHandlers } from './endpoints/index.js';
 export { conversationsIpcOnlyEndpoints } from './endpoints/definitions/conversations.js';
-export * as messageService from './services/messageService.js';
+export * as messageService from './application/conversations/message-service.js';
 export * as conversationService from './domains/conversations/index.js';
 export * as settingsService from './application/settings/settings-service.js';
 export * as agentService from './domains/agents/index.js';
@@ -23,8 +23,8 @@ export * as bashSecurityService from './domains/tool-security/index.js';
 export * as wikiService from './domains/wiki/index.js';
 export * as graphService from './domains/knowledge-graph/index.js';
 export * as messageRepository from './repositories/messageRepository.js';
-export { generateTitle } from './services/aiProxy.js';
-export { parseFile } from './services/utils/fileParseService.js';
+export { generateTitle } from './application/conversations/ai-proxy.js';
+export { parseFile } from './infrastructure/filesystem/file-parse-service.js';
 export { compileSource } from './domains/wiki/index.js';
 export { ingestWikiSource, buildWikiSourceText } from './domains/wiki/index.js';
 export * as ingestionA2ui from './infrastructure/transports/ingestion-a2ui.js';
@@ -33,4 +33,4 @@ export {
   wikiIngestionJobService,
 } from './application/wiki/wiki-ingestion-job-service.js';
 export { wikiVectorBackfillService } from './application/wiki/wiki-vector-backfill-service.js';
-export * as pageCaptureService from './services/utils/wikiPageCapture.js';
+export * as pageCaptureService from './infrastructure/filesystem/wiki-page-capture.js';

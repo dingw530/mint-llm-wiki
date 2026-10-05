@@ -5,10 +5,10 @@ const TYPE_CONTRACT_IMPORTS = new Set([
   'agent-runtime/agent-run.ts',
   'infrastructure/ai/adapters/api-adapter.ts',
   'infrastructure/transports/a2ui/composer.ts',
-  'services/runtime/runtimeContext.ts',
+  'agent-runtime/tooling/runtime-context.ts',
   'infrastructure/transports/a2ui/types.ts',
-  'services/utils/contextWindow.ts',
-  'services/toolRoundEngine.ts',
+  'agent-runtime/context-window.ts',
+  'application/agent-runtime/tool-round-engine.ts',
 ]);
 
 /** Limit the Agent Runtime core to its own modules and type-only contracts. */

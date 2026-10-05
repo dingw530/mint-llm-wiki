@@ -3,7 +3,7 @@ import * as fs from '../../infrastructure/filesystem/wiki-files.js';
 import path from 'node:path';
 import * as lifecycleRepo from '../../infrastructure/persistence/wiki-lifecycle-repository.js';
 import { parseWikiPage } from '../../infrastructure/filesystem/wiki-files.js';
-import type { CompiledPage } from '../../services/utils/wikiShared.js';
+import type { CompiledPage } from '../../infrastructure/filesystem/wiki-content.js';
 import type { WikiCompiledClaim } from './wiki-compiler.js';
 
 const clamp = (value: unknown, fallback: number): number =>

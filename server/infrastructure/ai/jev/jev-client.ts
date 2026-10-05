@@ -10,7 +10,7 @@ import type {
   JevScoreAnswer,
   JevState,
 } from './types.js';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../observability/logger.js';
 
 const log = createLogger('jev');
 

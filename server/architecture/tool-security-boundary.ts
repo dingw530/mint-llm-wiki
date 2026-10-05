@@ -17,6 +17,7 @@ export function toolSecurityBoundaryViolation(edge: RoutingDependency): string |
   }
   if (target.startsWith(DOMAIN)) {
     if (target !== `${DOMAIN}index.ts`) return 'Consumers must use the Tool security public index';
+    if (importer === 'infrastructure/tools/bash-tool.ts' && !typeOnly) return null;
     if (importer.startsWith('infrastructure/') && !typeOnly)
       return 'Infrastructure may import only Tool security type contracts';
   }

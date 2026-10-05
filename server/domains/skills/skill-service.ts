@@ -5,7 +5,7 @@ import {
   getSkillsDir,
   resolveSkillFile,
 } from '../../infrastructure/filesystem/skills-directory.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../infrastructure/observability/logger.js';
 
 const log = createLogger('skill-service');
 

@@ -24,8 +24,8 @@ describe('Memory domain dependency boundary', () => {
       edge('domains/memory/memory-service.ts', '../../types.js', 'types.ts', true),
       edge(
         'domains/memory/memory-service.ts',
-        '../../services/utils/tokenEstimator.js',
-        'services/utils/tokenEstimator.ts',
+        '../../utils/token-estimator.js',
+        'utils/token-estimator.ts',
       ),
       edge(
         'infrastructure/persistence/memory-repository.ts',
@@ -45,7 +45,11 @@ describe('Memory domain dependency boundary', () => {
         '../infrastructure/ai/memory-extraction-client.js',
         'infrastructure/ai/memory-extraction-client.ts',
       ),
-      edge('services/messageService.ts', '../domains/memory/index.js', 'domains/memory/index.ts'),
+      edge(
+        'application/conversations/message-service.ts',
+        '../domains/memory/index.js',
+        'domains/memory/index.ts',
+      ),
     ];
 
     expect(findMemoryBoundaryViolations(dependencies, SERVER_ROOT)).toEqual([]);

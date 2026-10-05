@@ -1,6 +1,6 @@
 import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
-import type { CompiledPage, Relationship } from '../../services/utils/wikiShared.js';
-import { resolveWikiMarkdownLink } from '../../services/utils/wikiLinkProtocol.js';
+import type { CompiledPage, Relationship } from '../../infrastructure/filesystem/wiki-content.js';
+import { resolveWikiMarkdownLink } from '../../infrastructure/filesystem/wiki-link-protocol.js';
 import { getGraphRelationPriority, normalizeGraphRelation } from '../../utils/graphOntology.js';
 
 // ── Types ──

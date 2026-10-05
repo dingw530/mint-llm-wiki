@@ -12,16 +12,16 @@ describe('Agent Runtime boundaries', () => {
 
   it.each([
     ['agent-runtime/react-loop-core.ts', 'application/settings/settings-service.ts', false, true],
-    ['agent-runtime/react-loop-core.ts', 'services/tools/BashTool.ts', false, true],
+    ['agent-runtime/react-loop-core.ts', 'infrastructure/tools/bash-tool.ts', false, true],
     [
       'agent-runtime/react-loop-core.ts',
       'infrastructure/persistence/agent-run-event-repository.ts',
       false,
       true,
     ],
-    ['agent-runtime/react-loop-core.ts', 'services/runtime/runtimeContext.ts', true, false],
-    ['agent-runtime/contracts.ts', 'services/toolRoundEngine.ts', true, false],
-    ['agent-runtime/react-loop-core.ts', 'services/utils/contextWindow.ts', true, false],
+    ['agent-runtime/react-loop-core.ts', 'agent-runtime/tooling/runtime-context.ts', true, false],
+    ['agent-runtime/contracts.ts', 'application/agent-runtime/tool-round-engine.ts', true, false],
+    ['agent-runtime/react-loop-core.ts', 'agent-runtime/context-window.ts', true, false],
   ])('checks %s -> %s', (importer, target, typeOnly, expectedViolation) => {
     const edge: RoutingDependency = { importer, target, typeOnly };
     expect(Boolean(agentRuntimeBoundaryViolation(edge))).toBe(expectedViolation);

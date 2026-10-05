@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { RoutingService } from '../../../bootstrap/routing.js';
-import { createLogger } from '../../../utils/logger.js';
+import { createLogger } from '../../../infrastructure/observability/logger.js';
 import type { Agent } from '../../../types.js';
 
 describe('RoutingService.keywordMatch', () => {

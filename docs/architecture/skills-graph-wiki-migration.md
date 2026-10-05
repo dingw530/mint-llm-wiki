@@ -63,7 +63,7 @@ Codex plugin/MCP 的配置、插件目录、插件变更文档及相关索引条
 
 Wiki 摄入管线、编译器、提交恢复、后台作业状态机及任务类型位于 `domains/wiki`；跨批候选生成位于 `domains/knowledge-graph`。专属暂存文件、SQLite 提交记录、队列、作业存储和事件适配器位于 `infrastructure/`。HTTP/Electron 的 Wiki job adapter 后续从旧 `services/api/` 移至 `application/wiki/wiki-ingestion-job-service.ts`。编译器仍调用共享 Wiki 页面写入 helpers 和现有 API adapter；跨批候选服务仍直接读取 Wiki 页面并调用该 adapter。这些是后续可单独收敛的依赖桥接。未改变 API、SSE、IPC、Schema、任务状态或提交恢复语义。
 
-2026-10-04 将 `services/utils/wikiCompiler.ts` 与 `services/api/crossBatchSemanticService.ts` 分别迁入 Wiki 和 Knowledge Graph 域，并迁移各自测试。Wiki 摄入改为本地编译器调用和 Graph 公共 API 调用。现有 Wiki shared 文件 helper、Wiki 文件读取及通用 API adapter 仍保留为后续可收敛依赖。
+2026-10-04 将原 `services/utils/wikiCompiler.ts` 与 `services/api/crossBatchSemanticService.ts` 分别迁入 Wiki 和 Knowledge Graph 域，并迁移各自测试。2026-10-05 将剩余 Wiki shared 文件 helper、Wiki 文件访问/捕获、链接协议与解析 adapter 迁入 `infrastructure/filesystem/`，Wiki application adapters 继续经 Wiki public API 调用领域规则。此前记录的 `services/utils/` 路径只用于描述迁移前来源。
 
 本次迁移前 `compileSource` 与 `generateCrossBatchCandidates` 的 GitNexus impact 均为 LOW，分别涉及 2 个/3 个受影响符号。未暂存检查曾报 LOW，但暂存后的检查纳入搬迁文件和新 helper，报 CRITICAL（15 个文件、10 个符号、834 个流程）；此前 LOW 结果不作为完整风险证据。`compileAndValidateOutput` impact 也报 CRITICAL，源码引用显示其直接调用来自 `compileSource`，而图流程展开包含无关的 transport、Memory 和进程生命周期路径；这些异常保留为未消除的图风险，不以低共享风险轴豁免。全仓执行流采样仍有截断，结合引用清单、定向测试与正常提交钩子验证。
 

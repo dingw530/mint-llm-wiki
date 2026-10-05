@@ -50,7 +50,7 @@ vi.mock('../../persistence/mcp-server-repository.js', () => ({
   update: vi.fn(),
 }));
 
-vi.mock('../../../services/utils/encryption.js', () => ({
+vi.mock('../../security/encryption.js', () => ({
   decrypt: vi.fn((value: string) => value),
 }));
 

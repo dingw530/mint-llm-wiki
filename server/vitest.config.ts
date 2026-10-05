@@ -19,7 +19,13 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
-      include: ['services/**/*.ts', 'utils/**/*.ts', 'repositories/**/*.ts'],
+      include: [
+        'application/**/*.ts',
+        'agent-runtime/**/*.ts',
+        'infrastructure/**/*.ts',
+        'utils/**/*.ts',
+        'repositories/**/*.ts',
+      ],
       exclude: [
         // AI 适配器需要真实 API 密钥，集成测试覆盖
         'infrastructure/ai/adapters/**/*.ts',

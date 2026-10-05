@@ -2,13 +2,13 @@
 
 ## 文档信息
 
-| 属性     | 值                                 |
-| -------- | ---------------------------------- |
-| 文档编号 | PLAN-20260929-001                  |
-| 状态     | 执行中                             |
-| 创建日期 | 2026-09-29                         |
-| 关联设计 | [design-doc.md](design-doc.md)     |
-| 追溯     | [traceability.md](traceability.md) |
+| 属性     | 值                                                     |
+| -------- | ------------------------------------------------------ |
+| 文档编号 | PLAN-20260929-001                                      |
+| 状态     | 执行中（TP-4A～TP-4M 已验证；TP-5 拆包决策复盘待启动） |
+| 创建日期 | 2026-09-29                                             |
+| 关联设计 | [design-doc.md](design-doc.md)                         |
+| 追溯     | [traceability.md](traceability.md)                     |
 
 ## 完成定义
 
@@ -56,9 +56,9 @@
 
 ### TP-4：高耦合运行时与入口边界收敛
 
-- 状态：进行中（TP-4A～TP-4F 已完成，TP-4G 验证中）
+- 状态：已验证（TP-4A～TP-4M 已完成；TP-5 独立待启动）
 - 关联：DS-3，AC-2、AC-3、AC-4、AC-6～AC-9
-- 工作：基于 TP-1 结果处理 `reactLoopCore`、`ServerRuntime`、`app.ts` 的职责和依赖；先提取清晰接口/模块职责，再按需要移动文件。不得把 CRITICAL impact 当作普通搬迁处理。
+- 工作：基于 TP-1 结果处理 `reactLoopCore`、`ServerRuntime`、`app.ts` 及 Tool 执行链的职责和依赖；先提取清晰接口/模块职责，再按需要移动文件。不得把 CRITICAL impact 当作普通搬迁处理。
 - 产出：运行时/装配边界调整及契约说明；若发现需改变 API 或行为，暂停并开新变更范围。
 - Probe：高影响符号 impact、React/AgentRun/SSE focused suites、启动/关闭测试、typecheck/build、MCP/CLI/Electron bundle 检查。
 - 证据：高风险审查记录和上述探针结果。
@@ -67,15 +67,26 @@
 
 按 TP-4A → TP-4B → TP-4C → TP-4D → TP-4E 顺序完成。实现、build、入口、Git 历史及正常 Hook 验证均已通过；实际文件清单和证据记录在本节执行记录中。
 
-| 子任务                    | 状态   | 工作与路径范围                                                                                                     | AC                           | 证据                                                                                                |
-| ------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------ | ---------------------------- | --------------------------------------------------------------------------------------------------- |
-| TP-4A：执行契约与显式装配 | 已完成 | 新增 Runtime ports/bootstrap；adapter 与工具注册改为幂等显式初始化；RunFactory 绑定移到 bootstrap                  | AC-2、AC-4、AC-6             | Runtime composition 测试、bootstrap 幂等测试、依赖边界测试、Server typecheck                        |
-| TP-4B：ReAct 状态机拆分   | 已完成 | `react-loop-core.ts` 承载 ReAct 状态机、预算、循环检测、上下文准备、结果归并及收尾                                 | AC-3、AC-4、AC-8             | 固定 adapter/tool stub 的 Runtime suite；预算、重试、取消、事件序列及并发结果顺序测试               |
-| TP-4C：生命周期与恢复     | 已完成 | AgentRun/events/recovery reducer 迁入 Runtime；SQLite 仓储进入 infrastructure；factory 在 bootstrap 绑定 observer  | AC-2、AC-4、AC-7             | AgentRun/事件仓储/恢复/审批 focused tests；写入顺序、唯一终态、快照复制和未知工具结果测试           |
-| TP-4D：输出与工具适配     | 已完成 | 输出契约与 HTTP/IPC/CLI 实现分离；审批 continuation 的消息落库提为单独应用适配；A2UI/Langfuse/MCP 保持显式能力端口 | AC-3、AC-4、AC-7、AC-8、AC-9 | sink/message/approval/security/A2UI tests；审批恢复保持 runId/sequence；ServerRuntime shutdown 测试 |
-| TP-4E：公共入口与目录搬迁 | 已完成 | 模块迁至 kebab-case `agent-runtime/`；生产入口使用 bootstrap；旧 `services/reactLoopCore.ts` facade 已删除         | AC-2、AC-3、AC-4、AC-6、AC-9 | 全仓 source 验证、入口 smoke/bundle、Git rename 历史和正常提交 Hook 全部通过                        |
-| TP-4F：Settings、MCP 与向量基础设施 | 已完成（未提交） | 设置、MCP 持久化/连接管理、模型与向量连接验证、SQLite/Chroma 向量存储迁至 infrastructure；通过 bootstrap/API facade 保持现有调用契约 | AC-2、AC-3、AC-4 | typecheck、16 个 focused Vitest 文件/133 项、Prettier、边界/路径扫描、diff check；MCP 仓储历史需在提交后以 20% 阈值追踪 |
-| TP-4G：迁出剩余 API 应用模块 | 已完成（未提交） | 应用用例移入 `application/`，Jev 探测归 infrastructure，删除冗余连接 re-export；端点、Runtime、CLI、Electron 调用路径保持原契约 | AC-2、AC-3、AC-4 | typecheck、19 个 focused Vitest 文件/138 项、架构边界、Prettier、旧路径扫描、rename 探测和 diff check |
+| 子任务                              | 状态         | 工作与路径范围                                                                                                              | AC                           | 证据                                                                                                                |
+| ----------------------------------- | ------------ | --------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| TP-4A：执行契约与显式装配           | 已完成       | 新增 Runtime ports/bootstrap；adapter 与工具注册改为幂等显式初始化；RunFactory 绑定移到 bootstrap                           | AC-2、AC-4、AC-6             | Runtime composition 测试、bootstrap 幂等测试、依赖边界测试、Server typecheck                                        |
+| TP-4B：ReAct 状态机拆分             | 已完成       | `react-loop-core.ts` 承载 ReAct 状态机、预算、循环检测、上下文准备、结果归并及收尾                                          | AC-3、AC-4、AC-8             | 固定 adapter/tool stub 的 Runtime suite；预算、重试、取消、事件序列及并发结果顺序测试                               |
+| TP-4C：生命周期与恢复               | 已完成       | AgentRun/events/recovery reducer 迁入 Runtime；SQLite 仓储进入 infrastructure；factory 在 bootstrap 绑定 observer           | AC-2、AC-4、AC-7             | AgentRun/事件仓储/恢复/审批 focused tests；写入顺序、唯一终态、快照复制和未知工具结果测试                           |
+| TP-4D：输出与工具适配               | 已完成       | 输出契约与 HTTP/IPC/CLI 实现分离；审批 continuation 的消息落库提为单独应用适配；A2UI/Langfuse/MCP 保持显式能力端口          | AC-3、AC-4、AC-7、AC-8、AC-9 | sink/message/approval/security/A2UI tests；审批恢复保持 runId/sequence；ServerRuntime shutdown 测试                 |
+| TP-4E：公共入口与目录搬迁           | 已完成       | 模块迁至 kebab-case `agent-runtime/`；生产入口使用 bootstrap；旧 `services/reactLoopCore.ts` facade 已删除                  | AC-2、AC-3、AC-4、AC-6、AC-9 | 全仓 source 验证、入口 smoke/bundle、Git rename 历史和正常提交 Hook 全部通过                                        |
+| TP-4F：Settings、MCP 与向量基础设施 | 已完成并提交 | 设置、MCP 持久化/连接管理、模型与向量连接验证、SQLite/Chroma 向量服务迁至 infrastructure；原 API facade 保持调用契约        | AC-2、AC-3、AC-4             | 提交 `ca21878` 的正常 `verify:source`；Settings/MCP/vector 迁移记录                                                 |
+| TP-4G：迁出剩余 API 应用模块        | 已完成并提交 | 应用用例移入 `application/`，Jev connection probe 归 infrastructure，删除冗余连接 re-export；各入口保持原契约               | AC-2、AC-3、AC-4             | `ca21878` 全量 Hook 通过；application 迁移记录及 `LAYERS.md`                                                        |
+| TP-4H：其余 AI/Wiki/A2UI 服务归位   | 已完成并提交 | Wiki rerank 归 Wiki domain；Jev client、provider adapters 归 AI infrastructure；A2UI projection 归 transport infrastructure | AC-2、AC-3、AC-4             | `ca21878`：Server 1125/16 skipped、Client 90、eval 57、engineering 9/9、typecheck/lint/build；rename 历史见专项记录 |
+
+#### TP-4 Tool 与 services 迁移子任务（2026-10-05，已实施）
+
+| 子任务                                        | 状态             | 工作范围                                                                                                                                                                                                                                                   | AC                                        | 证据/停止门禁                                                                                                                                    |
+| --------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TP-4I：Tool 边界设计与评审                    | 已按用户指令确认 | 按提案 DS-5 确认 Runtime ports、catalog、执行流水线、MCP 动态工具及 handler 责任边界；方案依据 Pi/DeepSeek Harness 源码快照                                                                                                                                | AC-1、AC-4                                | 用户 2026-10-05 指令“goal 按工具调整方案实施”；方案见 `design-doc.md`                                                                            |
+| TP-4J：Tool Runtime 契约与唯一执行路径        | 已实施           | Tool handler/context/metadata 与 ToolCatalog/ToolExecution 端口归 Agent Runtime；Registry、Executor、Policy、Approval Store 和 ToolRoundEngine 归 application，删除未经使用的直接执行旁路                                                                  | AC-2、AC-4、AC-6、AC-7、AC-8、AC-10       | Tool/审批/runtime focused suites、typecheck；旧 Registry/BaseTool 旁路仅有自调用，被删除后全仓引用检索为零                                       |
+| TP-4K：Agent/MCP 目录与审批装配               | 已实施           | bootstrap 显式注册 handlers 并注入 Agent-scoped catalog、MCP client/adapter 和执行服务；保留 loaded/unloaded、legacy mode 与 server allowlist                                                                                                              | AC-2、AC-3、AC-7、AC-8、AC-9、AC-10       | catalog schema/allowlist/legacy tests、MCP adapter tests、审批 one-shot/runId continuation tests、Runtime composition tests                      |
+| TP-4L：具体 Tool handler 分批迁移与旧入口退役 | 已验证           | Bash/HTTP/artifact 归 `infrastructure/tools`，MCP adapter 归 `infrastructure/mcp`；Wiki/Skills/Graph/Agent/MCP catalog tools 归 `application/tools`；删除旧 barrel/facades                                                                                 | AC-2、AC-3、AC-4、AC-7、AC-8、AC-10       | `verify:source` 通过；MCP build、Electron server bundle、CLI `--help` smoke 通过                                                                 |
+| TP-4M：迁出 `server/services/` 剩余模块       | 已验证           | 消息/AI/context providers 归 `application/conversations`；Recovery/approval/retry 归 application/Agent Runtime；上下文契约归 Agent Runtime；network/filesystem/security/observability/resilience 归 infrastructure；纯 token estimator 迁至 `server/utils` | AC-2、AC-3、AC-4、AC-6、AC-7、AC-9、AC-11 | `server/services` 无 TS 源码；`verify:source` 全部通过；定向 suites 239 项、architecture suites 89 项通过；MCP/Electron bundle 与 CLI smoke 通过 |
 
 各子批次采用相关源码目录下的既有 Vitest 用例为回归基线，只补足现有证据未覆盖的契约。重点覆盖：无工具流式回答、单/多工具往返、预算耗尽、重复调用、模型/工具失败及重试、取消、审批 approve/deny/过期/重复、重启后未知工具结果、上下文压缩、A2UI 引用和 token usage。验收比较语义事件及调用次数，不要求随机 runId 或时间戳相同；测试使用受控 provider/tool stub，不隐式发送真实知识库内容。
 
@@ -85,7 +96,11 @@
 
 2026-10-04：TP-4F 完成源码搬迁与 focused 验证。设置存储适配器、MCP Server 仓储与连接管理、模型/向量连接验证以及向量持久化和 Chroma adapter 已迁至 infrastructure；端点和既有 application facade 保留。当前验证记录见 [Settings、MCP 与向量迁移证据](../../architecture/settings-mcp-vector-migration.md)。
 
-2026-10-04：TP-4G 开始迁出剩余 `services/api/` TypeScript 模块。新增 `application/` 用例目录，Settings、MCP 配置、Memory spaces、会话 scope reservations、Agent Runtime approval 与 Wiki job facades 已移入；Jev connection probe 迁入 AI infrastructure，模型/向量连接旧 re-export 删除。详细映射与验证状态见 [Application services migration evidence](../../architecture/application-services-migration.md)。
+2026-10-04：TP-4G 迁出剩余 `services/api/` TypeScript 模块。新增 `application/` 用例目录，Settings、MCP 配置、Memory spaces、会话 scope reservations、Agent Runtime approval 与 Wiki job facades 已移入；Jev connection probe 迁入 AI infrastructure，模型/向量连接旧 re-export 删除。上述变更已并入 `ca21878`。详情见 [Application services migration evidence](../../architecture/application-services-migration.md)。
+
+2026-10-04：TP-4H 将 Wiki rerank、Jev client、VectorService/provider、AI provider adapters、A2UI composer/provider 分别迁至 Wiki domain、AI infrastructure、search infrastructure 与 transport infrastructure。提交 `ca21878` 的正常 `verify:source` Hook 全部通过，包含 typecheck、全量测试、engineering tests、lint 与构建。rename 记录中 Anthropic/OpenAI Responses 两个小文件需以 `--find-renames=20%` 追踪，详见 `ai-adapters-a2ui-migration.md`。
+
+2026-10-05：用户授权 TP-4I 方案并将目标扩展到迁出 `server/services/` 所有剩余实现。TP-4J～TP-4M 已完成源码迁移与兼容入口退役。`npm run verify:source` 全部通过（Server/Client/agent-eval tests、engineering tests、typecheck、lint、build）；另行通过 MCP bundle、Electron server bundle、CLI `--help` smoke 与 `git diff --check`。完整路径映射和验证限制见 [Server services migration evidence](../../architecture/server-services-migration.md)。TP-5 拆包复盘仍待启动。
 
 ### TP-5：拆包决策复盘与文档收敛
 
@@ -105,17 +120,19 @@
 
 ## 验收映射
 
-| AC   | TP               | 证据                                                |
-| ---- | ---------------- | --------------------------------------------------- |
-| AC-1 | TP-1、TP-5       | 架构职责图、规则检查、审阅记录                      |
-| AC-2 | TP-2、TP-3、TP-4 | impact、引用/入口清单、typecheck/build              |
-| AC-3 | TP-2、TP-3、TP-4 | focused tests、启动/打包探针                        |
-| AC-4 | TP-1 至 TP-5     | 架构边界检查和循环依赖检查                          |
-| AC-5 | TP-5             | 复盘决策记录                                        |
-| AC-6 | TP-4A、TP-4E     | 无副作用导入、幂等装配、Runtime 端口与依赖检查      |
-| AC-7 | TP-4C、TP-4D     | 事件持久化顺序、审批身份、恢复与未知副作用证据      |
-| AC-8 | TP-4B、TP-4D     | 预算/重试调用计数、并发结果排序、取消与目录刷新轨迹 |
-| AC-9 | TP-4D、TP-4E     | transport、消息保存/流关闭顺序及各入口验收          |
+| AC    | TP               | 证据                                                            |
+| ----- | ---------------- | --------------------------------------------------------------- |
+| AC-1  | TP-1、TP-5       | 架构职责图、规则检查、审阅记录                                  |
+| AC-2  | TP-2、TP-3、TP-4 | impact、引用/入口清单、typecheck/build                          |
+| AC-3  | TP-2、TP-3、TP-4 | focused tests、启动/打包探针                                    |
+| AC-4  | TP-1 至 TP-5     | 架构边界检查和循环依赖检查                                      |
+| AC-5  | TP-5             | 复盘决策记录                                                    |
+| AC-6  | TP-4A、TP-4E     | 无副作用导入、幂等装配、Runtime 端口与依赖检查                  |
+| AC-7  | TP-4C、TP-4D     | 事件持久化顺序、审批身份、恢复与未知副作用证据                  |
+| AC-8  | TP-4B、TP-4D     | 预算/重试调用计数、并发结果排序、取消与目录刷新轨迹             |
+| AC-9  | TP-4D、TP-4E     | transport、消息保存/流关闭顺序及各入口验收                      |
+| AC-10 | TP-4I～TP-4L     | 唯一 ToolCatalog/ToolExecution 边界、策略流水线与无绕过的调用图 |
+| AC-11 | TP-4M            | services 下无 TypeScript 实现；旧 imports 清零且入口/构建有效   |
 
 ## 执行记录
 

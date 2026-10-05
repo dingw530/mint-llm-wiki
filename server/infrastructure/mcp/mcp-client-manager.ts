@@ -7,9 +7,9 @@ import { existsSync, readdirSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 import * as mcpServerRepo from '../persistence/mcp-server-repository.js';
-import { decrypt } from '../../services/utils/encryption.js';
+import { decrypt } from '../security/encryption.js';
 import type { ToolDefinition } from '../../types.js';
-import { log } from '../../services/utils/logger.js';
+import { log } from '../observability/legacy-logger.js';
 import { getErrorMessage } from '../../utils/typeGuards.js';
 
 /**

@@ -1,9 +1,6 @@
 import type { PersistedUiBlock } from '../../../types.js';
 import { WikiSourceReferenceProvider } from './wiki-source-provider.js';
-import {
-  findWikiCitationMarkers,
-  normalizeWikiCitationMarkers,
-} from '../../../services/utils/wikiCitationMarkers.js';
+import { findWikiCitationMarkers, normalizeWikiCitationMarkers } from './wiki-citation-markers.js';
 import type {
   A2UIEmission,
   A2UIHandleResult,

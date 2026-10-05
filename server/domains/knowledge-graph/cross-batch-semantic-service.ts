@@ -4,7 +4,7 @@ import { getNodesWithSource, findNodeByLabel, createGraphCandidate } from './gra
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 import { normalizeGraphRelation } from '../../utils/graphOntology.js';
 import type { AiSettings } from '../../types.js';
-import type { CompiledPage } from '../../services/utils/wikiShared.js';
+import type { CompiledPage } from '../../infrastructure/filesystem/wiki-content.js';
 import { isRecord } from '../../utils/typeGuards.js';
 
 const ALLOWED = ['基于', '导致', '应对', '应用于', '约束', '案例', '区别于'];

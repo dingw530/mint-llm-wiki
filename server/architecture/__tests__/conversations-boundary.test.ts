@@ -11,7 +11,11 @@ describe('Conversations application boundary', () => {
   });
 
   it.each([
-    ['services/messageService.ts', 'infrastructure/persistence/conversation-repository.ts', false],
+    [
+      'application/conversations/message-service.ts',
+      'infrastructure/persistence/conversation-repository.ts',
+      false,
+    ],
     [
       'domains/conversations/conversation-service.ts',
       'infrastructure/config/settings-repository.ts',

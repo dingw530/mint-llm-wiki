@@ -3,7 +3,7 @@ import * as path from 'path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WikiServiceContext } from '../index.js';
-import { isPathSafe } from '../../services/utils/pathSecurity.js';
+import { isPathSafe } from '../../infrastructure/filesystem/path-security.js';
 import { searchWiki } from '../../domains/wiki/index.js';
 
 const SearchInputSchema = {

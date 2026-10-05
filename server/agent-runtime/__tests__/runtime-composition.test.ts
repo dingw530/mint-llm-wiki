@@ -1,5 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+const mockCatalog = vi.hoisted(() => ({
+  getAllToolDefinitions: vi.fn().mockResolvedValue([]),
+  getToolCallSummary: vi.fn().mockReturnValue(undefined),
+  syncToolHandlers: vi.fn(),
+}));
+
 const mockAdapter = {
   getUrl: vi.fn(() => 'https://api.test.com/v1/chat/completions'),
   getHeaders: vi.fn(() => ({})),
@@ -14,26 +20,25 @@ vi.mock('../../infrastructure/ai/adapters/api-adapter.js', () => ({
   registerAdapter: vi.fn(),
 }));
 
-vi.mock('../../services/toolRoundEngine.js', () => ({
+vi.mock('../../application/agent-runtime/tool-round-engine.js', () => ({
   toolLoopEngine: {
     executeRound: vi.fn(),
     executeToolCallWithRetry: vi.fn(),
   },
 }));
 
-vi.mock('../../services/toolOrchestration.js', () => ({
-  getAllToolDefinitions: vi.fn().mockResolvedValue([]),
-  getToolCallSummary: vi.fn().mockReturnValue(undefined),
+vi.mock('../../application/agent-runtime/tool-catalog-service.js', () => ({
+  ToolCatalogService: vi.fn(() => mockCatalog),
 }));
 
-vi.mock('../../services/utils/contextWindow.js', () => ({
+vi.mock('../context-window.js', () => ({
   DEFAULT_CONTEXT_TOKEN_BUDGET: 100000,
   DEFAULT_OUTPUT_TOKEN_RESERVE: 4096,
   prepareContext: vi.fn(async (msgs) => msgs),
 }));
 
 import { runAgentChat as reactChat } from '../../bootstrap/agent-runtime.js';
-import { toolLoopEngine } from '../../services/toolRoundEngine.js';
+import { toolLoopEngine } from '../../application/agent-runtime/tool-round-engine.js';
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 
 describe('reactChat', () => {
@@ -206,8 +211,7 @@ describe('reactChat', () => {
     };
     const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
     const contextMessages: any[] = [];
-    const { getToolCallSummary } = await import('../../services/toolOrchestration.js');
-    vi.mocked(getToolCallSummary).mockReturnValue('正在执行工具');
+    mockCatalog.getToolCallSummary.mockReturnValue('正在执行工具');
 
     vi.mocked(toolLoopEngine.executeRound)
       .mockImplementationOnce(async ({ messages }) => {

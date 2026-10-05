@@ -15,10 +15,18 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ['domains/wiki/wiki-service.ts', 'application/settings/settings-service.ts', false],
     ['domains/skills/skill-service.ts', 'domains/wiki/wiki-service.ts', false],
     ['endpoints/definitions/wiki.ts', 'domains/wiki/wiki-service.ts', false],
-    ['services/tools/SkillTool.ts', 'infrastructure/filesystem/skills-directory.ts', false],
-    ['services/messageService.ts', 'infrastructure/persistence/graph-repository.ts', false],
     [
-      'services/tools/KnowledgeGraphTool.ts',
+      'application/tools/skills/skill-tool.ts',
+      'infrastructure/filesystem/skills-directory.ts',
+      false,
+    ],
+    [
+      'application/conversations/message-service.ts',
+      'infrastructure/persistence/graph-repository.ts',
+      false,
+    ],
+    [
+      'application/tools/knowledge-graph/knowledge-graph-tool.ts',
       'infrastructure/persistence/graph-repository.ts',
       false,
     ],
@@ -30,7 +38,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
   it('routes Graph API clients through their public domain index', () => {
     expect(
       knowledgeDomainsBoundaryViolation({
-        importer: 'services/tools/KnowledgeGraphTool.ts',
+        importer: 'application/tools/knowledge-graph/knowledge-graph-tool.ts',
         target: 'domains/knowledge-graph/index.ts',
         typeOnly: false,
       }),
@@ -51,7 +59,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ).toBeNull();
     expect(
       knowledgeDomainsBoundaryViolation({
-        importer: 'services/tools/WikiSearchTool.ts',
+        importer: 'application/tools/wiki/wiki-search-tool.ts',
         target: 'domains/wiki/index.ts',
         typeOnly: false,
       }),
@@ -109,7 +117,7 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
       false,
     ],
     [
-      'services/tools/WikiSearchTool.ts',
+      'application/tools/wiki/wiki-search-tool.ts',
       'infrastructure/persistence/wiki-lifecycle-repository.ts',
       false,
     ],

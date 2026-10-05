@@ -12,7 +12,7 @@ describe('Routing domain boundary', () => {
   it.each([
     ['domains/routing/routing-service.ts', 'application/settings/settings-service.ts', false],
     ['domains/routing/routing-service.ts', 'infrastructure/ai/llm-routing-classifier.ts', false],
-    ['services/messageService.ts', 'domains/routing/routing-service.ts', false],
+    ['application/conversations/message-service.ts', 'domains/routing/routing-service.ts', false],
     ['infrastructure/ai/jev-routing-provider.ts', 'domains/routing/index.ts', false],
     [
       'endpoints/definitions/routingLogs.ts',

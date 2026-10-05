@@ -7,7 +7,7 @@ vi.mock('../wiki-compiler.js', () => ({
   compileSource: vi.fn(),
 }));
 
-vi.mock('../../../services/utils/wikiShared.js', () => ({
+vi.mock('../../../infrastructure/filesystem/wiki-content.js', () => ({
   appendWikiManifestEntry: vi.fn(),
   updateIndexMd: vi.fn(),
   writePreparedWikiPages: vi.fn((_wikiPath, pages) =>

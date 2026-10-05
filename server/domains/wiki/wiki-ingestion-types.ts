@@ -1,4 +1,4 @@
-import type { ParseResult } from '../../services/utils/fileParseService.js';
+import type { ParseResult } from '../../infrastructure/filesystem/file-parse-service.js';
 
 export type WikiJobStatus =
   | 'pending'

@@ -122,7 +122,7 @@ Token 会记录，长上下文也会压缩，但没有每次运行的 Token 或�
 
 工具执行前先检查工具是否注册且启用，再校验输入 schema 和工具自身权限；随后按工具元数据、参数和资源路径执行策略。HTTP 工具拒绝 localhost、私有网段等目标；Bash 检查工作目录和路径范围；高风险命令或外部副作用操作会要求审批。
 
-一个具体拦截例子是：模型调用 `http_fetch` 请求 `http://127.0.0.1/...`，策略识别出这是本机回环地址并拒绝，不进入实际工具执行。对公网地址发 POST 则会请求用户审批。实现见 [toolPolicy.ts](/Users/wangding/WorkSpace/personal/ai-chat/server/services/tools/toolPolicy.ts)。
+一个具体拦截例子是：模型调用 `http_fetch` 请求 `http://127.0.0.1/...`，策略识别出这是本机回环地址并拒绝，不进入实际工具执行。对公网地址发 POST 则会请求用户审批。实现见 [tool-policy.ts](/Users/wangding/WorkSpace/personal/ai-chat/server/application/agent-runtime/tooling/tool-policy.ts)。
 
 ### 19. AgentRun 事件模型是什么？SSE 断线、乱序和丢事件怎么处理？
 

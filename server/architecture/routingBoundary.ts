@@ -22,7 +22,8 @@ export function routingBoundaryViolation(edge: RoutingDependency): string | null
   if (importer.startsWith(DOMAIN)) {
     if (target.startsWith(DOMAIN)) return null;
     if (typeOnly && target === 'types.ts') return null;
-    if (['utils/logger.ts', 'utils/typeGuards.ts'].includes(target)) return null;
+    if (['infrastructure/observability/logger.ts', 'utils/typeGuards.ts'].includes(target))
+      return null;
     return 'Routing domain must use ports for configuration, models and persistence';
   }
   if (target.startsWith(DOMAIN)) {

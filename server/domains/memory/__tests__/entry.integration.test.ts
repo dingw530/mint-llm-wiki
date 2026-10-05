@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   streamChat: vi.fn(),
   reactChat: vi.fn(),
-  getAllToolDefinitions: vi.fn(),
+  getToolDefinitions: vi.fn(),
   enqueueMemoryProcessing: vi.fn(),
   trackMemoryGate: vi.fn(() => Promise.resolve()),
   evaluateMemoryGate: vi.fn(async () => ({
@@ -13,10 +13,12 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('../../../services/aiProxy.js', () => ({ streamChat: mocks.streamChat }));
-vi.mock('../../../bootstrap/agent-runtime.js', () => ({ runAgentChat: mocks.reactChat }));
-vi.mock('../../../services/toolOrchestration.js', () => ({
-  getAllToolDefinitions: mocks.getAllToolDefinitions,
+vi.mock('../../../application/conversations/ai-proxy.js', () => ({
+  streamChat: mocks.streamChat,
+}));
+vi.mock('../../../bootstrap/agent-runtime.js', () => ({
+  runAgentChat: mocks.reactChat,
+  getToolDefinitions: mocks.getToolDefinitions,
 }));
 vi.mock('../../../bootstrap/memory.js', () => ({
   enqueueMemoryProcessing: mocks.enqueueMemoryProcessing,
@@ -33,8 +35,8 @@ import * as conversationRepository from '../../../infrastructure/persistence/con
 import { agentRunRegistry } from '../../../agent-runtime/agent-run.js';
 import type { AiSettings, HistoryMessage, StreamResult } from '../../../types.js';
 import type { Sink } from '../../../agent-runtime/output-sink.js';
-import { sendMessage } from '../../../services/messageService.js';
-import { prepareContext } from '../../../services/utils/contextWindow.js';
+import { sendMessage } from '../../../application/conversations/message-service.js';
+import { prepareContext } from '../../../agent-runtime/context-window.js';
 
 const conversationIds = ['memory-entry-stream', 'memory-entry-react'];
 const disabledConversationId = 'memory-entry-disabled';
@@ -124,7 +126,7 @@ describe('memory request entry integration', () => {
     for (const id of [...conversationIds, disabledConversationId]) {
       memoryScopeRepository.bindConversation(id, spaceAId);
     }
-    mocks.getAllToolDefinitions.mockImplementation(async (agent: string) =>
+    mocks.getToolDefinitions.mockImplementation(async (agent: string) =>
       agent === 'react-fixture'
         ? [
             {

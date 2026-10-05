@@ -1,14 +1,14 @@
 import type { AgentRun, AgentRunOptions } from './agent-run.js';
 import type { ApiAdapter } from '../infrastructure/ai/adapters/api-adapter.js';
 import type { A2UIComposer } from '../infrastructure/transports/a2ui/composer.js';
-import type { ContextPreparationOptions } from '../services/utils/contextWindow.js';
-import type { RuntimeContext } from '../services/runtime/runtimeContext.js';
+import type { ContextPreparationOptions } from './context-window.js';
+import type { RuntimeContext } from './tooling/runtime-context.js';
 import type { Sink } from './output-sink.js';
 import type {
-  ToolLoopEngine,
+  ExecuteToolCallWithRetry,
   ToolRoundInput,
   ToolRoundResult,
-} from '../services/toolRoundEngine.js';
+} from './tooling/tool-round-contracts.js';
 import type {
   HistoryMessage,
   AiSettings,
@@ -19,12 +19,18 @@ import type {
 } from '../types.js';
 
 /** Explicit capabilities required by the sink independent ReAct loop. */
-export interface AgentRuntimePorts {
-  getAdapter(apiType: string): ApiAdapter | undefined;
+export interface ToolCatalogPort {
   getToolDefinitions(agentId?: string): Promise<ToolDefinition[]>;
-  executeRound(input: ToolRoundInput, sink?: Sink): Promise<ToolRoundResult>;
-  executeToolCallWithRetry: ToolLoopEngine['executeToolCallWithRetry'];
   getToolCallSummary(toolCall: ToolCall): string | undefined;
+}
+
+export interface ToolExecutionPort {
+  executeToolCallWithRetry: ExecuteToolCallWithRetry;
+}
+
+export interface AgentRuntimePorts extends ToolCatalogPort, ToolExecutionPort {
+  getAdapter(apiType: string): ApiAdapter | undefined;
+  executeRound(input: ToolRoundInput, sink?: Sink): Promise<ToolRoundResult>;
   prepareContext(
     messages: HistoryMessage[],
     options: ContextPreparationOptions,

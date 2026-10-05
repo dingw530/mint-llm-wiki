@@ -2,7 +2,7 @@ import type { RoutingDependency } from './routingBoundary.js';
 
 const MODEL_ENDPOINTS_DOMAIN = 'domains/model-endpoints/';
 const MODEL_ENDPOINT_REPOSITORY = 'infrastructure/persistence/model-endpoint-repository.ts';
-const ENCRYPTION_HELPER = 'services/utils/encryption.ts';
+const ENCRYPTION_HELPER = 'infrastructure/security/encryption.ts';
 
 /**
  * Enforce model endpoint management and persistence ownership during incremental migration.

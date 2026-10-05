@@ -27,19 +27,22 @@ electron → client → server
 ## Server Layer Hierarchy
 
 ```
-types          No app imports (pure definitions)
-migrations     types only (database schema)
-repositories   migrations/, types (data access)
-services       repositories/, types (business logic)
-endpoints      services/, middleware/, types (API handlers)
-middleware     services/, types (request processing)
+types             Pure definitions
+agent-runtime     Runtime contracts and ReAct execution
+domains           Business rules and domain APIs
+application       Cross-domain use cases and adapters
+infrastructure    External systems and technical adapters
+bootstrap         Process-scoped composition and lifecycle
+http/endpoints    Transport adapters
 ```
 
-**Rule:** Each layer may only import from layers to its LEFT. Never skip layers (e.g., endpoints must not import repositories directly).
+**Rule:** Runtime and domain code depend on owned contracts; application coordinates public domain/runtime APIs; infrastructure implements technical capabilities; bootstrap composes concrete dependencies. HTTP, CLI and Electron entry points call application/runtime APIs. Do not add new implementation modules under `server/services/`.
 
 ### Application services (incremental migration)
 
-`server/application/` contains HTTP-agnostic use cases that coordinate domain APIs, Agent Runtime, persistence/configuration capabilities and existing process facades. Endpoint, route, CLI, Electron and runtime entry points may call these services; application modules do not own Express handlers or transport protocols. New application modules use kebab-case filenames. Legacy `server/services/api/` is being retired as its remaining modules move to `application/`, their owning domains, or infrastructure.
+`server/application/` contains HTTP-agnostic use cases that coordinate domain APIs, Agent Runtime, persistence/configuration capabilities and external adapters. Endpoint, route, CLI and Electron entry points call these use cases; application modules do not own Express handlers or transport protocols. Application TypeScript files use kebab-case filenames. The former `server/services/` implementation modules have moved to their runtime, domain, application or infrastructure owners.
+
+[Server services migration evidence](server-services-migration.md) records the move map and verification boundary.
 
 `bootstrap/` continues to own process-scoped composition and resource lifecycle. Two inherited Settings reads from infrastructure still use the Settings application facade; this remains explicit migration debt and is not authorization for new infrastructure-to-application imports.
 
@@ -55,12 +58,12 @@ server/
   infrastructure/persistence/   # memory SQLite repositories and FTS projection
   infrastructure/ai/            # memory extraction and gate adapters
   bootstrap/memory.ts             # explicit service/lifecycle composition
-  services/contextProviders/      # thin request-context adapter during migration
+  application/conversations/context/ # request-context assembly and providers
 ```
 
 Memory domain implementation imports only its own domain modules, `infrastructure/`, explicit type-only `server/types.ts` contracts, and the shared pure token estimator. Memory-specific persistence and AI adapters are composed by `bootstrap/memory.ts`; application entry points do not import those implementations directly. Infrastructure may import Memory type contracts, never Memory runtime services. Other consumers use `domains/memory/index.ts`; tests may import internal modules for focused unit coverage. Literal dynamic imports and re-exports are checked with the same rule.
 
-`server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. This rule applies while other legacy services and the server runtime remain in their current locations. Do not treat the Memory migration as completion of the wider Server structure proposal.
+`server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. The broader Server proposal now also relocates the former `services/` modules into their owning runtime, application and infrastructure layers.
 
 ### Routing domain boundary (incremental migration)
 
@@ -140,7 +143,7 @@ The low-frequency lifecycle timer is composed by bootstrap and remains owned/dra
 
 `infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. Wiki rerank policy and providers live in `domains/wiki/rerank/`; the Jev provider keeps its explicit dependency on the shared client/config utilities in `infrastructure/ai/jev/`. That package owns the external protocol, request/retry handling, shared questions and wire types; routing and memory providers remain composed in `infrastructure/ai/`.
 
-`infrastructure/search/vector/` owns the embedding provider, vector ports/types and idempotent sync/backfill service. `infrastructure/search/wiki-vector-service.ts` composes the Wiki repository and optional Chroma adapter. Resilience policies remain in the legacy `services/resilience/` module as a transitional dependency used by vector adapters and the Wiki search runtime. SQLite/sqlite-vec remains the default store. Wiki file primitives remain in their filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
+`infrastructure/search/vector/` owns the embedding provider, vector ports/types and idempotent sync/backfill service. `infrastructure/search/wiki-vector-service.ts` composes the Wiki repository and optional Chroma adapter. Resilience policies live in `infrastructure/resilience/` and are shared by vector adapters and the Wiki search runtime. SQLite/sqlite-vec remains the default store. Wiki file primitives live in their filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
 
 The independent vector backfill job now lives in `application/wiki/wiki-vector-backfill-service.ts` and reaches Wiki persistence through the public API. WikiSearchTool remains in its legacy tool location; Wiki rerank types use the Wiki search storage contract as a type-only import. Ingestion consumers and job status contracts use the Wiki public API. [Wiki search migration evidence](wiki-search-domain-migration.md) records unchanged behavior and verification limits.
 
@@ -211,12 +214,12 @@ VIOLATION: server/endpoints/foo.ts imports server/repositories/bar.ts
 — endpoints cannot import repositories directly. See docs/architecture/LAYERS.md
 ```
 
-**Fix:** Route through the service layer. Move the business logic to `server/services/`, then import the service from the endpoint.
+**Fix:** Route through an application use case or owning domain API, then import that public API from the endpoint.
 
 ```typescript
 // BAD: endpoint imports repository directly
 import { getConversation } from '../repositories/conversationRepository';
 
-// GOOD: endpoint imports service
-import { getConversation } from '../services/conversationService';
+// GOOD: endpoint imports the public domain API
+import { getConversation } from '../domains/conversations/index.js';
 ```

@@ -8,7 +8,7 @@ import type {
 import type { AiSettings, JevSettings } from '../../types.js';
 import { callJev } from './jev/jev-client.js';
 import type { JevConfig, JevRequest, JevCallResult } from './jev/types.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../observability/logger.js';
 
 const log = createLogger('memory-semantic');
 export const MEMORY_SEMANTIC_TIMEOUT_MS = 15_000;

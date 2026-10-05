@@ -4,9 +4,13 @@ import {
   normalizeWikiCategories,
   parseWikiFrontmatter,
   stripWikiFrontmatter,
-} from '../../services/utils/wikiShared.js';
+} from '../../infrastructure/filesystem/wiki-content.js';
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
-import type { CompiledPage, Relationship, WikiCategory } from '../../services/utils/wikiShared.js';
+import type {
+  CompiledPage,
+  Relationship,
+  WikiCategory,
+} from '../../infrastructure/filesystem/wiki-content.js';
 import {
   INGEST_SYSTEM_PROMPT as SHARED_PROMPT,
   getWikiPageSummary,
@@ -16,7 +20,7 @@ import {
   writePreparedWikiPages,
   updateIndexMd,
   discoverCategoriesFromDir,
-} from '../../services/utils/wikiShared.js';
+} from '../../infrastructure/filesystem/wiki-content.js';
 import type { AiSettings } from '../../types.js';
 
 export interface CompileResult {

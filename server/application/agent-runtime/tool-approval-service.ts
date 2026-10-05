@@ -1,6 +1,10 @@
-import { toolApprovalStore, toolRegistry } from '../../services/tools/index.js';
-import type { ApprovalAction } from '../../services/tools/approvalStore.js';
-import { toolLoopEngine } from '../../services/toolRoundEngine.js';
+import { toolRegistry } from './tooling/tool-registry.js';
+import {
+  toolApprovalStore,
+  type ApprovalAction,
+  type PendingToolApproval,
+} from './tooling/tool-approval-store.js';
+import { toolLoopEngine } from './tool-round-engine.js';
 import { runAgentChat } from '../../bootstrap/agent-runtime.js';
 import { AccumulatingSink } from '../../infrastructure/transports/sinks.js';
 import { persistApprovalContinuation } from './approval-message-persistence.js';
@@ -10,7 +14,6 @@ import type { Sink } from '../../agent-runtime/output-sink.js';
 import { agentRunRegistry } from '../../agent-runtime/agent-run.js';
 import type { AgentRun } from '../../agent-runtime/agent-run.js';
 import { subscribeReactEvents } from '../../agent-runtime/react-events.js';
-import type { PendingToolApproval } from '../../services/tools/approvalStore.js';
 
 class ReactEventSink extends AccumulatingSink {
   readonly events: Record<string, unknown>[] = [];

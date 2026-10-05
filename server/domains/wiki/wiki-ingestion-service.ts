@@ -1,10 +1,10 @@
 import type { AiSettings } from '../../types.js';
 import { compileSource, type WikiCompileProgressStage } from './wiki-compiler.js';
-import { appendWikiManifestEntry } from '../../services/utils/wikiShared.js';
+import { appendWikiManifestEntry } from '../../infrastructure/filesystem/wiki-content.js';
 import { buildGraphFromPages } from '../knowledge-graph/index.js';
 import { inferWikiGraphNodeType } from '../../infrastructure/filesystem/wiki-graph-metadata.js';
 import { generateCrossBatchCandidates } from '../knowledge-graph/index.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../infrastructure/observability/logger.js';
 import {
   discardWikiStagedFile,
   finalizeWikiSourceFile,
@@ -17,7 +17,7 @@ import { registerCompiledKnowledge } from './wiki-knowledge-lifecycle-service.js
 import { rebuildWikiSearchIndex } from './wiki-search-service.js';
 import type { OpenAICompatibleEmbeddingConfig } from '../../infrastructure/search/vector/types.js';
 import type { WikiPageSummary } from './wiki-ingestion-types.js';
-import type { CompiledPage, Relationship } from '../../services/utils/wikiShared.js';
+import type { CompiledPage, Relationship } from '../../infrastructure/filesystem/wiki-content.js';
 import { createHash } from 'node:crypto';
 import * as path from 'node:path';
 import * as commitRepository from '../../infrastructure/persistence/wiki-ingestion-commit-repository.js';
@@ -25,7 +25,10 @@ import type {
   WikiIngestionCommit,
   WikiIngestionCommitPhase,
 } from '../../infrastructure/persistence/wiki-ingestion-commit-repository.js';
-import { updateIndexMd, writePreparedWikiPages } from '../../services/utils/wikiShared.js';
+import {
+  updateIndexMd,
+  writePreparedWikiPages,
+} from '../../infrastructure/filesystem/wiki-content.js';
 import { finalizeWikiSourceFileTo } from '../../infrastructure/filesystem/wiki-ingestion-files.js';
 
 export {

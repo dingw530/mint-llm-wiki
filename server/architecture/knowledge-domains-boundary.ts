@@ -63,8 +63,8 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
       typeOnly &&
       [
         'types.ts',
-        'services/utils/wikiShared.ts',
-        'services/utils/fileParseService.ts',
+        'infrastructure/filesystem/wiki-content.ts',
+        'infrastructure/filesystem/file-parse-service.ts',
         'infrastructure/search/vector/types.ts',
       ].includes(target)
     )
@@ -72,10 +72,10 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
     if (
       domain === 'wiki' &&
       [
-        'services/utils/wikiShared.ts',
+        'infrastructure/filesystem/wiki-content.ts',
         'infrastructure/ai/adapters/api-adapter.ts',
-        'services/utils/fileParseService.ts',
-        'services/utils/wikiPageCapture.ts',
+        'infrastructure/filesystem/file-parse-service.ts',
+        'infrastructure/filesystem/wiki-page-capture.ts',
       ].includes(target)
     )
       return null;
@@ -96,10 +96,10 @@ export function knowledgeDomainsBoundaryViolation(edge: RoutingDependency): stri
       return null;
     if (
       [
-        'utils/logger.ts',
+        'infrastructure/observability/logger.ts',
         'utils/graphOntology.ts',
         'utils/typeGuards.ts',
-        'services/utils/wikiLinkProtocol.ts',
+        'infrastructure/filesystem/wiki-link-protocol.ts',
       ].includes(target)
     )
       return null;

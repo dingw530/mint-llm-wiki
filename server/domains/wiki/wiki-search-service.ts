@@ -17,7 +17,7 @@ import type {
 } from '../../infrastructure/search/wiki-search-runtime.js';
 import type { RerankCandidate, RerankedCandidate } from './rerank/types.js';
 import { isSystemWikiPath, parseWikiPage } from '../../infrastructure/filesystem/wiki-files.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../infrastructure/observability/logger.js';
 import type { JevSettings } from '../../types.js';
 
 /** Search only needs this per-run configuration capability, not the Agent runtime. */

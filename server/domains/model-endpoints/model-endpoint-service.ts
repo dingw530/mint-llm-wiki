@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as endpointRepo from '../../infrastructure/persistence/model-endpoint-repository.js';
-import { encrypt, decrypt, maskApiKey } from '../../services/utils/encryption.js';
+import { encrypt, decrypt, maskApiKey } from '../../infrastructure/security/encryption.js';
 import type { EndpointInput, EndpointOutput, EndpointList, Endpoint } from '../../types.js';
 
 function toOutput(endpoint: Endpoint): EndpointOutput {

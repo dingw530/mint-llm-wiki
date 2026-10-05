@@ -3,7 +3,7 @@ import { A2UIComposer } from '../../infrastructure/transports/a2ui/composer.js';
 import { AgentRun } from '../agent-run.js';
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 import { AccumulatingSink } from '../../infrastructure/transports/sinks.js';
-import { ToolRegistry } from '../../services/tools/ToolRegistry.js';
+import { ToolRegistry } from '../../application/agent-runtime/tooling/tool-registry.js';
 import type { AiSettings } from '../../types.js';
 import type { AgentRuntimePorts } from '../contracts.js';
 import { reactChat } from '../react-loop-core.js';

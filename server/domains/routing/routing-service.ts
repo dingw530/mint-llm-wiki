@@ -1,4 +1,4 @@
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../infrastructure/observability/logger.js';
 import { getErrorMessage } from '../../utils/typeGuards.js';
 import { GENERAL_AGENT_ID, keywordMatchAgents } from './legacy-routing-provider.js';
 import { resolveRoute } from './routing-policy.js';
