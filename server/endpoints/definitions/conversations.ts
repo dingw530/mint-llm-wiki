@@ -1,8 +1,9 @@
-import * as conversationService from '../../services/api/conversationService.js';
+import * as conversationService from '../../domains/conversations/index.js';
 import { httpError } from '../helpers.js';
 import type { Request, Response } from 'express';
 import type { EndpointDescriptor } from '../types.js';
-import { ResSink } from '../../services/sink.js';
+import { ResSink } from '../../infrastructure/transports/sinks.js';
+import * as memorySpaceService from '../../application/memory/memory-space-service.js';
 
 /** 延迟加载摄入事件流，避免生成 endpoint manifest 时初始化摄入服务。 */
 async function streamIngestionEvents(
@@ -10,7 +11,7 @@ async function streamIngestionEvents(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const module = await import('../../services/api/ingestionEventsService.js');
+  const module = await import('../../http/streams/ingestion-events.js');
   module.streamConversationIngestionEvents(conversationId, req, res);
 }
 
@@ -20,13 +21,13 @@ async function resolveApproval(
   approvalId: string,
   action: 'approve' | 'deny',
 ) {
-  const module = await import('../../services/api/toolApprovalService.js');
+  const module = await import('../../application/agent-runtime/tool-approval-service.js');
   return module.resolveToolApproval(conversationId, approvalId, action);
 }
 
 /** Loads recovery state lazily so endpoint manifest generation remains side-effect free. */
 async function listRecoverableRuns(conversationId: string) {
-  const module = await import('../../services/agentRunRecoveryService.js');
+  const module = await import('../../application/agent-runtime/agent-run-recovery-service.js');
   return { runs: module.listRecoverableRuns(conversationId) };
 }
 
@@ -44,7 +45,7 @@ async function resolveRecoveryAction(
   if (typeof idempotencyKey !== 'string' || !idempotencyKey.trim()) {
     throw httpError(400, 'Recovery idempotencyKey is required');
   }
-  const module = await import('../../services/agentRunRecoveryService.js');
+  const module = await import('../../application/agent-runtime/agent-run-recovery-service.js');
   const recoveryAction = module.resolveRecoveryAction({
     conversationId,
     runId,
@@ -71,11 +72,32 @@ async function streamRecoveryAction(
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  const module = await import('../../services/messageService.js');
+  const module = await import('../../application/conversations/message-service.js');
   await module.streamRecoveryAction(conversationId, actionId, new ResSink(res));
 }
 
 export const conversationsEndpoints: EndpointDescriptor[] = [
+  {
+    id: 'conversations:getMemorySpace',
+    method: 'GET',
+    path: '/:id/memory-space',
+    preloadMethod: 'getConversationMemorySpace',
+    service: memorySpaceService.getConversationMemorySpace,
+    args: [{ from: 'path', name: 'id' }],
+    result: 'direct',
+  },
+  {
+    id: 'conversations:setMemorySpace',
+    method: 'PUT',
+    path: '/:id/memory-space',
+    preloadMethod: 'setConversationMemorySpace',
+    service: memorySpaceService.setConversationMemorySpace,
+    args: [
+      { from: 'path', name: 'id' },
+      { from: 'body', name: '' },
+    ],
+    result: 'direct',
+  },
   {
     id: 'conversations:listRecoverableRuns',
     method: 'GET',

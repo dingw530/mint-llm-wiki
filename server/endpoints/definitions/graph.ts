@@ -1,6 +1,6 @@
-import * as graphService from '../../services/api/graphService.js';
+import * as graphService from '../../domains/knowledge-graph/index.js';
 import type { EndpointDescriptor } from '../types.js';
-import type { CandidateStatus } from '../../repositories/graphCandidateRepository.js';
+import type { CandidateStatus } from '../../domains/knowledge-graph/index.js';
 
 export const graphEndpoints: EndpointDescriptor[] = [
   {
@@ -98,7 +98,32 @@ export const graphEndpoints: EndpointDescriptor[] = [
     args: [{ from: 'path', name: 'id' }],
     result: 'direct',
   },
-  { id:'graph:listCandidates', method:'GET', path:'/candidates', preloadMethod:'listGraphCandidates', service:(status?: string)=>graphService.listCandidates(status as CandidateStatus | undefined), args:[{from:'query',name:'status',optional:true}], result:'direct' },
-  { id:'graph:acceptCandidate', method:'POST', path:'/candidates/:id/accept', preloadMethod:'acceptGraphCandidate', service:(id:string)=>graphService.acceptCandidate(id), args:[{from:'path',name:'id'}], result:'direct' },
-  { id:'graph:rejectCandidate', method:'POST', path:'/candidates/:id/reject', preloadMethod:'rejectGraphCandidate', service:(id:string,body:{note?:string})=>graphService.rejectCandidate(id,body?.note), args:[{from:'path',name:'id'},{from:'body'}], result:'direct' },
+  {
+    id: 'graph:listCandidates',
+    method: 'GET',
+    path: '/candidates',
+    preloadMethod: 'listGraphCandidates',
+    service: (status?: string) =>
+      graphService.listCandidates(status as CandidateStatus | undefined),
+    args: [{ from: 'query', name: 'status', optional: true }],
+    result: 'direct',
+  },
+  {
+    id: 'graph:acceptCandidate',
+    method: 'POST',
+    path: '/candidates/:id/accept',
+    preloadMethod: 'acceptGraphCandidate',
+    service: (id: string) => graphService.acceptCandidate(id),
+    args: [{ from: 'path', name: 'id' }],
+    result: 'direct',
+  },
+  {
+    id: 'graph:rejectCandidate',
+    method: 'POST',
+    path: '/candidates/:id/reject',
+    preloadMethod: 'rejectGraphCandidate',
+    service: (id: string, body: { note?: string }) => graphService.rejectCandidate(id, body?.note),
+    args: [{ from: 'path', name: 'id' }, { from: 'body' }],
+    result: 'direct',
+  },
 ];

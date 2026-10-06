@@ -1,5 +1,5 @@
 import type { Conversation, Message } from '@/types';
-import { ipcOrHttp, request, getElectronAPI } from '../api/_base';
+import { callEndpoint, ipcOrHttp, request, getElectronAPI } from '../api/_base';
 
 export function getConversations(type?: string): Promise<{ conversations: Conversation[] }> {
   return ipcOrHttp(
@@ -8,7 +8,10 @@ export function getConversations(type?: string): Promise<{ conversations: Conver
   );
 }
 
-export function createConversation(title?: string, type?: string): Promise<{ conversation: Conversation }> {
+export function createConversation(
+  title?: string,
+  type?: string,
+): Promise<{ conversation: Conversation }> {
   return ipcOrHttp(
     () => getElectronAPI()!.createConversation(title, type),
     () => request('/conversations', { method: 'POST', body: JSON.stringify({ title, type }) }),
@@ -29,22 +32,50 @@ export function clearAllConversations(): Promise<{ changes: number }> {
   );
 }
 
-export function renameConversation(id: string, title: string): Promise<{ conversation: Conversation }> {
+export function renameConversation(
+  id: string,
+  title: string,
+): Promise<{ conversation: Conversation }> {
   return ipcOrHttp(
     () => getElectronAPI()!.renameConversation(id, title),
     () => request(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) }),
   );
 }
 
-export function lockAgent(conversationId: string, agentId: string | null): Promise<{ conversation: Conversation }> {
+export function lockAgent(
+  conversationId: string,
+  agentId: string | null,
+): Promise<{ conversation: Conversation }> {
   return ipcOrHttp(
     () => getElectronAPI()!.lockAgent(conversationId, agentId),
-    () => request(`/conversations/${conversationId}`, { method: 'PATCH', body: JSON.stringify({ lockedAgent: agentId }) }),
+    () =>
+      request(`/conversations/${conversationId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ lockedAgent: agentId }),
+      }),
   );
 }
 
 export function unlockAgent(conversationId: string): Promise<{ conversation: Conversation }> {
   return lockAgent(conversationId, null);
+}
+
+export function getConversationMemorySpace(conversationId: string) {
+  return callEndpoint<{
+    conversationId: string;
+    memorySpaceId: string | null;
+    memoryBindingRevision: number;
+    scopeKind: 'global' | 'space' | 'unassigned';
+  }>('conversations:getMemorySpace', conversationId);
+}
+
+export function setConversationMemorySpace(conversationId: string, spaceId: string | null) {
+  return callEndpoint<{
+    conversationId: string;
+    memorySpaceId: string | null;
+    memoryBindingRevision: number;
+    changed: boolean;
+  }>('conversations:setMemorySpace', conversationId, { spaceId });
 }
 
 export function getMessages(conversationId: string): Promise<{ messages: Message[] }> {

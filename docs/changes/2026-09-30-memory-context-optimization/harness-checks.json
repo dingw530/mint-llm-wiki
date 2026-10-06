@@ -1,0 +1,203 @@
+[
+  {
+    "name": "server-regression",
+    "evidenceLevel": "integration",
+    "invariants": ["regression_free"],
+    "command": "npm",
+    "args": ["run", "--workspace=mint-server", "test"],
+    "timeoutMs": 240000
+  },
+  {
+    "name": "client-regression",
+    "evidenceLevel": "unit",
+    "invariants": ["regression_free"],
+    "command": "npm",
+    "args": ["run", "--workspace=mint-client", "test"],
+    "timeoutMs": 180000
+  },
+  {
+    "name": "memory-unit",
+    "evidenceLevel": "unit",
+    "invariants": [
+      "abstain_when_unmatched",
+      "bounded_memory_tokens",
+      "content_free_observation",
+      "deterministic_selection",
+      "relevant_recall",
+      "selected_access_only"
+    ],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/__tests__/memory-query.test.ts",
+      "domains/memory/__tests__/memory-core-policy.test.ts",
+      "domains/memory/__tests__/memory-context-packing.test.ts",
+      "domains/memory/__tests__/memory-service.test.ts"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-integration",
+    "evidenceLevel": "integration",
+    "invariants": [
+      "abstain_when_unmatched",
+      "active_valid_only",
+      "atomic_index_update",
+      "content_free_observation",
+      "endpoint_parity",
+      "idempotence",
+      "migration_preserves_data",
+      "no_scope_fallback",
+      "no_unassigned_recall",
+      "ordering",
+      "persistence_roundtrip",
+      "relevant_recall",
+      "rollback",
+      "scope_isolation",
+      "selected_access_only",
+      "snapshot_scope_immutable",
+      "user_policy_preserved"
+    ],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "migrations/__tests__/memoryScopeMigration.test.ts",
+      "infrastructure/persistence/__tests__/memory-p0-repository.test.ts",
+      "infrastructure/persistence/__tests__/memory-scope-repository.test.ts",
+      "infrastructure/persistence/__tests__/memory-search-repository.test.ts",
+      "services/api/__tests__/memorySpaceService.test.ts",
+      "endpoints/__tests__/memorySpaces.test.ts",
+      "endpoints/__tests__/helpers.test.ts",
+      "routes/__tests__/api.test.ts"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-entry",
+    "evidenceLevel": "integration",
+    "invariants": [
+      "bounded_memory_tokens",
+      "cross_entry_consistency",
+      "deterministic_selection",
+      "domain_boundary",
+      "idempotence",
+      "import_side_effect_free",
+      "memory_disabled_no_work",
+      "no_duplicate_injection",
+      "no_scope_fallback",
+      "ordering",
+      "regression_free",
+      "scope_isolation",
+      "snapshot_scope_immutable",
+      "sse_ordering"
+    ],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/__tests__/entry.integration.test.ts",
+      "services/__tests__/contextProvider.test.ts"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-lifecycle",
+    "evidenceLevel": "integration",
+    "invariants": ["drain", "idempotence", "no_new_work", "no_write_after_db_close"],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/__tests__/worker.lifecycle.integration.test.ts",
+      "runtime/__tests__/serverRuntime.test.ts"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-quality",
+    "evidenceLevel": "integration",
+    "invariants": ["measured_retrieval_quality", "reproducible_baseline"],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/__tests__/quality.integration.test.ts"
+    ],
+    "env": {
+      "AI_CHAT_DB_PATH": "/tmp/mint-memory-quality-fixture.db"
+    },
+    "timeoutMs": 180000
+  },
+  {
+    "name": "memory-process",
+    "evidenceLevel": "process-smoke",
+    "invariants": [
+      "cross_entry_consistency",
+      "drain",
+      "idempotence",
+      "no_duplicate_injection",
+      "no_new_work",
+      "no_write_after_db_close",
+      "sse_ordering"
+    ],
+    "command": "node",
+    "args": ["scripts/memory-process-smoke.mjs"],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "browser-ac",
+    "evidenceLevel": "browser",
+    "invariants": [
+      "endpoint_parity",
+      "memory_disabled_no_work",
+      "persistence_roundtrip",
+      "user_policy_preserved"
+    ],
+    "command": "node",
+    "args": [".harness/browser-scenario.mjs"],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "memory-static",
+    "evidenceLevel": "static",
+    "invariants": [],
+    "command": "node",
+    "args": ["scripts/memory-verification.mjs", "--static-only"],
+    "timeoutMs": 180000
+  },
+  {
+    "name": "boundary",
+    "evidenceLevel": "integration",
+    "invariants": ["domain_boundary", "regression_free", "import_side_effect_free"],
+    "command": "npm",
+    "args": ["run", "--workspace=mint-server", "test:boundary"],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "coverage",
+    "evidenceLevel": "static",
+    "command": "npm",
+    "args": ["run", "--workspace=mint-server", "test:coverage"],
+    "timeoutMs": 240000
+  },
+  {
+    "name": "electron-smoke",
+    "evidenceLevel": "process-smoke",
+    "invariants": ["cross_entry_consistency", "no_duplicate_injection", "sse_ordering"],
+    "command": "node",
+    "args": ["scripts/electron-lifecycle-smoke.mjs"],
+    "timeoutMs": 180000
+  }
+]

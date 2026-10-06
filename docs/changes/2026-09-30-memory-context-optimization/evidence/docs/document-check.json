@@ -1,0 +1,22 @@
+{
+  "inspect": {
+    "exitCode": 0,
+    "probes": 10
+  },
+  "check": {
+    "exitCode": 0,
+    "probes": 10
+  },
+  "claims": 13,
+  "designs": 10,
+  "tasks": 9,
+  "probes": 10,
+  "browserScenarios": 4,
+  "checkedLocalLinks": 35,
+  "contracts": "PASS",
+  "links": "PASS",
+  "productVerification": "UNVERIFIED",
+  "scope": "Documentation self-check; no production probes executed",
+  "specMachineContractEquality": "PASS",
+  "formatting": "PASS"
+}

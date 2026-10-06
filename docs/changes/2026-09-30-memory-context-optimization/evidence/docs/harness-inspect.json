@@ -1,0 +1,58 @@
+{
+  "command": "inspect",
+  "exitCode": 0,
+  "changeId": "2026-09-30-memory-context-optimization",
+  "acceptanceCriteria": [
+    "AC-001",
+    "AC-002",
+    "AC-003",
+    "AC-004",
+    "AC-005",
+    "AC-006",
+    "AC-007",
+    "AC-008",
+    "AC-009",
+    "AC-010",
+    "AC-011",
+    "AC-012",
+    "AC-013"
+  ],
+  "designDecisions": [
+    "DS-001",
+    "DS-002",
+    "DS-003",
+    "DS-004",
+    "DS-005",
+    "DS-006",
+    "DS-007",
+    "DS-008",
+    "DS-009",
+    "DS-010"
+  ],
+  "taskPlans": [
+    "TP-002",
+    "TP-003",
+    "TP-004",
+    "TP-005",
+    "TP-006",
+    "TP-007",
+    "TP-008",
+    "TP-009",
+    "TP-001"
+  ],
+  "claims": 13,
+  "probes": [
+    "memory-unit",
+    "memory-integration",
+    "memory-entry",
+    "memory-lifecycle",
+    "memory-quality",
+    "memory-process",
+    "browser-ac",
+    "memory-static",
+    "boundary",
+    "electron-smoke"
+  ],
+  "productVerification": "UNVERIFIED",
+  "note": "Static plan consumption only; no check executed."
+}

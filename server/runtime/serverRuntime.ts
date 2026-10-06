@@ -1,16 +1,21 @@
 import type { Express } from 'express';
 import type { Server } from 'node:http';
 import { closeDb } from '../db.js';
-import { agentRunRegistry } from '../services/agentRun.js';
-import { listSkills } from '../services/api/skillService.js';
-import { mcpService } from '../services/api/mcpService.js';
-import { startMemoryProcessing, stopMemoryProcessing } from '../services/api/memoryJobService.js';
-import { wikiIngestionJobService } from '../services/api/wikiIngestionJobService.js';
-import { startWikiLifecycleProcessing } from '../services/api/wikiLifecycleService.js';
-import { flushLangfuseTracing } from '../services/observability/langfuse.js';
-import { cleanupArtifacts } from '../services/utils/toolResultArtifact.js';
+import { agentRunRegistry } from '../agent-runtime/agent-run.js';
+import { listSkills } from '../domains/skills/index.js';
+import { mcpService } from '../bootstrap/mcp-client.js';
+import {
+  initializeMemorySearchIndex,
+  startMemoryProcessing,
+  stopMemoryProcessing,
+} from '../bootstrap/memory.js';
+import { wikiIngestionJobService } from '../application/wiki/wiki-ingestion-job-service.js';
+import { startWikiLifecycleProcessing } from '../bootstrap/wiki-lifecycle.js';
+import { flushLangfuseTracing } from '../infrastructure/observability/langfuse.js';
+import { cleanupArtifacts } from '../infrastructure/tools/tool-result-artifact.js';
+import { initializeAgentRuntime } from '../bootstrap/agent-runtime.js';
 import { getAddressPort, getErrorMessage } from '../utils/typeGuards.js';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '../infrastructure/observability/logger.js';
 
 export type RuntimeState = 'created' | 'starting' | 'running' | 'stopping' | 'stopped';
 
@@ -70,6 +75,7 @@ export class ServerRuntime {
   private async startInternal(): Promise<void> {
     this.stateValue = 'starting';
     try {
+      await initializeAgentRuntime();
       await cleanupArtifacts({ mode: 'startup' }).catch((error: unknown) => {
         log.warn('startup artifact cleanup failed; continuing', { error: getErrorMessage(error) });
       });
@@ -89,6 +95,7 @@ export class ServerRuntime {
     } catch (error) {
       log.warn('skill scan failed; continuing startup', { error: getErrorMessage(error) });
     }
+    initializeMemorySearchIndex();
     if (this.options.startBackgroundServices === false) return;
     await mcpService.initialize();
     startMemoryProcessing();
@@ -138,7 +145,7 @@ export class ServerRuntime {
     const deadline = Date.now() + (this.options.shutdownTimeoutMs ?? DEFAULT_SHUTDOWN_TIMEOUT_MS);
     await this.closeStep('stop-new-work', () => this.beginHttpShutdown(), deadline);
     await this.closeStep('agent-runs', () => agentRunRegistry.cancelAll(), deadline);
-    await this.closeStep('memory', () => stopMemoryProcessing(), deadline);
+    const memoryStopped = await this.closeStep('memory', () => stopMemoryProcessing(), deadline);
     await this.closeStep(
       'wiki-ingestion',
       () => wikiIngestionJobService.shutdownWorker(),
@@ -155,7 +162,11 @@ export class ServerRuntime {
       },
       deadline,
     );
-    await this.closeStep('sqlite', () => closeDb(), deadline);
+    if (memoryStopped) {
+      await this.closeStep('sqlite', () => closeDb(), deadline);
+    } else {
+      log.warn('SQLite close skipped while memory work is still settling', { resource: 'sqlite' });
+    }
     this.stateValue = 'stopped';
     log.info('runtime stopped', { reason });
   }
@@ -187,11 +198,11 @@ export class ServerRuntime {
     name: string,
     close: () => void | Promise<void>,
     deadline: number,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const remaining = Math.max(0, deadline - Date.now());
     if (remaining === 0) {
       log.warn('shutdown step skipped after deadline', { resource: name });
-      return;
+      return false;
     }
     try {
       let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -206,8 +217,10 @@ export class ServerRuntime {
         if (timeout) clearTimeout(timeout);
       }
       this.options.onLifecycleEvent?.(name);
+      return true;
     } catch (error) {
       log.warn('shutdown step failed', { resource: name, error: getErrorMessage(error) });
+      return false;
     }
   }
 }

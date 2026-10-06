@@ -92,7 +92,13 @@ export default function SidebarHeader({
       <div className="sidebar-brand">
         <AppIcon size={28} />
         <div className="sidebar-brand-name">Mint</div>
-        <button className="sidebar-header-settings" onClick={onOpenSettings} title="设置">
+        <button
+          className="sidebar-header-settings"
+          data-testid="settings-open"
+          aria-label="打开设置"
+          onClick={onOpenSettings}
+          title="设置"
+        >
           <SettingsIcon />
         </button>
       </div>

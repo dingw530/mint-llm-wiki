@@ -1,6 +1,221 @@
 import type Database from 'better-sqlite3';
 import type { Migration } from './types.js';
 
+interface SQLiteColumnInfo {
+  name: string;
+}
+
+function hasColumn(db: Database.Database, table: string, column: string): boolean {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as SQLiteColumnInfo[];
+  return columns.some((item) => item.name === column);
+}
+
+function addColumnIfMissing(
+  db: Database.Database,
+  table: string,
+  column: string,
+  definition: string,
+): void {
+  if (!hasColumn(db, table, column))
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+function createMemorySpaceTables(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS memory_spaces (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL CHECK(length(trim(name)) BETWEEN 1 AND 80),
+      archived_at TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_memory_spaces_active_name
+      ON memory_spaces(archived_at, name COLLATE NOCASE);
+  `);
+  addColumnIfMissing(
+    db,
+    'conversations',
+    'memory_space_id',
+    'TEXT REFERENCES memory_spaces(id) ON DELETE SET NULL',
+  );
+  addColumnIfMissing(
+    db,
+    'conversations',
+    'memory_binding_revision',
+    'INTEGER NOT NULL DEFAULT 1 CHECK(memory_binding_revision >= 0)',
+  );
+}
+
+function addMemoryScopeFields(db: Database.Database): void {
+  addColumnIfMissing(
+    db,
+    'memories',
+    'context_policy',
+    "TEXT NOT NULL DEFAULT 'retrievable' CHECK(context_policy IN ('core', 'retrievable'))",
+  );
+  addColumnIfMissing(
+    db,
+    'memories',
+    'policy_source',
+    "TEXT NOT NULL DEFAULT 'migration' CHECK(policy_source IN ('user', 'auto', 'migration'))",
+  );
+  addColumnIfMissing(
+    db,
+    'memories',
+    'scope_kind',
+    "TEXT NOT NULL DEFAULT 'unassigned' CHECK(scope_kind IN ('global', 'space', 'unassigned'))",
+  );
+  addColumnIfMissing(
+    db,
+    'memories',
+    'space_id',
+    "TEXT REFERENCES memory_spaces(id) ON DELETE RESTRICT CHECK((scope_kind = 'space' AND space_id IS NOT NULL) OR (scope_kind <> 'space' AND space_id IS NULL))",
+  );
+  if (hasTable(db, 'memory_events')) {
+    addColumnIfMissing(
+      db,
+      'memory_events',
+      'scope_kind',
+      "TEXT NOT NULL DEFAULT 'unassigned' CHECK(scope_kind IN ('global', 'space', 'unassigned'))",
+    );
+    addColumnIfMissing(db, 'memory_events', 'space_id', 'TEXT');
+    addColumnIfMissing(
+      db,
+      'memory_events',
+      'binding_revision',
+      'INTEGER NOT NULL DEFAULT 0 CHECK(binding_revision >= 0)',
+    );
+  }
+}
+
+function hasTable(db: Database.Database, table: string): boolean {
+  return Boolean(
+    db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table),
+  );
+}
+
+function rebuildMemoryJobsForScope(db: Database.Database): void {
+  if (!hasTable(db, 'memory_processing_jobs')) return;
+  if (hasColumn(db, 'memory_processing_jobs', 'binding_revision')) return;
+
+  db.exec(`
+    CREATE TABLE memory_processing_jobs_scoped (
+      id TEXT PRIMARY KEY,
+      conversation_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+      attempts INTEGER NOT NULL DEFAULT 0,
+      available_at TEXT NOT NULL,
+      locked_at TEXT,
+      requested_through_message_id TEXT,
+      processed_through_message_id TEXT,
+      error_message TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      scope_kind TEXT NOT NULL DEFAULT 'unassigned'
+        CHECK(scope_kind IN ('global', 'space', 'unassigned')),
+      space_id TEXT REFERENCES memory_spaces(id) ON DELETE RESTRICT,
+      binding_revision INTEGER NOT NULL DEFAULT 0 CHECK(binding_revision >= 0),
+      CHECK((scope_kind = 'space' AND space_id IS NOT NULL) OR (scope_kind <> 'space' AND space_id IS NULL)),
+      UNIQUE(conversation_id, binding_revision)
+    );
+  `);
+
+  if (hasTable(db, 'memory_events')) {
+    recordLegacyJobs(db);
+  } else {
+    db.exec(`CREATE TABLE memory_events (
+      id TEXT PRIMARY KEY, job_id TEXT, conversation_id TEXT, source_message_id TEXT,
+      action TEXT NOT NULL, memory_key TEXT NOT NULL, subject TEXT NOT NULL,
+      candidate_ids_json TEXT NOT NULL, result_memory_id TEXT,
+      superseded_ids_json TEXT NOT NULL, status TEXT NOT NULL, error_code TEXT,
+      created_at TEXT NOT NULL, scope_kind TEXT NOT NULL DEFAULT 'unassigned',
+      space_id TEXT, binding_revision INTEGER NOT NULL DEFAULT 0
+    )`);
+  }
+  copyMemoryJobs(db);
+  db.exec(`
+    DROP TABLE memory_processing_jobs;
+    ALTER TABLE memory_processing_jobs_scoped RENAME TO memory_processing_jobs;
+    CREATE INDEX idx_memory_jobs_status_available
+      ON memory_processing_jobs(status, available_at);
+    CREATE INDEX idx_memory_jobs_conversation_revision
+      ON memory_processing_jobs(conversation_id, binding_revision);
+  `);
+}
+
+function recordLegacyJobs(db: Database.Database): void {
+  db.exec(`
+    INSERT INTO memory_events (
+      id, job_id, conversation_id, source_message_id, action, memory_key, subject,
+      candidate_ids_json, result_memory_id, superseded_ids_json, status, error_code,
+      created_at, scope_kind, space_id, binding_revision
+    )
+    SELECT lower(hex(randomblob(16))), id, conversation_id, requested_through_message_id,
+      'SCOPE_MIGRATION', 'general', 'user', '[]', NULL, '[]', 'failed',
+      'legacy_scope_unassigned', datetime('now'), 'unassigned', NULL, 0
+    FROM memory_processing_jobs
+    WHERE status IN ('pending', 'processing');
+  `);
+}
+
+function copyMemoryJobs(db: Database.Database): void {
+  db.exec(`
+    INSERT INTO memory_processing_jobs_scoped (
+      id, conversation_id, status, attempts, available_at, locked_at,
+      requested_through_message_id, processed_through_message_id, error_message,
+      created_at, updated_at, scope_kind, space_id, binding_revision
+    )
+    SELECT id, conversation_id,
+      CASE WHEN status IN ('pending', 'processing') THEN 'failed' ELSE status END,
+      attempts, available_at, NULL, requested_through_message_id,
+      processed_through_message_id,
+      CASE WHEN status IN ('pending', 'processing') THEN 'legacy_scope_unassigned' ELSE error_message END,
+      created_at, updated_at, 'unassigned', NULL, 0
+    FROM memory_processing_jobs;
+  `);
+}
+
+function createMemorySearchTables(db: Database.Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS memory_message_scopes (
+      message_id TEXT PRIMARY KEY REFERENCES messages(id) ON DELETE CASCADE,
+      conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+      scope_kind TEXT NOT NULL CHECK(scope_kind IN ('global', 'space', 'unassigned')),
+      space_id TEXT REFERENCES memory_spaces(id) ON DELETE RESTRICT,
+      binding_revision INTEGER NOT NULL CHECK(binding_revision >= 0),
+      captured_at TEXT NOT NULL,
+      CHECK((scope_kind = 'space' AND space_id IS NOT NULL) OR (scope_kind <> 'space' AND space_id IS NULL))
+    );
+    CREATE INDEX IF NOT EXISTS idx_memory_message_scopes_conversation_revision
+      ON memory_message_scopes(conversation_id, binding_revision, captured_at);
+    CREATE VIRTUAL TABLE IF NOT EXISTS memory_search_documents_fts USING fts5(
+      memory_id UNINDEXED,
+      content_tokens,
+      key_tokens,
+      subject_tokens,
+      tokenize = 'unicode61 remove_diacritics 2'
+    );
+    CREATE TABLE IF NOT EXISTS memory_search_meta (
+      id INTEGER PRIMARY KEY CHECK(id = 1),
+      tokenizer_version INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    );
+    INSERT OR IGNORE INTO memory_search_meta (id, tokenizer_version, updated_at)
+      VALUES (1, 0, datetime('now'));
+  `);
+}
+
+/** Applies scope metadata, work snapshots, audit, and FTS schema atomically. */
+export function applyMemoryScopeMigration(db: Database.Database): void {
+  db.transaction(() => {
+    createMemorySpaceTables(db);
+    addMemoryScopeFields(db);
+    rebuildMemoryJobsForScope(db);
+    createMemorySearchTables(db);
+  })();
+}
+
 // ── 迁移定义 ──
 // 仅包含 ALTER TABLE 等结构性变更。CREATE TABLE IF NOT EXISTS 在 db.ts 的 createSchema() 中处理。
 // 新数据库无需运行任何迁移（所有列已在 createSchema() 中完整定义），
@@ -716,6 +931,11 @@ const migrations: Migration[] = [
           ON wiki_ingestion_commits(job_id, phase);
       `);
     },
+  },
+  {
+    id: 32,
+    name: 'add-memory-scopes-and-retrieval-index',
+    up: applyMemoryScopeMigration,
   },
 ];
 

@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'fs';
 import { join, relative } from 'path';
 import { describe, test, expect } from 'vitest';
 import knownViolations from './known-violations.json';
+import { collectMemoryDependencyEdges, findMemoryBoundaryViolations } from '../memoryBoundary.js';
 
 // Server layer rules — each layer may only import from layers to its LEFT
 const SERVER_LAYER_RULES: Record<string, string[]> = {
@@ -36,7 +37,10 @@ function getClientLayer(filePath: string): string | null {
   return null;
 }
 
-function getLayerRules(filePath: string): { rules: Record<string, string[]>; layer: string | null } {
+function getLayerRules(filePath: string): {
+  rules: Record<string, string[]>;
+  layer: string | null;
+} {
   const serverLayer = getServerLayer(filePath);
   if (serverLayer) return { rules: SERVER_LAYER_RULES, layer: serverLayer };
 
@@ -102,7 +106,7 @@ function collectFiles(dir: string, ext: string[]): string[] {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory() && !['node_modules', 'dist', '__tests__'].includes(entry.name)) {
       results.push(...collectFiles(fullPath, ext));
-    } else if (ext.some(e => entry.name.endsWith(e)) && !entry.name.includes('.test.')) {
+    } else if (ext.some((e) => entry.name.endsWith(e)) && !entry.name.includes('.test.')) {
       results.push(fullPath);
     }
   }
@@ -113,18 +117,22 @@ function collectFiles(dir: string, ext: string[]): string[] {
 const PROJECT_ROOT = join(process.cwd(), '..');
 
 describe('Architecture Boundary Test', () => {
+  const serverRoot = join(process.cwd(), '..', 'server');
   const serverFiles = collectFiles(join(PROJECT_ROOT, 'server'), ['.ts']);
   const clientFiles = collectFiles(join(PROJECT_ROOT, 'client/src'), ['.ts', '.tsx']);
   const allFiles = [...serverFiles, ...clientFiles];
   const allViolations = allFiles.flatMap(scanFile);
 
   test('no new architecture violations', () => {
-    const knownSet = new Set(knownViolations.map(v => `${v.file}:${v.imports}`));
-    const newViolations = allViolations.filter(v => !knownSet.has(`${v.file}:${v.imports}`));
+    const knownSet = new Set(knownViolations.map((v) => `${v.file}:${v.imports}`));
+    const newViolations = allViolations.filter((v) => !knownSet.has(`${v.file}:${v.imports}`));
 
     if (newViolations.length > 0) {
       const msg = newViolations
-        .map(v => `VIOLATION: ${v.file}:${v.line} imports ${v.imports} — ${v.from_layer} cannot import ${v.to_layer}. See docs/architecture/LAYERS.md`)
+        .map(
+          (v) =>
+            `VIOLATION: ${v.file}:${v.line} imports ${v.imports} — ${v.from_layer} cannot import ${v.to_layer}. See docs/architecture/LAYERS.md`,
+        )
         .join('\n');
       throw new Error(`New architecture violations found:\n${msg}`);
     }
@@ -132,5 +140,13 @@ describe('Architecture Boundary Test', () => {
 
   test('violation count only shrinks (ratchet)', () => {
     expect(allViolations.length).toBeLessThanOrEqual(knownViolations.length);
+  });
+
+  test('Memory imports follow the domain public boundary', () => {
+    const violations = findMemoryBoundaryViolations(
+      collectMemoryDependencyEdges(serverRoot),
+      serverRoot,
+    );
+    expect(violations).toEqual([]);
   });
 });

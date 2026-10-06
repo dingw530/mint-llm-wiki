@@ -84,10 +84,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testEndpointConnection: (data) => ipcRenderer.invoke('endpoints:testConnection', data),
 
   // ── 记忆 ──
-  getMemories: (category) => ipcRenderer.invoke('memories:list', category),
+  getMemories: (filters) => ipcRenderer.invoke('memories:list', filters),
   createMemory: (data) => ipcRenderer.invoke('memories:create', data),
   updateMemory: (id, data) => ipcRenderer.invoke('memories:update', id, data),
   deleteMemory: (id) => ipcRenderer.invoke('memories:delete', id),
+  assignMemoryScope: (data) => ipcRenderer.invoke('memories:assignScope', data),
+  getMemorySpaces: (includeArchived) => ipcRenderer.invoke('memory-spaces:list', includeArchived),
+  createMemorySpace: (data) => ipcRenderer.invoke('memory-spaces:create', data),
+  updateMemorySpace: (id, data) => ipcRenderer.invoke('memory-spaces:update', id, data),
+  getConversationMemorySpace: (id) => ipcRenderer.invoke('conversations:getMemorySpace', id),
+  setConversationMemorySpace: (id, data) =>
+    ipcRenderer.invoke('conversations:setMemorySpace', id, data),
 
   // ── MCP Server ──
   getMcpServers: () => ipcRenderer.invoke('mcp-servers:list'),

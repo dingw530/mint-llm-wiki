@@ -1,0 +1,40 @@
+[
+  {
+    "name": "semantic-unit",
+    "evidenceLevel": "unit",
+    "invariants": ["asymmetric_fallback"],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/__tests__/memory-semantic-policy.test.ts",
+      "infrastructure/ai/__tests__/memory-semantic-classifier.test.ts"
+    ],
+    "timeoutMs": 120000
+  },
+  {
+    "name": "semantic-integration",
+    "evidenceLevel": "integration",
+    "invariants": ["normalization_before_write", "conservative_core", "bounded_shutdown"],
+    "command": "npm",
+    "args": [
+      "run",
+      "--workspace=mint-server",
+      "test",
+      "--",
+      "domains/memory/",
+      "infrastructure/ai/__tests__/memory-semantic-classifier.test.ts",
+      "infrastructure/persistence/__tests__/memory-scope-repository.test.ts"
+    ],
+    "timeoutMs": 180000
+  },
+  {
+    "name": "semantic-static",
+    "evidenceLevel": "static",
+    "command": "node",
+    "args": ["scripts/memory-verification.mjs", "--static-only"],
+    "timeoutMs": 240000
+  }
+]

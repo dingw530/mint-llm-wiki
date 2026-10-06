@@ -7,8 +7,8 @@ const mockCleanup = vi.hoisted(() => ({
 const mockSkills = vi.hoisted(() => ({ listSkills: vi.fn().mockResolvedValue([]) }));
 
 vi.mock('../app.js', () => ({ default: mockApp, createApp: vi.fn(() => mockApp) }));
-vi.mock('../services/utils/toolResultArtifact.js', () => mockCleanup);
-vi.mock('../services/api/skillService.js', () => mockSkills);
+vi.mock('../infrastructure/tools/tool-result-artifact.js', () => mockCleanup);
+vi.mock('../domains/skills/index.js', () => mockSkills);
 
 process.env.AI_CHAT_CLIENT_DIST = 'test-client-dist';
 

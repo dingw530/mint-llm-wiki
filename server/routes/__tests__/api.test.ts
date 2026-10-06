@@ -795,7 +795,7 @@ runIf(server)('AC-009: Memories — CRUD Operations', () => {
   let memoryId: string;
 
   it('should return empty list initially', async () => {
-    const res = await request!('/api/memories');
+    const res = await request!('/api/memories?includeUnassigned=true');
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);
@@ -818,7 +818,7 @@ runIf(server)('AC-009: Memories — CRUD Operations', () => {
   });
 
   it('should include the new memory in the list', async () => {
-    const res = await request!('/api/memories');
+    const res = await request!('/api/memories?includeUnassigned=true');
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);
     expect(data.length).toBeGreaterThanOrEqual(1);
@@ -835,15 +835,43 @@ runIf(server)('AC-009: Memories — CRUD Operations', () => {
     expect(data.category).toBe('general');
   });
 
-  it('should filter memories by category', async () => {
-    await request!('/api/memories', {
+  it('should filter global and assigned memories by category', async () => {
+    const created = await request!('/api/memories', {
       method: 'POST',
       body: JSON.stringify({ content: '喜欢简洁代码', category: 'preference' }),
     });
+    const createdMemory = await created.json();
     const res = await request!('/api/memories?category=preference');
     const data = await res.json();
     expect(Array.isArray(data)).toBe(true);
-    expect(data.every((m: any) => m.category === 'preference')).toBe(true);
+    expect(data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: createdMemory.id })]),
+    );
+    expect(data.every((memory: any) => memory.category === 'preference')).toBe(true);
+  });
+
+  it('returns preserved unassigned history when the ownership filter requests it', async () => {
+    const { getDb } = await import('../../db.js');
+    getDb()
+      .prepare(
+        `INSERT INTO memories (
+          id, content, created_at, updated_at, context_policy, policy_source, scope_kind, space_id
+        ) VALUES (?, ?, ?, ?, 'retrievable', 'migration', 'unassigned', NULL)`,
+      )
+      .run(
+        'api-test-unassigned-history',
+        'Legacy fixture memory',
+        new Date().toISOString(),
+        new Date().toISOString(),
+      );
+
+    const response = await request!('/api/memories?scopeKind=unassigned&includeInactive=true');
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'api-test-unassigned-history' })]),
+    );
   });
 
   it('should update a memory', async () => {
@@ -858,7 +886,7 @@ runIf(server)('AC-009: Memories — CRUD Operations', () => {
   });
 
   it('should reflect updates in the list', async () => {
-    const res = await request!('/api/memories');
+    const res = await request!('/api/memories?includeUnassigned=true');
     const data = await res.json();
     const found = data.find((m: any) => m.id === memoryId);
     expect(found).toBeTruthy();
@@ -875,7 +903,7 @@ runIf(server)('AC-009: Memories — CRUD Operations', () => {
   });
 
   it('should remove deleted memory from the list', async () => {
-    const res = await request!('/api/memories');
+    const res = await request!('/api/memories?includeUnassigned=true');
     const data = await res.json();
     expect(data.some((m: any) => m.id === memoryId)).toBe(false);
   });
@@ -1086,7 +1114,7 @@ runIf(server)('API-007: Ingestion A2UI SSE', () => {
   });
 
   it('registers the SSE endpoint and sends the current session snapshot', async () => {
-    const { createJob } = await import('../../services/jobs/adapters/sqliteJobStore.js');
+    const { createJob } = await import('../../infrastructure/jobs/sqlite-job-store.js');
     createJob('notes.md', 10, {
       sourceType: 'chat',
       conversationId: 'conversation-sse',

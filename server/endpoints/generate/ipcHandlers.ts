@@ -1,6 +1,6 @@
 import type { EndpointDescriptor, ServiceRef } from '../types.js';
 import { wrapResult } from '../helpers.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../infrastructure/observability/logger.js';
 
 const log = createLogger('ipc-handlers');
 
@@ -39,7 +39,9 @@ export function registerIpcHandlers(
     if (desc.ipcServiceRef) {
       serviceFn = resolveService(desc.ipcServiceRef, services);
       if (!serviceFn) {
-        log.warn(`Service not found for ${desc.id}: ${desc.ipcServiceRef.module}.${desc.ipcServiceRef.method}, skipping`);
+        log.warn(
+          `Service not found for ${desc.id}: ${desc.ipcServiceRef.module}.${desc.ipcServiceRef.method}, skipping`,
+        );
         continue;
       }
     } else {

@@ -3,8 +3,8 @@ import * as path from 'path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WikiServiceContext } from '../index.js';
-import { isPathSafe } from '../../services/utils/pathSecurity.js';
-import { searchWiki } from '../../services/api/wikiSearchService.js';
+import { isPathSafe } from '../../infrastructure/filesystem/path-security.js';
+import { searchWiki } from '../../domains/wiki/index.js';
 
 const SearchInputSchema = {
   question: z.string().optional().describe('搜索关键词或问题（与 paths 二选一）'),
@@ -46,7 +46,7 @@ function readFiles(wikiPath: string, paths: string[]): WikiSearchOutput {
     if (stat.isDirectory()) {
       const entries = fs.readdirSync(resolvedPath);
       const listing = entries
-        .map(e => {
+        .map((e) => {
           const full = path.join(resolvedPath, e);
           const isDir = fs.statSync(full).isDirectory();
           return `${isDir ? '[DIR]' : '[FILE]'} ${e}`;
@@ -89,13 +89,23 @@ export function registerSearchTool(server: McpServer, ctx: WikiServiceContext): 
 
       if (!question) {
         return {
-          content: [{ type: 'text' as const, text: JSON.stringify({ error: 'question 或 paths 至少需要提供一个' }) }],
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({ error: 'question 或 paths 至少需要提供一个' }),
+            },
+          ],
           isError: true,
         };
       }
 
       // 搜索模式
-      const result = await searchWiki(ctx.wikiPath, question, normalizedMaxResults, normalizedIncludeContent);
+      const result = await searchWiki(
+        ctx.wikiPath,
+        question,
+        normalizedMaxResults,
+        normalizedIncludeContent,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

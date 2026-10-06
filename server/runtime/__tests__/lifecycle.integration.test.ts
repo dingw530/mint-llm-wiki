@@ -1,6 +1,6 @@
 import express from 'express';
 import { describe, expect, it } from 'vitest';
-import { InProcessJobQueue } from '../../services/jobs/jobQueue.js';
+import { InProcessJobQueue } from '../../infrastructure/jobs/job-queue.js';
 import { ServerRuntime } from '../serverRuntime.js';
 
 describe('lifecycle integration', () => {

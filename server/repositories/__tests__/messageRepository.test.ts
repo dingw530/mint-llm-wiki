@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
-import * as conversationRepo from '../conversationRepository.js';
+import * as conversationRepo from '../../infrastructure/persistence/conversation-repository.js';
 import * as messageRepo from '../messageRepository.js';
 import { v4 as uuidv4 } from 'uuid';
 

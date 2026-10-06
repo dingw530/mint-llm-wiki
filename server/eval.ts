@@ -2,29 +2,26 @@ import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { AiSettings, HistoryMessage, PersistedUiBlock } from './types.js';
-import { reactChat } from './services/reactLoopCore.js';
-import { parseWikiPage } from './services/utils/wikiShared.js';
-import * as settingsService from './services/api/settingsService.js';
-import type { ReactEvent } from './services/reactEvents.js';
-import { AccumulatingSink } from './services/sink.js';
-import type { ReactExecutionPolicy } from './services/reactLoopCore.js';
-import { agentRunRegistry } from './services/agentRun.js';
-import { createDurableAgentRun } from './services/agentRunFactory.js';
-import { findWikiCitationMarkers } from './services/utils/wikiCitationMarkers.js';
-import { getWikiVectorHealth } from './services/api/wikiSearchService.js';
-import * as agentService from './services/api/agentService.js';
-import { routingService } from './services/api/routingService.js';
-import { evaluateMemoryGate } from './services/memoryGateProviders/index.js';
+import { runAgentChat } from './bootstrap/agent-runtime.js';
+import { parseWikiPage } from './infrastructure/filesystem/wiki-content.js';
+import * as settingsService from './application/settings/settings-service.js';
+import type { ReactEvent } from './agent-runtime/react-events.js';
+import { AccumulatingSink } from './infrastructure/transports/sinks.js';
+import type { ReactExecutionPolicy } from './agent-runtime/react-loop-core.js';
+import { agentRunRegistry } from './agent-runtime/agent-run.js';
+import { createDurableAgentRun } from './bootstrap/agent-run-factory.js';
+import { findWikiCitationMarkers } from './infrastructure/transports/a2ui/wiki-citation-markers.js';
+import { getWikiVectorHealth } from './domains/wiki/index.js';
+import * as agentService from './domains/agents/index.js';
+import { routingService } from './bootstrap/routing.js';
+import { evaluateMemoryGate } from './bootstrap/memory.js';
 import {
   createRuntimeContext,
   type FeatureConfigInput,
   type RuntimeContext,
-} from './services/runtime/runtimeContext.js';
-export type {
-  WikiIngestionRequest,
-  WikiIngestionResult,
-} from './services/api/wikiIngestionService.js';
-export { ingestWikiSource } from './services/api/wikiIngestionService.js';
+} from './agent-runtime/tooling/runtime-context.js';
+export type { WikiIngestionRequest, WikiIngestionResult } from './domains/wiki/index.js';
+export { ingestWikiSource } from './domains/wiki/index.js';
 
 interface EvalCitation {
   file: string;
@@ -280,7 +277,7 @@ export function createReactExecutor(
       { role: 'system', content: systemPrompt },
       { role: 'user', content: evalCase.input },
     ];
-    const result = await reactChat(
+    const result = await runAgentChat(
       messages,
       settings,
       sink,
@@ -330,9 +327,9 @@ export function createReactExecutor(
 }
 
 /** 读取当前激活的 Mint AI 配置。 */
-export { getAiSettings } from './services/api/settingsService.js';
-export { getJevSettings } from './services/api/settingsService.js';
-export { callJev } from './services/jev/jevClient.js';
+export { getAiSettings } from './application/settings/settings-service.js';
+export { getJevSettings } from './application/settings/settings-service.js';
+export { callJev } from './infrastructure/ai/jev/jev-client.js';
 export type {
   JevAnswer,
   JevChoiceQuestion,
@@ -341,4 +338,4 @@ export type {
   JevQuestion,
   JevScoreQuestion,
   JevState,
-} from './services/jev/types.js';
+} from './infrastructure/ai/jev/types.js';

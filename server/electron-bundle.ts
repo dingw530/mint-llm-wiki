@@ -7,30 +7,30 @@
  * 确保动态 require()（如 better-sqlite3 wrapper）在 ESM 环境下可用。
  */
 export { shutdownServer, startServer, startServerRuntime } from './index.js';
-export { IpcSink } from './services/sink.js';
+export { IpcSink } from './infrastructure/transports/sinks.js';
 export { endpointRegistry, registerIpcHandlers } from './endpoints/index.js';
 export { conversationsIpcOnlyEndpoints } from './endpoints/definitions/conversations.js';
-export * as messageService from './services/messageService.js';
-export * as conversationService from './services/api/conversationService.js';
-export * as settingsService from './services/api/settingsService.js';
-export * as agentService from './services/api/agentService.js';
-export * as endpointService from './services/api/endpointService.js';
-export * as memoryService from './services/api/memoryService.js';
-export * as mcpServerRepository from './repositories/mcpServerRepository.js';
-export { mcpService } from './services/api/mcpService.js';
-export * as skillService from './services/api/skillService.js';
-export * as bashSecurityService from './services/api/bashSecurityService.js';
-export * as wikiService from './services/api/wikiService.js';
-export * as graphService from './services/api/graphService.js';
+export * as messageService from './application/conversations/message-service.js';
+export * as conversationService from './domains/conversations/index.js';
+export * as settingsService from './application/settings/settings-service.js';
+export * as agentService from './domains/agents/index.js';
+export * as endpointService from './domains/model-endpoints/index.js';
+export { memoryService } from './bootstrap/memory.js';
+export * as mcpServerRepository from './infrastructure/persistence/mcp-server-repository.js';
+export { mcpService } from './bootstrap/mcp-client.js';
+export * as skillService from './domains/skills/index.js';
+export * as bashSecurityService from './domains/tool-security/index.js';
+export * as wikiService from './domains/wiki/index.js';
+export * as graphService from './domains/knowledge-graph/index.js';
 export * as messageRepository from './repositories/messageRepository.js';
-export { generateTitle } from './services/aiProxy.js';
-export { parseFile } from './services/utils/fileParseService.js';
-export { compileSource } from './services/utils/wikiCompiler.js';
-export { ingestWikiSource, buildWikiSourceText } from './services/api/wikiIngestionService.js';
-export * as ingestionA2ui from './services/api/ingestionA2ui.js';
+export { generateTitle } from './application/conversations/ai-proxy.js';
+export { parseFile } from './infrastructure/filesystem/file-parse-service.js';
+export { compileSource } from './domains/wiki/index.js';
+export { ingestWikiSource, buildWikiSourceText } from './domains/wiki/index.js';
+export * as ingestionA2ui from './infrastructure/transports/ingestion-a2ui.js';
 export {
   createWikiIngestionJobService,
   wikiIngestionJobService,
-} from './services/api/wikiIngestionJobService.js';
-export { wikiVectorBackfillService } from './services/api/wikiVectorBackfillService.js';
-export * as pageCaptureService from './services/utils/wikiPageCapture.js';
+} from './application/wiki/wiki-ingestion-job-service.js';
+export { wikiVectorBackfillService } from './application/wiki/wiki-vector-backfill-service.js';
+export * as pageCaptureService from './infrastructure/filesystem/wiki-page-capture.js';

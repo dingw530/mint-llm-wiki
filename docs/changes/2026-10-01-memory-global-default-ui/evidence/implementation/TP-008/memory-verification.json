@@ -1,0 +1,10 @@
+{
+  "changeId": "2026-10-01-memory-global-default-ui",
+  "startedAt": "2026-10-01T03:56:20.587Z",
+  "completedAt": "2026-10-01T03:57:13.701Z",
+  "status": "passed",
+  "harnessRunId": "2026-10-01T03-56-20-616Z-62990",
+  "claimStatus": "PASS",
+  "artifactDir": "/Users/wangding/WorkSpace/personal/ai-chat/.harness/runs/2026-10-01-memory-global-default-ui/2026-10-01T03-56-20-616Z-62990",
+  "error": null
+}

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { EndpointDescriptor, ManifestEntry } from '../types.js';
-import { createLogger } from '../../utils/logger.js';
+import { createLogger } from '../../infrastructure/observability/logger.js';
 
 const log = createLogger('manifest-generator');
 

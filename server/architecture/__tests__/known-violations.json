@@ -1,21 +1,5 @@
 [
   {
-    "file": "endpoints/definitions/mcpServers.ts",
-    "line": 2,
-    "imports": "../../repositories/mcpServerRepository.js",
-    "from_layer": "endpoints",
-    "to_layer": "repositories",
-    "reason": "Legacy coupling — tracked for removal"
-  },
-  {
-    "file": "endpoints/definitions/modelEndpoints.ts",
-    "line": 2,
-    "imports": "../../repositories/settingsRepository.js",
-    "from_layer": "endpoints",
-    "to_layer": "repositories",
-    "reason": "Legacy coupling — tracked for removal"
-  },
-  {
     "file": "endpoints/definitions/routingLogs.ts",
     "line": 1,
     "imports": "../../repositories/routingLogRepository.js",

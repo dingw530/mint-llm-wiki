@@ -3,19 +3,19 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { CompiledPage } from '../services/utils/wikiShared.js';
-import type { WikiCompiledClaim } from '../services/utils/wikiCompiler.js';
+import type { CompiledPage } from '../infrastructure/filesystem/wiki-content.js';
+import type { WikiCompiledClaim } from '../domains/wiki/index.js';
 import type { AiSettings } from '../types.js';
 
 const scriptPath = fileURLToPath(import.meta.url);
 const crashExitCode = 86;
 
 async function runWorker(mode: string, commitId: string): Promise<void> {
-  const { resumeWikiIngestionCommit } = await import('../services/api/wikiIngestionService.js');
+  const { resumeWikiIngestionCommit } = await import('../domains/wiki/index.js');
   if (mode === 'recover-worker') {
     const [{ createWikiIngestionJobService }, jobStore] = await Promise.all([
-      import('../services/api/wikiIngestionJobService.js'),
-      import('../services/jobs/jobStore.js'),
+      import('../application/wiki/wiki-ingestion-job-service.js'),
+      import('../infrastructure/jobs/job-store.js'),
     ]);
     let worker: ((jobId: string) => Promise<void>) | undefined;
     let resolveWorker: (() => void) | undefined;
@@ -132,8 +132,8 @@ async function runSmoke(): Promise<void> {
 
   const [{ closeDb, getDb }, commitRepository, jobStore] = await Promise.all([
     import('../db.js'),
-    import('../repositories/wikiIngestionCommitRepository.js'),
-    import('../services/jobs/adapters/sqliteJobStore.js'),
+    import('../infrastructure/persistence/wiki-ingestion-commit-repository.js'),
+    import('../infrastructure/jobs/sqlite-job-store.js'),
   ]);
 
   const jobId = jobStore.createJob('P0 Chat crash recovery', 48, {

@@ -2,13 +2,13 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { ARTIFACT_HARD_TTL_MS } from '../services/utils/toolResultArtifact.js';
+import { ARTIFACT_HARD_TTL_MS } from '../infrastructure/tools/tool-result-artifact.js';
 
 const mockApp = vi.hoisted(() => ({ listen: vi.fn() }));
 const mockSkills = vi.hoisted(() => ({ listSkills: vi.fn().mockResolvedValue([]) }));
 
 vi.mock('../app.js', () => ({ default: mockApp, createApp: vi.fn(() => mockApp) }));
-vi.mock('../services/api/skillService.js', () => mockSkills);
+vi.mock('../domains/skills/index.js', () => mockSkills);
 
 process.env.AI_CHAT_CLIENT_DIST = 'test-client-dist';
 

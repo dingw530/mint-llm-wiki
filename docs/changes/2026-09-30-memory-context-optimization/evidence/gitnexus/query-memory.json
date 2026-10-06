@@ -1,0 +1,249 @@
+{
+  "processes": [
+    {
+      "id": "proc_166_handletoolresult",
+      "summary": "HandleToolResult → BuildEvidenceKey",
+      "priority": 0.137,
+      "symbol_count": 3,
+      "process_type": "intra_community",
+      "step_count": 3
+    },
+    {
+      "id": "proc_408_memoriespanel",
+      "summary": "MemoriesPanel → BuildUrlFromManifest",
+      "priority": 0.111,
+      "symbol_count": 2,
+      "process_type": "cross_community",
+      "step_count": 5
+    },
+    {
+      "id": "proc_409_memoriespanel",
+      "summary": "MemoriesPanel → GetManifest",
+      "priority": 0.111,
+      "symbol_count": 2,
+      "process_type": "cross_community",
+      "step_count": 5
+    },
+    {
+      "id": "proc_517_memoriespanel",
+      "summary": "MemoriesPanel → GetElectronAPI",
+      "priority": 0.111,
+      "symbol_count": 2,
+      "process_type": "cross_community",
+      "step_count": 7
+    },
+    {
+      "id": "proc_117_memoriespanel",
+      "summary": "MemoriesPanel → Pad",
+      "priority": 0.096,
+      "symbol_count": 1,
+      "process_type": "intra_community",
+      "step_count": 3
+    }
+  ],
+  "process_symbols": [
+    {
+      "id": "Function:server/services/a2ui/wikiSourceProvider.ts:buildEvidenceKey",
+      "name": "buildEvidenceKey",
+      "filePath": "server/services/a2ui/wikiSourceProvider.ts",
+      "startLine": 60,
+      "endLine": 69,
+      "module": "A2ui",
+      "process_id": "proc_166_handletoolresult",
+      "step_index": 3
+    },
+    {
+      "id": "Function:server/services/a2ui/wikiSourceProvider.ts:buildEvidenceId",
+      "name": "buildEvidenceId",
+      "filePath": "server/services/a2ui/wikiSourceProvider.ts",
+      "startLine": 71,
+      "endLine": 77,
+      "module": "A2ui",
+      "process_id": "proc_166_handletoolresult",
+      "step_index": 2
+    },
+    {
+      "id": "Method:server/services/a2ui/wikiSourceProvider.ts:WikiSourceReferenceProvider.handleToolResult#3",
+      "name": "handleToolResult",
+      "filePath": "server/services/a2ui/wikiSourceProvider.ts",
+      "startLine": 115,
+      "endLine": 155,
+      "module": "A2ui",
+      "process_id": "proc_166_handletoolresult",
+      "step_index": 1
+    },
+    {
+      "id": "Function:client/src/services/api/memories.ts:getMemories",
+      "name": "getMemories",
+      "filePath": "client/src/services/api/memories.ts",
+      "startLine": 4,
+      "endLine": 6,
+      "module": "Components",
+      "process_id": "proc_408_memoriespanel",
+      "step_index": 3
+    },
+    {
+      "id": "Function:client/src/features/settings/components/MemoriesPanel.tsx:MemoriesPanel",
+      "name": "MemoriesPanel",
+      "filePath": "client/src/features/settings/components/MemoriesPanel.tsx",
+      "startLine": 47,
+      "endLine": 251,
+      "module": "Components",
+      "process_id": "proc_408_memoriespanel",
+      "step_index": 1
+    }
+  ],
+  "definitions": [
+    {
+      "id": "File:server/services/api/memoryService.ts",
+      "name": "memoryService.ts",
+      "filePath": "server/services/api/memoryService.ts"
+    },
+    {
+      "id": "Function:server/migrations/index.ts:up@346:8",
+      "name": "up",
+      "filePath": "server/migrations/index.ts",
+      "startLine": 347,
+      "endLine": 391
+    },
+    {
+      "id": "Function:server/migrations/index.ts:up@527:8",
+      "name": "up",
+      "filePath": "server/migrations/index.ts",
+      "startLine": 528,
+      "endLine": 562
+    },
+    {
+      "id": "File:server/migrations/index.ts",
+      "name": "index.ts",
+      "filePath": "server/migrations/index.ts"
+    },
+    {
+      "id": "Property:server/types.ts:MemoryRow.memory_key",
+      "name": "memory_key",
+      "filePath": "server/types.ts",
+      "startLine": 321,
+      "endLine": 321
+    },
+    {
+      "id": "Property:server/types.ts:MemoryRow.memory_type",
+      "name": "memory_type",
+      "filePath": "server/types.ts",
+      "startLine": 323,
+      "endLine": 323
+    },
+    {
+      "id": "Interface:server/types.ts:Memory",
+      "name": "Memory",
+      "filePath": "server/types.ts",
+      "startLine": 344,
+      "endLine": 365
+    },
+    {
+      "id": "Function:client/src/services/api/memories.ts:createMemory",
+      "name": "createMemory",
+      "filePath": "client/src/services/api/memories.ts",
+      "startLine": 8,
+      "endLine": 10,
+      "module": "Components"
+    },
+    {
+      "id": "Function:client/src/services/api/memories.ts:updateMemory",
+      "name": "updateMemory",
+      "filePath": "client/src/services/api/memories.ts",
+      "startLine": 12,
+      "endLine": 14,
+      "module": "Components"
+    },
+    {
+      "id": "Function:server/services/utils/toolResultArtifact.ts:cleanupArtifacts",
+      "name": "cleanupArtifacts",
+      "filePath": "server/services/utils/toolResultArtifact.ts",
+      "startLine": 82,
+      "endLine": 84,
+      "module": "Resilience"
+    },
+    {
+      "id": "Function:server/services/utils/toolResultArtifact.ts:getArtifactLimits",
+      "name": "getArtifactLimits",
+      "filePath": "server/services/utils/toolResultArtifact.ts",
+      "startLine": 195,
+      "endLine": 205,
+      "module": "Cluster_282"
+    },
+    {
+      "id": "Class:server/services/observability/langfuse.ts:LangfuseRunObserver",
+      "name": "LangfuseRunObserver",
+      "filePath": "server/services/observability/langfuse.ts",
+      "startLine": 98,
+      "endLine": 303,
+      "module": "Observability"
+    },
+    {
+      "id": "Method:server/services/observability/langfuse.ts:LangfuseRunObserver.markApprovalRequired#1",
+      "name": "markApprovalRequired",
+      "filePath": "server/services/observability/langfuse.ts",
+      "startLine": 257,
+      "endLine": 269,
+      "module": "Observability"
+    },
+    {
+      "id": "File:server/services/observability/langfuse.ts",
+      "name": "langfuse.ts",
+      "filePath": "server/services/observability/langfuse.ts"
+    },
+    {
+      "id": "Function:server/services/contextProvider.ts:cloneMessages",
+      "name": "cloneMessages",
+      "filePath": "server/services/contextProvider.ts",
+      "startLine": 28,
+      "endLine": 40,
+      "module": "Services"
+    },
+    {
+      "id": "Function:server/services/contextProvider.ts:assertUniqueProviderIds",
+      "name": "assertUniqueProviderIds",
+      "filePath": "server/services/contextProvider.ts",
+      "startLine": 48,
+      "endLine": 54,
+      "module": "Services"
+    },
+    {
+      "id": "Const:server/services/contextProvider.ts:DEFAULT_CONTEXT_PROVIDERS",
+      "name": "DEFAULT_CONTEXT_PROVIDERS",
+      "filePath": "server/services/contextProvider.ts",
+      "startLine": 105,
+      "endLine": 108
+    },
+    {
+      "id": "Const:server/services/contextProviders/memoryContextProvider.ts:MEMORY_PROVIDER_ORDER",
+      "name": "MEMORY_PROVIDER_ORDER",
+      "filePath": "server/services/contextProviders/memoryContextProvider.ts",
+      "startLine": 4,
+      "endLine": 4
+    },
+    {
+      "id": "Function:server/services/contextProviders/memoryContextProvider.ts:createMemoryContextProvider",
+      "name": "createMemoryContextProvider",
+      "filePath": "server/services/contextProviders/memoryContextProvider.ts",
+      "startLine": 7,
+      "endLine": 29
+    },
+    {
+      "id": "Function:server/services/contextProviders/memoryContextProvider.ts:createMemoryContextProvider.provide@12:4",
+      "name": "provide",
+      "filePath": "server/services/contextProviders/memoryContextProvider.ts",
+      "startLine": 13,
+      "endLine": 27
+    }
+  ],
+  "timing": {
+    "vector": 4.1,
+    "bm25": 383.4,
+    "merge": 0.1,
+    "symbol_lookup": 24.3,
+    "ranking": 0.1,
+    "formatting": 0.1,
+    "wall": 408.3
+  }
+}

@@ -1,8 +1,8 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
 import multer from 'multer';
-import * as wikiService from '../services/api/wikiService.js';
-import { wikiIngestionJobService } from '../services/api/wikiIngestionJobService.js';
+import * as wikiService from '../domains/wiki/index.js';
+import { wikiIngestionJobService } from '../application/wiki/wiki-ingestion-job-service.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = Router();
@@ -24,8 +24,16 @@ router.post(
     }
 
     const { originalname, buffer, size } = req.file;
-    const idempotencyKey = typeof req.headers['idempotency-key'] === 'string' ? req.headers['idempotency-key'] : undefined;
-    const result = wikiIngestionJobService.start({ name: originalname, buffer, size, idempotencyKey });
+    const idempotencyKey =
+      typeof req.headers['idempotency-key'] === 'string'
+        ? req.headers['idempotency-key']
+        : undefined;
+    const result = wikiIngestionJobService.start({
+      name: originalname,
+      buffer,
+      size,
+      idempotencyKey,
+    });
     res.json(result);
   }),
 );

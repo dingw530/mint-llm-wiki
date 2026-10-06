@@ -2,11 +2,14 @@
 // 支持 REPL 模式（无参数）和单条消息（有参数）
 
 import chalk from 'chalk';
-import * as conversationService from '../../services/api/conversationService.js';
-import * as messageService from '../../services/messageService.js';
-import { TerminalSink, AccumulatingSink } from '../../services/sink.js';
+import * as conversationService from '../../domains/conversations/index.js';
+import * as messageService from '../../application/conversations/message-service.js';
+import { TerminalSink, AccumulatingSink } from '../../infrastructure/transports/sinks.js';
 
-export async function handleChat(message?: string, options?: { agent?: string; conv?: string; stream?: boolean }): Promise<void> {
+export async function handleChat(
+  message?: string,
+  options?: { agent?: string; conv?: string; stream?: boolean },
+): Promise<void> {
   if (!message) {
     // 无消息 → 进入 REPL
     const { runRepl } = await import('../repl.js');

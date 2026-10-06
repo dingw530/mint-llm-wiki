@@ -94,8 +94,8 @@
       "pos": [745, 340],
       "size": [185, 68],
       "sources": [
-        { "path": "server/services/reactLoopCore.ts", "line": 463, "label": "循环执行" },
-        { "path": "server/services/reactLoopCore.ts", "line": 743, "label": "传输适配门面" },
+        { "path": "server/agent-runtime/react-loop-core.ts", "line": 923, "label": "循环执行" },
+        { "path": "server/bootstrap/agent-runtime.ts", "line": 40, "label": "入口装配" },
         { "path": "server/services/toolRoundEngine.ts", "line": 139, "label": "单轮模型调用" }
       ]
     },
@@ -107,9 +107,10 @@
       "pos": [960, 340],
       "size": [165, 68],
       "sources": [
-        { "path": "server/services/agentRun.ts", "line": 202, "label": "持久化运行" },
-        { "path": "server/services/reactEvents.ts", "line": 1, "label": "事件映射" },
-        { "path": "server/services/sink.ts", "line": 1, "label": "Sink 输出" }
+        { "path": "server/agent-runtime/agent-run.ts", "line": 1, "label": "持久化运行" },
+        { "path": "server/agent-runtime/react-events.ts", "line": 1, "label": "事件映射" },
+        { "path": "server/agent-runtime/output-sink.ts", "line": 1, "label": "Sink 契约" },
+        { "path": "server/infrastructure/transports/sinks.ts", "line": 1, "label": "Sink 输出" }
       ]
     },
     {
@@ -192,7 +193,7 @@
       "sources": [
         { "path": "server/db.ts", "line": 43, "label": "延迟初始化" },
         {
-          "path": "server/repositories/agentRunEventRepository.ts",
+          "path": "server/infrastructure/persistence/agent-run-event-repository.ts",
           "line": 1,
           "label": "恢复事件日志"
         }

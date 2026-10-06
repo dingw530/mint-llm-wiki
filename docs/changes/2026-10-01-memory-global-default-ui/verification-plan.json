@@ -1,0 +1,29 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "设置与聊天 UI 不再呈现知识空间操作或发起对应 UI 请求",
+      "risk": "medium",
+      "invariants": ["no_space_controls", "no_space_ui_requests"],
+      "requiredEvidence": ["unit", "browser"],
+      "probes": ["memory-ui", "browser-ac"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "手动记忆默认为 global；待归属记录可见且批量目标为 global",
+      "risk": "high",
+      "invariants": ["manual_memory_global_default", "legacy_visible", "global_assignment_only"],
+      "requiredEvidence": ["unit", "integration", "browser"],
+      "probes": ["memory-ui", "memory-scope", "browser-ac"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "移除界面不改变既有绑定、unbound global recall 或 space isolation",
+      "risk": "high",
+      "invariants": ["bound_scope_preserved", "unbound_global", "scope_isolation"],
+      "requiredEvidence": ["integration"],
+      "probes": ["memory-scope"]
+    }
+  ]
+}

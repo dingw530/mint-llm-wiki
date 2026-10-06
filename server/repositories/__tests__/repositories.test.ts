@@ -1,12 +1,12 @@
 import { describe, expect, it, vi, afterAll, beforeEach } from 'vitest';
 import { randomUUID } from 'node:crypto';
 
-import * as endpointRepo from '../endpointRepository.js';
-import * as graphRepo from '../graphRepository.js';
-import * as candidateRepo from '../graphCandidateRepository.js';
-import * as routingLogRepo from '../routingLogRepository.js';
-import * as endpointService from '../../services/api/endpointService.js';
-import { encrypt } from '../../services/utils/encryption.js';
+import * as endpointRepo from '../../infrastructure/persistence/model-endpoint-repository.js';
+import * as graphRepo from '../../infrastructure/persistence/graph-repository.js';
+import * as candidateRepo from '../../infrastructure/persistence/graph-candidate-repository.js';
+import * as routingLogRepo from '../../infrastructure/persistence/routing-log-repository.js';
+import * as endpointService from '../../domains/model-endpoints/index.js';
+import { encrypt } from '../../infrastructure/security/encryption.js';
 
 function cleanEndpoints() {
   endpointRepo.getAll().forEach((e) => {
@@ -157,6 +157,36 @@ describe('endpointService', () => {
       modelId: 'm',
     });
     expect(endpointService.hasVerifiedTextEndpoint()).toBe(false);
+  });
+
+  it('preserves legacy settings synchronization without changing activation or verification', () => {
+    cleanEndpoints();
+    const active = endpointService.create({
+      name: 'Legacy active',
+      apiUrl: 'https://old.example.com',
+      apiKey: 'old-key',
+      modelId: 'old-model',
+    });
+    const other = endpointService.create({
+      name: 'Other',
+      apiUrl: 'https://other.example.com',
+      modelId: 'other-model',
+    });
+    const verified = endpointService.markVerified(active.id);
+    endpointService.syncLegacyEndpointSettings(active.id, {
+      apiUrl: 'https://updated.example.com',
+      apiKey: encrypt('updated-key'),
+      modelId: 'updated-model',
+    });
+    expect(endpointService.getAiConfig(active.id)).toEqual({
+      apiUrl: 'https://updated.example.com',
+      apiKey: 'updated-key',
+      modelId: 'updated-model',
+      apiType: 'openai-chat',
+    });
+    expect(endpointService.getById(active.id)?.verifiedAt).toBe(verified.verifiedAt);
+    expect(endpointService.getActiveEndpoint()?.id).toBe(active.id);
+    expect(endpointService.getById(other.id)?.modelId).toBe('other-model');
   });
 
   it('remove: non-existent first, then last fails', () => {

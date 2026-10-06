@@ -13,7 +13,6 @@ import {
   PAIRWISE_JUDGE_SYSTEM_PROMPT,
 } from './judgePrompts.js';
 import type { JevAnswer, JevConfig, JevQuestion } from 'mint-server/eval';
-import { callJev } from 'mint-server/eval';
 
 export interface OpenAiJudgeConfig {
   apiUrl: string;
@@ -144,6 +143,8 @@ export function createJevJudge(config: JevJudgeConfig): JudgeExecutor {
   if (!config.apiUrl || !config.apiKey || !config.modelId)
     throw new Error('Jev Judge requires apiUrl, apiKey and modelId');
   return async (input) => {
+    // Keep the server runtime unloaded until the CLI has applied its database override.
+    const { callJev } = await import('mint-server/eval');
     const rubric = input.evalCase.expected.judgeRubric!;
     const result = await callJev(
       {

@@ -1,9 +1,9 @@
 import type { Request, Response } from 'express';
 import { Router } from 'express';
-import * as messageService from '../services/messageService.js';
+import * as messageService from '../application/conversations/message-service.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
-import { ResSink } from '../services/sink.js';
-import { validateSlashCommand } from '../services/api/slashCommandService.js';
+import { ResSink } from '../infrastructure/transports/sinks.js';
+import { validateSlashCommand } from '../domains/conversations/index.js';
 
 const router = Router();
 

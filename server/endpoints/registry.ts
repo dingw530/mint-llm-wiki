@@ -1,5 +1,5 @@
 import type { EndpointDescriptor, ManifestEntry } from './types.js';
-import { createLogger } from '../utils/logger.js';
+import { createLogger } from '../infrastructure/observability/logger.js';
 
 const log = createLogger('endpoint-registry');
 

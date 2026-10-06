@@ -2,8 +2,15 @@ import * as fs from 'fs';
 import * as path from 'path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { WikiServiceContext } from '../index.js';
-import { parseWikiFrontmatter, parseWikiPage, readWikiManifest } from '../../services/utils/wikiShared.js';
-import { getWikiPathCandidates, resolveWikiMarkdownLink } from '../../services/utils/wikiLinkProtocol.js';
+import {
+  parseWikiFrontmatter,
+  parseWikiPage,
+  readWikiManifest,
+} from '../../infrastructure/filesystem/wiki-content.js';
+import {
+  getWikiPathCandidates,
+  resolveWikiMarkdownLink,
+} from '../../infrastructure/filesystem/wiki-link-protocol.js';
 
 interface LintIssue {
   type:
@@ -88,7 +95,10 @@ function normalizeIssues(issues: LintIssue[]): LintIssue[] {
   }
 
   return Array.from(deduped.values()).sort(
-    (a, b) => ISSUE_ORDER[a.type] - ISSUE_ORDER[b.type] || a.file.localeCompare(b.file) || a.description.localeCompare(b.description),
+    (a, b) =>
+      ISSUE_ORDER[a.type] - ISSUE_ORDER[b.type] ||
+      a.file.localeCompare(b.file) ||
+      a.description.localeCompare(b.description),
   );
 }
 
@@ -169,7 +179,11 @@ export function registerLintTool(server: McpServer, ctx: WikiServiceContext): vo
             if (frontmatter) {
               const tags: string[] = (frontmatter.tags as string[]) || [];
               for (const field of ['title', 'created', 'source'] as const) {
-                if (!frontmatter[field] || typeof frontmatter[field] !== 'string' || !(frontmatter[field] as string).trim()) {
+                if (
+                  !frontmatter[field] ||
+                  typeof frontmatter[field] !== 'string' ||
+                  !(frontmatter[field] as string).trim()
+                ) {
                   issues.push({
                     type: 'missing_required_field',
                     file: normalizedRelPath,
@@ -203,15 +217,17 @@ export function registerLintTool(server: McpServer, ctx: WikiServiceContext): vo
 
           // Manifest 一致性检查
           const parsed = parseWikiPage(normalizedRelPath, content);
-          const entryByPageFile = manifest.entries.find(entry =>
-            entry.pageFiles.map(item => item.replace(/\\/g, '/')).includes(parsed.file),
+          const entryByPageFile = manifest.entries.find((entry) =>
+            entry.pageFiles.map((item) => item.replace(/\\/g, '/')).includes(parsed.file),
           );
           if (entryByPageFile) {
-            const hasNoSource = !entryByPageFile.sourceFile && entryByPageFile.archivedFiles.length === 0;
+            const hasNoSource =
+              !entryByPageFile.sourceFile && entryByPageFile.archivedFiles.length === 0;
             if (!hasNoSource) {
-              const sourceCandidates = [entryByPageFile.sourceFile, ...entryByPageFile.archivedFiles].map(item =>
-                path.basename(item),
-              );
+              const sourceCandidates = [
+                entryByPageFile.sourceFile,
+                ...entryByPageFile.archivedFiles,
+              ].map((item) => path.basename(item));
               if (!parsed.source || !sourceCandidates.includes(path.basename(parsed.source))) {
                 issues.push({
                   type: 'manifest_mismatch',
@@ -222,8 +238,10 @@ export function registerLintTool(server: McpServer, ctx: WikiServiceContext): vo
             }
           } else {
             const hasSourceMatch = parsed.source
-              ? manifest.entries.some(entry => {
-                  const sourceCandidates = [entry.sourceFile, ...entry.archivedFiles].map(item => path.basename(item));
+              ? manifest.entries.some((entry) => {
+                  const sourceCandidates = [entry.sourceFile, ...entry.archivedFiles].map((item) =>
+                    path.basename(item),
+                  );
                   return sourceCandidates.includes(path.basename(parsed.source!));
                 })
               : false;
@@ -252,15 +270,15 @@ export function registerLintTool(server: McpServer, ctx: WikiServiceContext): vo
         }
 
         for (const candidatePath of uniquePaths) {
-          const existingPath = getWikiPathCandidates(candidatePath).find(candidate =>
+          const existingPath = getWikiPathCandidates(candidatePath).find((candidate) =>
             fs.existsSync(path.resolve(ctx.wikiPath, candidate)),
           );
           if (existingPath) {
             inboundTargets.add(existingPath);
           } else {
             linksToVerify
-              .filter(l => l.target === candidatePath)
-              .forEach(l => {
+              .filter((l) => l.target === candidatePath)
+              .forEach((l) => {
                 issues.push({
                   type: 'broken_link',
                   file: l.source,
@@ -338,14 +356,20 @@ export function registerLintTool(server: McpServer, ctx: WikiServiceContext): vo
       }
 
       const normalizedIssues = normalizeIssues(issues);
-      const brokenCount = normalizedIssues.filter(i => i.type === 'broken_link').length;
-      const frontmatterCount = normalizedIssues.filter(i => i.type === 'missing_frontmatter').length;
-      const requiredFieldCount = normalizedIssues.filter(i => i.type === 'missing_required_field').length;
-      const schemaCount = normalizedIssues.filter(i => i.type === 'schema_mismatch').length;
-      const uncompiledCount = normalizedIssues.filter(i => i.type === 'uncompiled_source').length;
-      const orphanCount = normalizedIssues.filter(i => i.type === 'orphan').length;
-      const manifestCount = normalizedIssues.filter(i => i.type === 'manifest_missing' || i.type === 'manifest_mismatch').length;
-      const indexDriftCount = normalizedIssues.filter(i => i.type === 'index_drift').length;
+      const brokenCount = normalizedIssues.filter((i) => i.type === 'broken_link').length;
+      const frontmatterCount = normalizedIssues.filter(
+        (i) => i.type === 'missing_frontmatter',
+      ).length;
+      const requiredFieldCount = normalizedIssues.filter(
+        (i) => i.type === 'missing_required_field',
+      ).length;
+      const schemaCount = normalizedIssues.filter((i) => i.type === 'schema_mismatch').length;
+      const uncompiledCount = normalizedIssues.filter((i) => i.type === 'uncompiled_source').length;
+      const orphanCount = normalizedIssues.filter((i) => i.type === 'orphan').length;
+      const manifestCount = normalizedIssues.filter(
+        (i) => i.type === 'manifest_missing' || i.type === 'manifest_mismatch',
+      ).length;
+      const indexDriftCount = normalizedIssues.filter((i) => i.type === 'index_drift').length;
 
       const summary =
         normalizedIssues.length === 0
@@ -368,7 +392,7 @@ export function registerLintTool(server: McpServer, ctx: WikiServiceContext): vo
               healthy: normalizedIssues.length === 0,
               directoryTree,
               issues: normalizedIssues,
-              totalSourceFiles: sourceFiles.filter(f => !f.endsWith('.gitkeep')).length,
+              totalSourceFiles: sourceFiles.filter((f) => !f.endsWith('.gitkeep')).length,
               totalPages: pageFiles.length,
               summary,
             }),
