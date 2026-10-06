@@ -12,7 +12,7 @@
 
 Mint 是一款以个人知识工作台为核心的 AI 助手，基于 Electron 构建为桌面应用。它将文档、网页和对话整理为可检索、可持续维护的 Wiki，并通过带来源引用的知识问答、Agent 和工具调用帮助用户理解与使用这些知识。会话、设置和 Wiki 默认保存在本机；对话及配置的向量/语义服务会按用户设置连接相应 API。
 
-https://github.com/user-attachments/assets/2df6b2b2-5c6e-4eca-b652-553c8c6ccf1b
+https://github.com/user-attachments/assets/37fe8faf-353f-401b-bb32-0c349bc688db
 
 ## 功能特性
 
