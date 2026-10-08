@@ -8,16 +8,16 @@ This batch moves the remaining Settings persistence, MCP server persistence and 
 
 | Previous location | New location | Responsibility |
 | --- | --- | --- |
-| `server/repositories/settingsRepository.ts` | `server/infrastructure/config/settings-repository.ts` | Settings key/value persistence |
-| `server/repositories/mcpServerRepository.ts` | `server/infrastructure/persistence/mcp-server-repository.ts` | MCP server configuration persistence |
-| `server/services/api/mcpService.ts` | `server/infrastructure/mcp/mcp-client-manager.ts` | Process-scoped MCP transport and tool lifecycle |
-| — | `server/bootstrap/mcp-client.ts` | Process-scoped MCP manager composition |
-| `server/services/api/mcp-server-service.ts` | `server/application/mcp/mcp-server-service.ts` | MCP CRUD and connection application facade |
-| `server/services/api/modelConnectionService.ts` | `server/infrastructure/ai/model-connection-verification.ts` plus `server/bootstrap/model-connections.ts` | Provider-backed model verification and adapter composition |
-| `server/services/api/vectorConnectionService.ts` | `server/infrastructure/search/vector-connection-verification.ts` | Embedding and Chroma connection checks |
-| `server/repositories/vectorRepository.ts` | `server/infrastructure/persistence/vector-repository.ts` | SQLite vector persistence |
-| `server/repositories/chromaVectorRepository.ts` | `server/infrastructure/search/chroma-vector-store.ts` | Experimental Chroma vector-store adapter |
-| `server/repositories/wikiVectorBackfillRepository.ts` | `server/infrastructure/persistence/wiki-vector-backfill-repository.ts` | Durable Wiki vector backfill state |
+| `apps/server/repositories/settingsRepository.ts` | `apps/server/infrastructure/config/settings-repository.ts` | Settings key/value persistence |
+| `apps/server/repositories/mcpServerRepository.ts` | `apps/server/infrastructure/persistence/mcp-server-repository.ts` | MCP server configuration persistence |
+| `apps/server/services/api/mcpService.ts` | `apps/server/infrastructure/mcp/mcp-client-manager.ts` | Process-scoped MCP transport and tool lifecycle |
+| — | `apps/server/bootstrap/mcp-client.ts` | Process-scoped MCP manager composition |
+| `apps/server/services/api/mcp-server-service.ts` | `apps/server/application/mcp/mcp-server-service.ts` | MCP CRUD and connection application facade |
+| `apps/server/services/api/modelConnectionService.ts` | `apps/server/infrastructure/ai/model-connection-verification.ts` plus `apps/server/bootstrap/model-connections.ts` | Provider-backed model verification and adapter composition |
+| `apps/server/services/api/vectorConnectionService.ts` | `apps/server/infrastructure/search/vector-connection-verification.ts` | Embedding and Chroma connection checks |
+| `apps/server/repositories/vectorRepository.ts` | `apps/server/infrastructure/persistence/vector-repository.ts` | SQLite vector persistence |
+| `apps/server/repositories/chromaVectorRepository.ts` | `apps/server/infrastructure/search/chroma-vector-store.ts` | Experimental Chroma vector-store adapter |
+| `apps/server/repositories/wikiVectorBackfillRepository.ts` | `apps/server/infrastructure/persistence/wiki-vector-backfill-repository.ts` | Durable Wiki vector backfill state |
 
 Settings CRUD, connection API descriptors and Wiki vector orchestration keep their existing public facades. Startup, tools and Electron use the bootstrap MCP instance; MCP endpoint descriptors call the application facade. No API names, table schemas, or transport payloads were intentionally changed.
 
@@ -27,7 +27,7 @@ Follow-up consolidation moved the former `services/vector/` provider, contracts 
 
 - Pre-edit impact assessments were recorded in the migration work: Settings repository and MCP service were MEDIUM; model/vector connection services were LOW; vector repository and Settings service were UNKNOWN. UNKNOWN results were treated as unresolved and corroborated with source reference scans before moving files.
 - Static imports and literal dynamic imports were searched after relocation. The memory process smoke import and synthetic architecture cases were updated to the new Settings adapter path; obsolete known-violation entries were removed after MCP and Settings coupling disappeared.
-- `server/architecture/__tests__/agents-boundary.test.ts` protects the rule that Agent domain code does not depend on the concrete MCP infrastructure manager.
+- `apps/server/architecture/__tests__/agents-boundary.test.ts` protects the rule that Agent domain code does not depend on the concrete MCP infrastructure manager.
 - TypeScript source filenames added or moved in this batch use kebab-case. Legacy files outside the migrated paths were not renamed as part of this batch.
 
 ## Verification

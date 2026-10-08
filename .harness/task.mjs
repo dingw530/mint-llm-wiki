@@ -35,8 +35,8 @@ export function defaultHarnessConfig() {
       '.claude/skills/',
       'tests/architecture/',
       'vitest.config.ts',
-      'server/vitest.config.ts',
-      'client/vitest.config.ts',
+      'apps/server/vitest.config.ts',
+      'apps/client/vitest.config.ts',
     ],
     checks: [
       {

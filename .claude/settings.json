@@ -2,7 +2,7 @@
   "mcpServers": {
     "mint-wiki": {
       "command": "npx",
-      "args": ["tsx", "server/mcp/cli.ts"],
+      "args": ["tsx", "apps/server/mcp/cli.ts"],
       "env": {
         "WIKI_PATH": "/Users/wangding/WorkSpace/mint-llm-wiki"
       }

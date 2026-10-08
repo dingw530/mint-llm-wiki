@@ -1,0 +1,719 @@
+{
+  "meta": {
+    "title": "Mint 系统架构 · Live Panel",
+    "lang": "zh-CN"
+  },
+  "canvas": {
+    "preset": "3:4",
+    "width": 1080,
+    "height": 1440,
+    "duration": 30,
+    "fps": 30,
+    "preroll": 10
+  },
+  "theme": {
+    "preset": "terminal-dark",
+    "font": "\"JetBrains Mono\",\"IBM Plex Mono\",\"DejaVu Sans Mono\",\"Noto Sans Mono CJK SC\",monospace",
+    "fontSize": 18,
+    "lineHeight": 25,
+    "colors": {
+      "bg": "#101820",
+      "bar": "#18242e",
+      "line": "#415563",
+      "line2": "#2b3a45",
+      "dim": "#81909a",
+      "fg": "#e5edf2",
+      "wh": "#ffffff",
+      "cy": "#63d6cf",
+      "cyd": "#3f8f91",
+      "bl": "#8cb9f2",
+      "gr": "#85d5a0",
+      "pu": "#c3a1e8",
+      "ye": "#e5c17a",
+      "hl": "#26303b",
+      "row": "#1b3036",
+      "none": "transparent",
+      "dots": "#536575"
+    }
+  },
+  "clock": {
+    "start": "09:41:12",
+    "rate": 1
+  },
+  "titlebar": {
+    "text": "~/mint — architecture — live"
+  },
+  "credit": {
+    "text": "架构依据：当前仓库源码　·　动效方法参考 @thedelost https://x.com/thedelost/status/2105398038026195279　·　流量 / 计数均为动画示意",
+    "y": 1430,
+    "size": 11
+  },
+  "machines": {
+    "request": {
+      "type": "cycle",
+      "period": 3.2,
+      "t0": 0.4,
+      "log": {
+        "who": "chat",
+        "c": "cy"
+      },
+      "values": [
+        {
+          "t": "上下文",
+          "m": "装配 Wiki + 记忆上下文",
+          "g": "context"
+        },
+        {
+          "t": "推理",
+          "m": "ReAct 请求进入模型回合",
+          "g": "agent"
+        },
+        {
+          "t": "工具",
+          "m": "工具结果回到下一轮",
+          "g": "tool"
+        },
+        {
+          "t": "响应",
+          "m": "事件经 SSE / IPC 返回",
+          "g": "stream"
+        }
+      ]
+    },
+    "model": {
+      "type": "lane",
+      "period": 8,
+      "run": 5.6,
+      "off": 1.2,
+      "busy": "流式生成",
+      "done": ["回合完成"],
+      "phase": 1,
+      "log": {
+        "who": "model",
+        "c": "pu",
+        "msgs": [
+          ["AIAdapter.stream → provider", "SSE"],
+          ["usage / finish → AgentRun event", "event"]
+        ]
+      }
+    },
+    "events": {
+      "type": "triggers",
+      "color": "ye",
+      "period": 5.2,
+      "on": 2.8,
+      "t0": 1.1,
+      "callsStart": 1,
+      "onText": "事件处理中",
+      "offText": "等待事件",
+      "items": [
+        {
+          "name": "工具需审批",
+          "adv": ["» 用户确认后继续", "» 拒绝则结束该调用"],
+          "to": "→ ToolApproval"
+        },
+        {
+          "name": "Wiki 来源入库",
+          "adv": ["» 解析并构建索引", "» 搜索文档 / 向量"],
+          "to": "→ Wiki"
+        },
+        {
+          "name": "记忆异步处理",
+          "adv": ["» 按空间与策略筛选", "» 持久化处理事件"],
+          "to": "→ Memory"
+        }
+      ],
+      "log": {
+        "who": "event",
+        "c": "ye",
+        "start": {
+          "m": "{name} · 事件开始",
+          "g": "处理中"
+        },
+        "end": {
+          "m": "{name} · 控制权已返回",
+          "g": "{to}"
+        }
+      }
+    }
+  },
+  "elements": [
+    {
+      "type": "text",
+      "x": 0,
+      "w": 1080,
+      "y": 63,
+      "align": "center",
+      "runs": [
+        {
+          "t": "MINT",
+          "c": "cy",
+          "b": 1,
+          "size": 27
+        },
+        {
+          "t": "　/　系统架构",
+          "c": "fg",
+          "b": 1,
+          "size": 27
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "x": 0,
+      "w": 1080,
+      "y": 98,
+      "align": "center",
+      "runs": [
+        {
+          "t": "从用户消息到 AgentRun，再到知识与数据设施",
+          "c": "dim",
+          "size": 16
+        }
+      ]
+    },
+    {
+      "type": "rule",
+      "x": 32,
+      "y": 120,
+      "w": 1016
+    },
+    {
+      "type": "text",
+      "x": 52,
+      "y": 145,
+      "runs": [
+        {
+          "sw": "cy"
+        },
+        {
+          "t": "界面与传输",
+          "c": "dim"
+        },
+        {
+          "t": "　"
+        },
+        {
+          "sw": "bl"
+        },
+        {
+          "t": "应用与运行时",
+          "c": "dim"
+        },
+        {
+          "t": "　"
+        },
+        {
+          "sw": "pu"
+        },
+        {
+          "t": "上下文 / 模型",
+          "c": "dim"
+        },
+        {
+          "t": "　"
+        },
+        {
+          "sw": "gr"
+        },
+        {
+          "t": "领域与存储",
+          "c": "dim"
+        }
+      ]
+    },
+    {
+      "type": "box",
+      "x": 48,
+      "y": 169,
+      "w": 455,
+      "h": 96,
+      "color": "cy",
+      "pad": [9, 13],
+      "lines": [
+        {
+          "t": "React 客户端",
+          "c": "cy",
+          "b": 1
+        },
+        "features/chat · useSSE",
+        "API service → /api"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 577,
+      "y": 169,
+      "w": 455,
+      "h": 96,
+      "color": "cy",
+      "pad": [9, 13],
+      "lines": [
+        {
+          "t": "Electron 桌面端",
+          "c": "cy",
+          "b": 1
+        },
+        "preload 暴露安全 API",
+        "IPC 与 HTTP 共用服务契约"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 130,
+      "y": 305,
+      "w": 820,
+      "h": 106,
+      "color": "bl",
+      "pad": [10, 15],
+      "lines": [
+        {
+          "t": "端点与传输层",
+          "c": "bl",
+          "b": 1
+        },
+        "EndpointDescriptor → Express routes + Electron IPC",
+        "消息流：ResSink / IpcSink → SSE 事件与运行状态"
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [275, 265],
+        [275, 285],
+        [400, 285],
+        [400, 305]
+      ],
+      "color": "cy",
+      "width": 2,
+      "flow": {
+        "period": 2.1,
+        "offsets": [0, 1.05],
+        "color": "cy",
+        "tail": 14
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [805, 265],
+        [805, 285],
+        [680, 285],
+        [680, 305]
+      ],
+      "color": "cy",
+      "width": 2,
+      "flow": {
+        "period": 2.4,
+        "offsets": [0.4, 1.6],
+        "color": "cy",
+        "tail": 14
+      }
+    },
+    {
+      "type": "box",
+      "x": 130,
+      "y": 447,
+      "w": 820,
+      "h": 98,
+      "color": "bl",
+      "pad": [10, 15],
+      "lines": [
+        {
+          "t": "Conversation Application",
+          "c": "bl",
+          "b": 1
+        },
+        "保存消息 · 选择 Agent / 路由 · 整理历史 · 注入上下文",
+        "维护会话范围锁、恢复动作与工具审批入口"
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [540, 411],
+        [540, 447]
+      ],
+      "color": "bl",
+      "width": 2,
+      "flow": {
+        "period": 1.8,
+        "offsets": [0, 0.9],
+        "color": "bl",
+        "tail": 14
+      }
+    },
+    {
+      "type": "box",
+      "x": 130,
+      "y": 583,
+      "w": 820,
+      "h": 132,
+      "color": "bl",
+      "pad": [10, 15],
+      "lines": [
+        {
+          "t": "Agent Runtime",
+          "c": "bl",
+          "b": 1
+        },
+        "AgentRun · ReactEventEmitter · durable event log",
+        "ReAct loop：准备上下文 → 模型回合 → 工具执行 → 下一轮 / 完成",
+        "Runtime Ports 组合模型、工具目录、执行器与事件观察"
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [540, 545],
+        [540, 583]
+      ],
+      "color": "bl",
+      "width": 2,
+      "flow": {
+        "period": 1.9,
+        "offsets": [0.2, 1.1],
+        "color": "bl",
+        "tail": 14
+      }
+    },
+    {
+      "type": "box",
+      "x": 38,
+      "y": 766,
+      "w": 320,
+      "h": 172,
+      "color": "pu",
+      "pad": [10, 13],
+      "lines": [
+        {
+          "t": "上下文工程",
+          "c": "pu",
+          "b": 1
+        },
+        "Wiki Context Provider",
+        "Memory Context Provider",
+        "按预算装配到请求消息",
+        "Wiki 检索：FTS + 可选向量"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 380,
+      "y": 766,
+      "w": 320,
+      "h": 172,
+      "color": "ye",
+      "pad": [10, 13],
+      "lines": [
+        {
+          "t": "工具执行与安全",
+          "c": "ye",
+          "b": 1
+        },
+        "Tool Catalog / Registry",
+        "Tool Executor + retry",
+        "Approval Store：用户确认",
+        "Built-in · Bash · Wiki · MCP"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 722,
+      "y": 766,
+      "w": 320,
+      "h": 172,
+      "color": "pu",
+      "pad": [10, 13],
+      "lines": [
+        {
+          "t": "AI 与观测基础设施",
+          "c": "pu",
+          "b": 1
+        },
+        "AIAdapter → provider stream",
+        "模型端点 / 凭据配置",
+        "Langfuse run / round context",
+        "A2UI Composer · token usage"
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [270, 715],
+        [270, 738],
+        [198, 738],
+        [198, 766]
+      ],
+      "color": "pu",
+      "width": 2,
+      "flow": {
+        "period": 2.7,
+        "offsets": [0.3, 1.7],
+        "color": "pu",
+        "tail": 12
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [540, 715],
+        [540, 766]
+      ],
+      "color": "ye",
+      "width": 2,
+      "flow": {
+        "period": 1.8,
+        "offsets": [0.1, 0.95],
+        "color": "ye",
+        "tail": 12
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [810, 715],
+        [810, 738],
+        [882, 738],
+        [882, 766]
+      ],
+      "color": "pu",
+      "width": 2,
+      "flow": {
+        "period": 2.5,
+        "offsets": [0.7, 1.9],
+        "color": "pu",
+        "tail": 12
+      }
+    },
+    {
+      "type": "box",
+      "x": 38,
+      "y": 976,
+      "w": 1004,
+      "h": 110,
+      "color": "gr",
+      "pad": [10, 13],
+      "lines": [
+        {
+          "t": "领域模块",
+          "c": "gr",
+          "b": 1
+        },
+        "Conversations · Agents · Routing　 |　 Wiki · Knowledge Graph　 |　 Memory · Memory Spaces",
+        "Skills · Model Endpoints · Tool Security　 |　 生命周期与业务规则归各领域维护"
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [198, 938],
+        [198, 955],
+        [340, 955],
+        [340, 976]
+      ],
+      "color": "gr",
+      "width": 2,
+      "flow": {
+        "period": 2.8,
+        "offsets": [0.2, 1.6],
+        "color": "gr",
+        "tail": 12
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [540, 938],
+        [540, 976]
+      ],
+      "color": "gr",
+      "width": 2,
+      "flow": {
+        "period": 2.3,
+        "offsets": [0.8],
+        "color": "gr",
+        "tail": 12
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [882, 938],
+        [882, 955],
+        [740, 955],
+        [740, 976]
+      ],
+      "color": "gr",
+      "width": 2,
+      "flow": {
+        "period": 2.9,
+        "offsets": [0.5, 2.0],
+        "color": "gr",
+        "tail": 12
+      }
+    },
+    {
+      "type": "box",
+      "x": 38,
+      "y": 1104,
+      "w": 488,
+      "h": 132,
+      "color": "gr",
+      "pad": [10, 13],
+      "lines": [
+        {
+          "t": "持久化与检索",
+          "c": "gr",
+          "b": 1
+        },
+        "SQLite：会话、消息、记忆、Wiki 元数据",
+        "FTS5 + sqlite-vec：本地检索索引",
+        "Repositories 隔离 SQL 读写"
+      ]
+    },
+    {
+      "type": "box",
+      "x": 554,
+      "y": 1104,
+      "w": 488,
+      "h": 132,
+      "color": "gr",
+      "pad": [10, 13],
+      "lines": [
+        {
+          "t": "异步工作与外部连接",
+          "c": "gr",
+          "b": 1
+        },
+        "Wiki ingest / lifecycle · Memory processing",
+        "Job queue + SQLite job store",
+        "Filesystem · MCP servers · AI providers"
+      ]
+    },
+    {
+      "type": "path",
+      "points": [
+        [320, 1086],
+        [320, 1104],
+        [282, 1104],
+        [282, 1104]
+      ],
+      "color": "gr",
+      "width": 2,
+      "flow": {
+        "period": 2.5,
+        "offsets": [0.1, 1.4],
+        "color": "gr",
+        "tail": 12
+      }
+    },
+    {
+      "type": "path",
+      "points": [
+        [760, 1086],
+        [760, 1104],
+        [798, 1104],
+        [798, 1104]
+      ],
+      "color": "gr",
+      "width": 2,
+      "flow": {
+        "period": 2.8,
+        "offsets": [0.7, 1.8],
+        "color": "gr",
+        "tail": 12
+      }
+    },
+    {
+      "type": "text",
+      "x": 40,
+      "y": 1266,
+      "runs": [
+        {
+          "t": "runtime state  ",
+          "c": "dim"
+        },
+        {
+          "t": "phase=",
+          "c": "dim"
+        },
+        {
+          "v": "request.t",
+          "c": "cy",
+          "b": 1
+        },
+        {
+          "t": "   model=",
+          "c": "dim"
+        },
+        {
+          "v": "model",
+          "c": "pu",
+          "b": 1
+        },
+        {
+          "t": "   event=",
+          "c": "dim"
+        },
+        {
+          "v": "events.status",
+          "c": "ye",
+          "b": 1
+        }
+      ]
+    },
+    {
+      "type": "log",
+      "x": 38,
+      "y": 1295,
+      "w": 1004,
+      "rows": 3,
+      "padTop": 13,
+      "padBottom": 12,
+      "padLeft": 16,
+      "title": "illustrative event stream",
+      "titleX": 34,
+      "titleW": 230,
+      "cols": [
+        {
+          "key": "time",
+          "x": 0
+        },
+        {
+          "key": "who",
+          "x": 105
+        },
+        {
+          "key": "m",
+          "x": 215
+        },
+        {
+          "key": "g",
+          "x": 760
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "x": 40,
+      "y": 1404,
+      "runs": [
+        {
+          "t": "$ animation packets: ",
+          "c": "dim"
+        },
+        {
+          "v": "packets",
+          "c": "gr",
+          "b": 1
+        },
+        {
+          "t": "  ·  all moving counts are illustrative",
+          "c": "dim"
+        }
+      ]
+    }
+  ]
+}

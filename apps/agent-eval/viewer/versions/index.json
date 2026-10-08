@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "versions": [
+    {
+      "id": "report",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.1.0",
+      "generatedAt": "2026-08-25T09:04:39.381Z",
+      "reportFile": "report.json",
+      "totalRuns": 75,
+      "passAt1": 0,
+      "queryPassAt1": 0,
+      "answerPassAt1": 0
+    },
+    {
+      "id": "wiki-rag-20260825090439-13eaecbd",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.1.0",
+      "generatedAt": "2026-08-25T09:04:39.381Z",
+      "reportFile": "wiki-rag-20260825090439-13eaecbd.json",
+      "totalRuns": 75,
+      "passAt1": 0,
+      "queryPassAt1": 0,
+      "answerPassAt1": 0
+    },
+    {
+      "id": "wiki-rag-20260825132830-814f6808",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.1.0",
+      "generatedAt": "2026-08-25T13:28:30.467Z",
+      "reportFile": "wiki-rag-20260825132830-814f6808.json",
+      "totalRuns": 25,
+      "passAt1": 0.68,
+      "queryPassAt1": 0.68,
+      "answerPassAt1": 0.68
+    },
+    {
+      "id": "wiki-rag-20260826142909-91238229",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.1.0",
+      "generatedAt": "2026-08-26T14:29:09.741Z",
+      "reportFile": "wiki-rag-20260826142909-91238229.json",
+      "totalRuns": 75,
+      "passAt1": 0.76,
+      "queryPassAt1": 0.76,
+      "answerPassAt1": 0.76,
+      "langfuseUploadedAt": "2026-08-28T05:33:14.030Z",
+      "langfuseScoreCount": 29
+    },
+    {
+      "id": "wiki-rag-20260827215558-6ecf274b",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.0",
+      "generatedAt": "2026-08-27T21:55:58.924Z",
+      "reportFile": "wiki-rag-20260827215558-6ecf274b.json",
+      "totalRuns": 25,
+      "passAt1": 0.84,
+      "queryPassAt1": 0.84,
+      "answerPassAt1": 0.84,
+      "langfuseUploadedAt": "2026-08-28T05:32:50.117Z",
+      "langfuseScoreCount": 29
+    },
+    {
+      "id": "wiki-rag-20260831122231-b6465b9d",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.0",
+      "generatedAt": "2026-08-31T12:22:31.512Z",
+      "reportFile": "wiki-rag-20260831122231-b6465b9d.json",
+      "totalRuns": 25,
+      "passAt1": 0.88,
+      "queryPassAt1": 0.88,
+      "answerPassAt1": 0.88,
+      "langfuseUploadedAt": "2026-08-31T12:40:02.002Z",
+      "langfuseScoreCount": 29
+    },
+    {
+      "id": "wiki-rag-20260910073243-ea6c31b0",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.0",
+      "generatedAt": "2026-09-10T07:32:43.322Z",
+      "reportFile": "wiki-rag-20260910073243-ea6c31b0.json",
+      "totalRuns": 75,
+      "passAt1": 0.96,
+      "queryPassAt1": 0.96,
+      "answerPassAt1": 0.96
+    },
+    {
+      "id": "wiki-rag-judge-20260910080151-49f35081",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.0",
+      "generatedAt": "2026-09-10T08:01:51.633Z",
+      "reportFile": "wiki-rag-judge-20260910080151-49f35081.json",
+      "totalRuns": 75,
+      "passAt1": 0.88,
+      "queryPassAt1": 0.88,
+      "answerPassAt1": 0.88,
+      "langfuseUploadedAt": "2026-09-10T08:20:35.267Z",
+      "langfuseScoreCount": 29
+    },
+    {
+      "id": "wiki-rag-judge-20260922123305-1d5e3d22",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.0",
+      "generatedAt": "2026-09-22T11:56:05.044Z",
+      "reportFile": "wiki-rag-judge-20260922123305-1d5e3d22.json",
+      "totalRuns": 75,
+      "passAt1": 0.88,
+      "queryPassAt1": 0.88,
+      "answerPassAt1": 0.92
+    },
+    {
+      "id": "wiki-rag-20260929132643-d17e4365",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.1",
+      "generatedAt": "2026-09-29T13:26:43.740Z",
+      "reportFile": "wiki-rag-20260929132643-d17e4365.json",
+      "totalRuns": 75,
+      "passAt1": 0.92,
+      "queryPassAt1": 0.92,
+      "answerPassAt1": 0.96
+    },
+    {
+      "id": "20261004-k3-jev-configured",
+      "dataset": "wiki-rag",
+      "datasetVersion": "1.2.1",
+      "generatedAt": "2026-10-04T09:33:54.509Z",
+      "reportFile": "20261004-k3-jev-configured.json",
+      "totalRuns": 75,
+      "passAt1": 0.96,
+      "queryPassAt1": 0.96,
+      "answerPassAt1": 0.96
+    }
+  ]
+}

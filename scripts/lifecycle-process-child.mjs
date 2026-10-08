@@ -1,4 +1,4 @@
-import { shutdownServer, startServer } from '../server/index.ts';
+import { shutdownServer, startServer } from '../apps/server/index.ts';
 
 const port = await startServer(0);
 console.log(`READY:${port}`);

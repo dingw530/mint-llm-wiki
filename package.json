@@ -27,21 +27,21 @@
     "build:website": "npm run build -w mint-github-pages",
     "start": "npm run start -w mint-server",
     "electron:rebuild": "node scripts/with-node-version.cjs node scripts/rebuild-native.cjs electron",
-    "electron:dev": "npm run build -w mint-server && npm run electron:rebuild && concurrently -k \"npm run dev -w mint-client\" \"sleep 3 && cd electron && npx electron .\"",
-    "electron:dev:server": "npm run build -w mint-server && npm run electron:rebuild && concurrently -k \"npm run dev -w mint-server\" \"npm run dev -w mint-client\" \"sleep 3 && cd electron && npx electron .\"",
-    "electron:build:mac": "npm run build -w mint-server && ELECTRON=true npm run build -w mint-client && cd electron && npm run build:mac --",
+    "electron:dev": "npm run build -w mint-server && npm run electron:rebuild && concurrently -k \"npm run dev -w mint-client\" \"sleep 3 && cd apps/electron && npx electron .\"",
+    "electron:dev:server": "npm run build -w mint-server && npm run electron:rebuild && concurrently -k \"npm run dev -w mint-server\" \"npm run dev -w mint-client\" \"sleep 3 && cd apps/electron && npx electron .\"",
+    "electron:build:mac": "npm run build -w mint-server && ELECTRON=true npm run build -w mint-client && cd apps/electron && npm run build:mac --",
     "prepare": "husky",
     "lint": "npm run lint:server && npm run lint:client",
-    "lint:server": "eslint server/ --max-warnings=0",
-    "lint:client": "eslint client/ --max-warnings=0",
+    "lint:server": "eslint apps/server/ --max-warnings=0",
+    "lint:client": "eslint apps/client/ --max-warnings=0",
     "lint:fix": "npm run lint:fix:server && npm run lint:fix:client",
-    "lint:fix:server": "eslint server/ --fix",
-    "lint:fix:client": "eslint client/ --fix",
-    "format": "prettier --check \"server/**/*.ts\"",
-    "format:fix": "prettier --write \"server/**/*.ts\"",
+    "lint:fix:server": "eslint apps/server/ --fix",
+    "lint:fix:client": "eslint apps/client/ --fix",
+    "format": "prettier --check \"apps/server/**/*.ts\"",
+    "format:fix": "prettier --write \"apps/server/**/*.ts\"",
     "coverage:report": "node scripts/coverage-report.mjs",
     "test:runner": "node scripts/test-runner.mjs",
-    "eval:agent": "npm run build -w mint-server && npm run build -w agent-eval && node scripts/with-node-version.cjs node agent-eval/dist/cli.js"
+    "eval:agent": "npm run build -w mint-server && npm run build -w agent-eval && node scripts/with-node-version.cjs node apps/agent-eval/dist/cli.js"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -66,11 +66,13 @@
     "typescript-eslint": "^8.62.1"
   },
   "workspaces": [
-    "agent-eval",
-    "server",
-    "client",
-    "electron",
-    "website"
+    "packages/react-runtime",
+    "packages/tool-runtime",
+    "apps/agent-eval",
+    "apps/server",
+    "apps/client",
+    "apps/electron",
+    "apps/website"
   ],
   "engines": {
     "node": "20.19.4"

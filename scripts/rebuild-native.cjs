@@ -28,15 +28,12 @@ function rebuildNodeModule() {
 
 async function rebuildElectronModule() {
   const { rebuild } = require('@electron/rebuild');
-  const electronDir = path.join(rootDir, 'electron');
+  const electronDir = path.join(rootDir, 'apps', 'electron');
   const nodeModuleDir = path.join(rootDir, 'node_modules', 'better-sqlite3');
   const electronModuleDir = path.join(electronDir, 'node_modules', 'better-sqlite3');
-  const electronVersion = require(path.join(
-    rootDir,
-    'node_modules',
-    'electron',
-    'package.json',
-  )).version;
+  const electronVersion = require(
+    path.join(rootDir, 'node_modules', 'electron', 'package.json'),
+  ).version;
 
   if (!fs.existsSync(nodeModuleDir)) {
     throw new Error(`Node native module not found: ${nodeModuleDir}`);
@@ -57,7 +54,7 @@ async function rebuildElectronModule() {
   });
 
   // npm workspaces cause @electron/rebuild to also rebuild the hoisted copy.
-  // Restore it for server/Vitest while preserving the Electron copy above.
+  // Restore it for apps/server/Vitest while preserving the Electron copy above.
   rebuildNodeModule();
 
   console.log(`Electron native modules rebuilt for Electron ${electronVersion}`);

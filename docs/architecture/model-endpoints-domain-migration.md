@@ -12,8 +12,8 @@ GitNexus 1.6.12 已在当前 checkout 更新索引。文件 impact 为 endpointS
 
 | 原路径                                      | 新路径                                                           |
 | ------------------------------------------- | ---------------------------------------------------------------- |
-| `server/services/api/endpointService.ts`    | `server/domains/model-endpoints/model-endpoint-service.ts`       |
-| `server/repositories/endpointRepository.ts` | `server/infrastructure/persistence/model-endpoint-repository.ts` |
+| `apps/server/services/api/endpointService.ts`    | `apps/server/domains/model-endpoints/model-endpoint-service.ts`       |
+| `apps/server/repositories/endpointRepository.ts` | `apps/server/infrastructure/persistence/model-endpoint-repository.ts` |
 
 公共入口为 `domains/model-endpoints/index.ts`。领域只依赖自己的仓储、Server 类型契约和既有 encryption 纯工具；其他生产模块不得直接访问仓储或领域内部文件。沿用小领域现有的直接仓储调用模式，不新增 bootstrap 或 DI 框架。源文件使用 kebab-case，未迁移文件不批量改名。
 

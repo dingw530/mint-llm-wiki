@@ -3,7 +3,7 @@ import test from 'node:test';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createWindowOptions } = require('../electron/window-options.js');
+const { createWindowOptions } = require('../apps/electron/window-options.js');
 
 test('darwin enables sidebar vibrancy and transparent background', () => {
   const options = createWindowOptions('darwin', '/tmp/electron');

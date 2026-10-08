@@ -1,0 +1,29 @@
+{
+  "name": "@mint/react-runtime",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Portable, minimal ReAct execution loop for Node.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "node scripts/clean.mjs && tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^1.6.1"
+  }
+}

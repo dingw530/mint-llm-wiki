@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Mint Server 架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1390,
+      920
+    ]
+  },
+  "components": [
+    {
+      "id": "entrypoints",
+      "type": "backend",
+      "label": "服务入口与协议",
+      "sublabel": "HTTP · IPC · CLI · MCP",
+      "pos": [
+        40,
+        350
+      ],
+      "size": [
+        220,
+        105
+      ]
+    },
+    {
+      "id": "application",
+      "type": "backend",
+      "label": "Application 用例",
+      "sublabel": "用例流程 · 跨域协调",
+      "tag": "application/",
+      "pos": [
+        330,
+        350
+      ],
+      "size": [
+        225,
+        115
+      ]
+    },
+    {
+      "id": "domains",
+      "type": "backend",
+      "label": "业务领域",
+      "sublabel": "Wiki · Memory · Routing",
+      "tag": "domains/",
+      "pos": [
+        620,
+        170
+      ],
+      "size": [
+        225,
+        125
+      ]
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "共享服务与工具",
+      "sublabel": "tool orchestration · AI · context",
+      "tag": "services/",
+      "pos": [
+        330,
+        585
+      ],
+      "size": [
+        225,
+        110
+      ]
+    },
+    {
+      "id": "bootstrap",
+      "type": "backend",
+      "label": "Bootstrap 组合根",
+      "sublabel": "ports · providers · clients",
+      "tag": "bootstrap/",
+      "pos": [
+        620,
+        420
+      ],
+      "size": [
+        225,
+        110
+      ]
+    },
+    {
+      "id": "agent-runtime",
+      "type": "backend",
+      "label": "Agent Runtime",
+      "sublabel": "AgentRun · ReAct · events",
+      "tag": "agent-runtime/",
+      "pos": [
+        910,
+        420
+      ],
+      "size": [
+        225,
+        110
+      ]
+    },
+    {
+      "id": "server-runtime",
+      "type": "backend",
+      "label": "ServerRuntime",
+      "sublabel": "worker lifecycle · bounded shutdown",
+      "tag": "runtime/",
+      "pos": [
+        620,
+        650
+      ],
+      "size": [
+        225,
+        92
+      ]
+    },
+    {
+      "id": "infrastructure",
+      "type": "backend",
+      "label": "Infrastructure",
+      "sublabel": "config · DB · AI · MCP",
+      "tag": "2 Settings bridges",
+      "pos": [
+        910,
+        170
+      ],
+      "size": [
+        225,
+        145
+      ]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "FTS · sqlite-vec",
+      "pos": [
+        1190,
+        170
+      ],
+      "size": [
+        185,
+        95
+      ]
+    },
+    {
+      "id": "providers",
+      "type": "external",
+      "label": "外部能力",
+      "sublabel": "AI · Jev · MCP · Chroma",
+      "pos": [
+        1190,
+        460
+      ],
+      "size": [
+        185,
+        105
+      ]
+    },
+    {
+      "id": "boundary-tests",
+      "type": "security",
+      "label": "架构边界测试",
+      "sublabel": "resolved import checks",
+      "tag": "apps/server/architecture/",
+      "pos": [
+        40,
+        690
+      ],
+      "size": [
+        220,
+        90
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Mint Server code",
+      "wraps": [
+        "entrypoints",
+        "application",
+        "domains",
+        "services",
+        "bootstrap",
+        "agent-runtime",
+        "server-runtime",
+        "infrastructure",
+        "boundary-tests"
+      ],
+      "pad": 26
+    }
+  ],
+  "connections": [
+    {
+      "id": "entry-application",
+      "from": "entrypoints",
+      "to": "application",
+      "label": "use cases",
+      "variant": "emphasis"
+    },
+    {
+      "id": "application-domains",
+      "from": "application",
+      "to": "domains",
+      "label": "business rules"
+    },
+    {
+      "id": "application-services",
+      "from": "application",
+      "to": "services",
+      "label": "shared adapters",
+      "variant": "dashed",
+      "labelDy": 30
+    },
+    {
+      "id": "application-bootstrap",
+      "from": "application",
+      "to": "bootstrap"
+    },
+    {
+      "id": "domains-infrastructure",
+      "from": "domains",
+      "to": "infrastructure",
+      "label": "adapters"
+    },
+    {
+      "id": "bootstrap-runtime-ports",
+      "from": "bootstrap",
+      "to": "agent-runtime",
+      "label": "ports",
+      "labelDy": 20
+    },
+    {
+      "id": "bootstrap-infrastructure",
+      "from": "bootstrap",
+      "to": "infrastructure",
+      "label": "composition"
+    },
+    {
+      "id": "runtime-startup",
+      "from": "server-runtime",
+      "to": "bootstrap",
+      "label": "lifecycle"
+    },
+    {
+      "id": "infrastructure-database",
+      "from": "infrastructure",
+      "to": "sqlite",
+      "label": "SQL"
+    },
+    {
+      "id": "infrastructure-providers",
+      "from": "infrastructure",
+      "to": "providers",
+      "label": "HTTP / MCP"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "当前迁移说明",
+      "items": [
+        "部分 endpoints 仍直接使用 domain / bootstrap 公共 API。",
+        "Infrastructure 的两处 Settings 读取是已登记的临时反向桥接。",
+        "apps/server/architecture 测试解析 imports 并守护边界。"
+      ]
+    }
+  ]
+}

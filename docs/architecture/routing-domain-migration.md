@@ -6,7 +6,7 @@
 
 ## 职责与文件映射
 
-| 原路径（server/ 下）                                                                     | 新路径（server/ 下）                                                                   |
+| 原路径（apps/server/ 下）                                                                     | 新路径（apps/server/ 下）                                                                   |
 | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | services/api/routingService.ts                                                           | domains/routing/routing-service.ts                                                     |
 | services/routingProviders/routingPolicy.ts                                               | domains/routing/routing-policy.ts                                                      |
@@ -43,8 +43,8 @@
 这是当前候选内容的追溯验证。正式提交应将搬迁源路径删除、新路径及引用更新纳入同一提交，避免只提交新文件；后续大幅改写内容需要重新检查 rename detection。提交后可使用：
 
 ```sh
-git log --follow -- server/domains/routing/routing-service.ts
-git blame -M -C -- server/domains/routing/routing-service.ts
+git log --follow -- apps/server/domains/routing/routing-service.ts
+git blame -M -C -- apps/server/domains/routing/routing-service.ts
 ```
 
 ## 验证结果与限制
@@ -54,11 +54,11 @@ git blame -M -C -- server/domains/routing/routing-service.ts
 - Electron server bundle 和 MCP bundle：构建通过。MCP 构建保留既有 `db.ts` 的两条 CJS/import.meta 警告；未作为运行验证。
 - server ESLint、本批文件 Prettier check、git diff --check：通过。
 - 未执行真实 Jev/LLM 请求、浏览器功能验收、Electron 启动、MCP 启动或完整 Harness/全量测试。本批没有 UI、端点契约或数据库 schema 变更。
-- 保留任务开始前的 client/index.html、文档索引及未跟踪插件/配置等工作区内容。
+- 保留任务开始前的 apps/client/index.html、文档索引及未跟踪插件/配置等工作区内容。
 
 ## 领域文件命名统一（2026-10-02）
 
-仅将已迁移的 `server/domains/` 文件统一为 kebab-case：Memory 17 个、Routing 8 个，共 25 个（含测试）。同步更新 30 个源码文件中的 72 处路径引用、两份 Memory Harness 检查配置及当前架构记录；历史 evidence 和 `.harness/runs/` 保留原记录。其他 Server 模块的文件名保持原状。AGENTS.md 已声明 Server TypeScript 文件使用 kebab-case，并明确现有未迁移模块暂不批量改名。
+仅将已迁移的 `apps/server/domains/` 文件统一为 kebab-case：Memory 17 个、Routing 8 个，共 25 个（含测试）。同步更新 30 个源码文件中的 72 处路径引用、两份 Memory Harness 检查配置及当前架构记录；历史 evidence 和 `.harness/runs/` 保留原记录。其他 Server 模块的文件名保持原状。AGENTS.md 已声明 Server TypeScript 文件使用 kebab-case，并明确现有未迁移模块暂不批量改名。
 
 再次使用独立临时 Git index/object directory，按“Routing 领域迁移 → 领域文件命名统一”两步候选提交核验：17 个已提交的 Memory 来源文件及上批 Routing 的 14 个来源文件，共 31 个文件，原提交链缺失数为 0。RoutingService 仍可追溯原 8 次提交。候选验证阶段没有创建真实提交或修改项目 Git 索引；正式交付时按两批提交执行。
 
@@ -68,7 +68,7 @@ Routing 领域迁移已提交为 `04b19e5`，本轮命名调整作为后续独�
 
 ## Infrastructure 文件命名统一（2026-10-02）
 
-以 `b2ac34e` 为基线，将 `server/infrastructure/` 的 17 个 TS 文件（其中 6 个测试文件）统一为 kebab-case。更新 28 个源码文件中的 66 处路径引用、三份 Memory Harness 检查配置及架构记录；其他目录只更新必要引用，不调整文件名。AGENTS.md 的已迁移命名范围同步包含 domains 与 infrastructure。
+以 `b2ac34e` 为基线，将 `apps/server/infrastructure/` 的 17 个 TS 文件（其中 6 个测试文件）统一为 kebab-case。更新 28 个源码文件中的 66 处路径引用、三份 Memory Harness 检查配置及架构记录；其他目录只更新必要引用，不调整文件名。AGENTS.md 的已迁移命名范围同步包含 domains 与 infrastructure。
 
 GitNexus 刷新完成后，部分 Memory、Routing 装配及持久化调用链为 HIGH/CRITICAL；改动限于文件名和路径字符串，未修改符号或业务逻辑。架构检查模块只被测试消费，图谱返回 UNKNOWN，通过实际引用和边界测试补证。生成的 Playwright trace 目录导致首次刷新耗时较长；临时忽略该目录的重试也已完成，临时配置已移除。
 

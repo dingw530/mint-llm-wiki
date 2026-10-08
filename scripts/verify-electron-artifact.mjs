@@ -6,7 +6,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 
 const rootDir = resolve(dirname(new URL(import.meta.url).pathname), '..');
-const releaseDir = join(rootDir, 'electron', 'release');
+const releaseDir = join(rootDir, 'apps', 'electron', 'release');
 
 /** Run a build command from the repository root and fail on a non-zero exit. */
 function run(command, args) {

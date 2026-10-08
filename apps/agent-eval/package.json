@@ -1,0 +1,39 @@
+{
+  "name": "agent-eval",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ../../scripts/with-node-version.cjs tsc -p tsconfig.json",
+    "test": "node ../../scripts/with-node-version.cjs vitest run --config vitest.config.ts",
+    "viewer": "node ../../scripts/with-node-version.cjs tsx src/serveViewer.ts",
+    "eval:list": "node ../../scripts/with-node-version.cjs tsx src/cli.ts list",
+    "eval:prepare": "node ../../scripts/with-node-version.cjs tsx src/cli.ts prepare",
+    "eval:wiki-rag:dry": "node ../../scripts/with-node-version.cjs tsx src/cli.ts run --dataset wiki-rag --dry-run",
+    "eval:wiki-rag:ingest": "node ../../scripts/with-node-version.cjs tsx src/cli.ts ingest --clean",
+    "eval:wiki-rag:live": "node ../../scripts/with-node-version.cjs tsx src/cli.ts run --dataset wiki-rag --live",
+    "eval:wiki-rag": "node ../../scripts/with-node-version.cjs tsx src/cli.ts run --dataset wiki-rag --live",
+    "eval:wiki-rag:judge": "node ../../scripts/with-node-version.cjs tsx src/cli.ts run --dataset wiki-rag --live --judge",
+    "eval:judge-only": "node ../../scripts/with-node-version.cjs tsx src/cli.ts judge-only",
+    "eval:versions:list": "node ../../scripts/with-node-version.cjs tsx src/cli.ts versions:list",
+    "eval:versions:repair": "node ../../scripts/with-node-version.cjs tsx src/cli.ts versions:repair",
+    "eval:versions:compare": "node ../../scripts/with-node-version.cjs tsx src/cli.ts versions:compare",
+    "eval:langfuse:upload": "node ../../scripts/with-node-version.cjs tsx src/cli.ts langfuse:upload",
+    "eval:calibration:export": "node ../../scripts/with-node-version.cjs tsx src/cli.ts calibration:export",
+    "eval:calibration:compare": "node ../../scripts/with-node-version.cjs tsx src/cli.ts calibration:compare",
+    "eval:pairwise": "node ../../scripts/with-node-version.cjs tsx src/cli.ts pairwise",
+    "eval:pairwise:elo": "node ../../scripts/with-node-version.cjs tsx src/cli.ts pairwise:elo"
+  },
+  "dependencies": {
+    "mint-server": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^1.6.1"
+  },
+  "engines": {
+    "node": "20.19.4"
+  }
+}

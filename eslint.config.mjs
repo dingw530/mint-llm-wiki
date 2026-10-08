@@ -16,9 +16,9 @@ export default tseslint.config(
   // 关闭与 Prettier 冲突的规则
   prettierConfig,
 
-  // 主规则集 — 针对 server/ 的 TypeScript 代码
+  // 主规则集 — 针对 apps/server/ 的 TypeScript 代码
   {
-    files: ['server/**/*.ts'],
+    files: ['apps/server/**/*.ts'],
     languageOptions: {
       globals: { ...globals.node },
     },
@@ -34,15 +34,21 @@ export default tseslint.config(
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/no-require-imports': 'off', // tsx 支持 require
 
-      '@typescript-eslint/no-unused-vars': ['error', {
-        argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_',
-      }],
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+        },
+      ],
 
-      '@typescript-eslint/consistent-type-imports': ['error', {
-        prefer: 'type-imports',
-        fixStyle: 'separate-type-imports',
-      }],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        {
+          prefer: 'type-imports',
+          fixStyle: 'separate-type-imports',
+        },
+      ],
 
       '@typescript-eslint/no-explicit-any': 'error',
     },
@@ -50,7 +56,7 @@ export default tseslint.config(
 
   // 测试文件放宽规则
   {
-    files: ['server/**/__tests__/**/*.ts'],
+    files: ['apps/server/**/__tests__/**/*.ts'],
     rules: {
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/consistent-type-imports': 'off',
@@ -61,7 +67,7 @@ export default tseslint.config(
 
   // 脚本文件（CommonJS 模式 tsx 脚本）
   {
-    files: ['server/scripts/**/*.ts', 'scripts/**/*.ts'],
+    files: ['apps/server/scripts/**/*.ts', 'scripts/**/*.ts'],
     rules: {
       '@typescript-eslint/no-require-imports': 'off',
     },
@@ -71,7 +77,7 @@ export default tseslint.config(
   // files additionally needing Node globals. Keep legacy migration warnings
   // visible without making the existing client codebase unlintable.
   {
-    files: ['client/**/*.{ts,tsx}'],
+    files: ['apps/client/**/*.{ts,tsx}'],
     languageOptions: {
       globals: { ...globals.browser },
     },
@@ -89,7 +95,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['client/vite.config.js'],
+    files: ['apps/client/vite.config.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

@@ -1,0 +1,50 @@
+{
+  "scenarios": [
+    {
+      "id": "tool-approval-write-guard",
+      "acceptanceCriteria": ["AC-002"],
+      "route": "/chat",
+      "markers": ["Mint", "新建对话"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/conversations/fixture-conversation/messages",
+            "method": "POST",
+            "body": "data: {\"type\":\"run_started\",\"runId\":\"guard-run\",\"sequence\":1,\"state\":\"running\"}\n\ndata: {\"type\":\"tool_call_start\",\"runId\":\"guard-run\",\"sequence\":2,\"round\":1,\"callId\":\"write-call\",\"toolName\":\"write_file\",\"arguments\":{\"path\":\"pages/approval-check.md\"},\"summary\":\"正在写入 Wiki\"}\n\ndata: {\"type\":\"approval_required\",\"runId\":\"guard-run\",\"sequence\":3,\"round\":1,\"callId\":\"write-call\",\"toolName\":\"write_file\",\"approvalId\":\"write-approval\",\"reason\":\"写入 Wiki 需要批准\"}\n\ndata: {\"type\":\"tool_call_error\",\"runId\":\"guard-run\",\"sequence\":4,\"round\":1,\"callId\":\"write-call\",\"toolName\":\"write_file\",\"error\":\"写入 Wiki 需要批准\",\"retryCount\":0,\"phase\":\"final\",\"status\":\"approval_required\"}\n\ndata: [DONE]\n\n",
+            "controlBodies": {
+              "approve": "data: {\"type\":\"tool_call_end\",\"runId\":\"guard-resume\",\"sequence\":1,\"round\":1,\"callId\":\"write-call\",\"toolName\":\"write_file\",\"result\":\"Wiki 文件已写入\",\"status\":\"success\"}\n\ndata: {\"type\":\"answer\",\"runId\":\"guard-resume\",\"sequence\":2,\"content\":\"已按批准写入 Wiki 文件\"}\n\ndata: {\"type\":\"run_completed\",\"runId\":\"guard-resume\",\"sequence\":3,\"state\":\"completed\",\"content\":\"已按批准写入 Wiki 文件\",\"reasoning\":\"\"}\n\ndata: [DONE]\n\n",
+              "deny": "data: {\"type\":\"tool_call_error\",\"runId\":\"guard-deny\",\"sequence\":1,\"round\":1,\"callId\":\"write-call\",\"toolName\":\"write_file\",\"error\":\"用户拒绝执行\",\"retryCount\":0,\"phase\":\"final\",\"status\":\"failed\"}\n\ndata: {\"type\":\"run_completed\",\"runId\":\"guard-deny\",\"sequence\":2,\"state\":\"completed\",\"content\":\"\",\"reasoning\":\"\"}\n\ndata: [DONE]\n\n"
+            }
+          },
+          {
+            "pattern": "**/api/conversations/fixture-conversation/tool-approvals/write-approval",
+            "method": "POST",
+            "status": 200,
+            "body": {"status": "completed", "approvalId": "write-approval", "toolName": "write_file", "result": "Wiki 文件已写入"}
+          },
+          {"pattern": "**/api/conversations/fixture-conversation/ingestion-events", "method": "GET", "body": ""},
+          {"pattern": "**/api/conversations/fixture-conversation/messages?*", "method": "GET", "body": {"messages": []}},
+          {"pattern": "**/api/conversations/fixture-conversation/messages", "method": "GET", "body": {"messages": []}},
+          {"pattern": "**/api/conversations?*", "method": "GET", "body": {"conversations": [{"id": "fixture-conversation", "title": "工具审批", "type": "text", "createdAt": "2026-10-07T00:00:00.000Z", "updatedAt": "2026-10-07T00:00:00.000Z", "lockedAgent": null, "routingMode": "manual"}]}},
+          {"pattern": "**/api/conversations", "method": "GET", "body": {"conversations": [{"id": "fixture-conversation", "title": "工具审批", "type": "text", "createdAt": "2026-10-07T00:00:00.000Z", "updatedAt": "2026-10-07T00:00:00.000Z", "lockedAgent": null, "routingMode": "manual"}]}},
+          {"pattern": "**/api/endpoints", "method": "GET", "body": {"endpoints": []}},
+          {"pattern": "**/api/agents", "method": "GET", "body": {"agents": []}},
+          {"pattern": "**/api/settings", "method": "GET", "body": {"showReactSteps": true}}
+        ]
+      },
+      "steps": [
+        {"action": "fill", "target": {"placeholder": "输入消息..."}, "value": "写入一篇 Wiki 页面"},
+        {"action": "click", "target": {"role": "button", "name": "发送消息"}},
+        {"action": "waitFor", "target": {"role": "button", "name": "批准执行"}},
+        {"action": "assertText", "text": "写入 Wiki 需要批准"},
+        {"action": "click", "target": {"role": "button", "name": "批准执行"}},
+        {"action": "waitFor", "text": "已按批准写入 Wiki 文件"},
+        {"action": "assertNotText", "text": "批准执行"}
+      ],
+      "assertRequests": [
+        {"method": "POST", "contains": "/conversations/fixture-conversation/messages", "status": 200},
+        {"method": "POST", "contains": "/tool-approvals/write-approval", "status": 200}
+      ]
+    }
+  ]
+}

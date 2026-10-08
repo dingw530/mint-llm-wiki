@@ -12,23 +12,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # ── 先复制依赖配置文件（利用 Docker layer 缓存） ──
 COPY package.json package-lock.json ./
-COPY server/package.json ./server/
-COPY client/package.json ./client/
-COPY electron/package.json ./electron/
-COPY agent-eval/package.json ./agent-eval/
-COPY website/package.json ./website/
+COPY apps/server/package.json ./apps/server/
+COPY apps/client/package.json ./apps/client/
+COPY apps/electron/package.json ./apps/electron/
+COPY apps/agent-eval/package.json ./apps/agent-eval/
+COPY apps/website/package.json ./apps/website/
 
 # 安装全部依赖（含 devDependencies，构建时需要）
 RUN npm ci
 
 # ── 复制源码 ──
 COPY scripts/ ./scripts/
-COPY server/tsconfig.json ./server/
-COPY server/ ./server/
-COPY client/ ./client/
-COPY electron/endpoints-manifest.json ./electron/
-COPY agent-eval/ ./agent-eval/
-COPY website/ ./website/
+COPY apps/server/tsconfig.json ./apps/server/
+COPY apps/server/ ./apps/server/
+COPY apps/client/ ./apps/client/
+COPY apps/electron/endpoints-manifest.json ./apps/electron/
+COPY apps/agent-eval/ ./apps/agent-eval/
+COPY apps/website/ ./apps/website/
 
 # 构建
 RUN npm run build
@@ -46,18 +46,18 @@ WORKDIR /app
 # ── 从构建阶段复制产物 ──
 # 基础配置文件（workspaces 结构）
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/server/package.json ./server/
-COPY --from=builder /app/client/package.json ./client/
-COPY --from=builder /app/electron/package.json ./electron/
+COPY --from=builder /app/apps/server/package.json ./apps/server/
+COPY --from=builder /app/apps/client/package.json ./apps/client/
+COPY --from=builder /app/apps/electron/package.json ./apps/electron/
 
 # 生产依赖 node_modules（已 prune）
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/server/node_modules ./server/node_modules
+COPY --from=builder /app/apps/server/node_modules ./apps/server/node_modules
 
 # 编译后的服务端和客户端
-COPY --from=builder /app/server/dist ./server/dist
-COPY --from=builder /app/server/docker-entry.js ./server/
-COPY --from=builder /app/client/dist ./client/dist
+COPY --from=builder /app/apps/server/dist ./apps/server/dist
+COPY --from=builder /app/apps/server/docker-entry.js ./apps/server/
+COPY --from=builder /app/apps/client/dist ./apps/client/dist
 
 # ── 环境变量 ──
 ENV PORT=3001 \
@@ -68,4 +68,4 @@ VOLUME ["/app/data"]
 
 EXPOSE 3001
 
-CMD ["node", "--dns-result-order=ipv4first", "server/docker-entry.js"]
+CMD ["node", "--dns-result-order=ipv4first", "apps/server/docker-entry.js"]

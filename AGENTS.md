@@ -3,7 +3,7 @@
 ## Stack
 
 | Layer    | Tech                               |
-| -------- |------------------------------------|
+| -------- | ---------------------------------- |
 | Language | TypeScript (全栈)                  |
 | Frontend | React 18, Vite 5, @radix-ui        |
 | Backend  | Express 4, better-sqlite3 (SQLite) |
@@ -15,26 +15,14 @@
 依赖只能**向下**流动，禁止逆向导入。
 
 ```
-client/src/
-├── features/           → 业务模块（chat/, images/, settings/）
-├── components/         → 共享组件（Sidebar, WikiPanel, ConfirmDialog）
-├── hooks/              → 自定义 hooks（useSSE）
-├── services/           → API 客户端
-└── styles/             → 设计系统 CSS（design tokens）
+apps/
+├── client/src/          → React UI（features/, components/, hooks/, services/, styles/）
+├── server/              → Express 服务、Agent runtime 与 SQLite
+└── electron/            → 桌面应用（main process, preload, client-dist）
 
-server/
-├── endpoints/          → 声明式端点注册（自动生成路由 + IPC 处理）
-├── migrations/         → 数据库迁移
-├── repositories/       → 数据访问层
-├── routes/             → Express 路由处理
-├── services/
-│   ├── adapters/       → AI API 适配器（Anthropic, OpenAI Chat/Responses）
-│   ├── api/            → 业务逻辑（wiki, routing, memory）
-│   ├── tools/          → AI 工具实现（Bash, Wiki, MCP 等）
-│   └── utils/          → 工具函数（encryption, token estimation）
-└── __tests__/          → Vitest 集成测试
-
-electron/               → 桌面应用（main process, preload, client-dist）
+packages/
+├── react-runtime/       → 可移植的最小 ReAct 循环
+└── tool-runtime/        → 可移植的工具注册与单次执行
 ```
 
 ## Core Philosophy
@@ -46,12 +34,12 @@ electron/               → 桌面应用（main process, preload, client-dist）
 
 ## Key Conventions
 
-- **Server 文件命名**：`server/` 下的 TypeScript 文件统一使用 **kebab-case**，例如 `memory-service.ts`、`routing-policy.ts`、`memory-service.test.ts`。已迁移的 `server/domains/` 与 `server/infrastructure/` 统一执行此规范；其他现有未迁移模块暂不批量改名，后续迁移或新建文件时遵守此规范。符号名仍沿用既有 TypeScript 命名约定。
+- **Server 文件命名**：`apps/server/` 下的 TypeScript 文件统一使用 **kebab-case**，例如 `memory-service.ts`、`routing-policy.ts`、`memory-service.test.ts`。已迁移的 `apps/server/domains/` 与 `apps/server/infrastructure/` 统一执行此规范；其他现有未迁移模块暂不批量改名，后续迁移或新建文件时遵守此规范。符号名仍沿用既有 TypeScript 命名约定。
 
 - **注释规范**: 新增方法添加 JSDOC 注释，参数和返回值标注类型
 - **避免硬编码**: 颜色/间距/字体使用 CSS custom properties（design tokens），后端常量抽取到对应模块
 - **前端结构**: feature-based 目录组织，按功能模块划分而非组件类型
-- **API 适配器**: 新增 AI 提供商时在 `server/services/adapters/` 添加适配器，实现统一的 `AIAdapter` 接口
+- **API 适配器**: 新增 AI 提供商时在 `apps/server/services/adapters/` 添加适配器，实现统一的 `AIAdapter` 接口
 - **端点注册**: 新增 API 端点通过 `endpoints/` 声明式注册，自动生成 Express route + Electron IPC
 - **SSE 流式**: AI 响应使用 Server-Sent Events 流式传输，前端用 `useSSE` hook 消费
 
@@ -64,16 +52,16 @@ npm run dev:server          # 仅 server（tsx watch）
 npm run dev:client          # 仅 client（vite）
 
 # 测试
-cd server && npm test                       # 全量测试
-cd server && npm run test:coverage          # 全量测试 + 覆盖率报告（html/lcov/text）
-cd server && npx vitest run __tests__/xxx   # 单文件测试
+cd apps/server && npm test                       # 全量测试
+cd apps/server && npm run test:coverage          # 全量测试 + 覆盖率报告（html/lcov/text）
+cd apps/server && npx vitest run __tests__/xxx   # 单文件测试
 
 # Harness 反馈回路
 npm run harness:test
 npm run harness:inspect -- --change <change-id>
 npm run harness:verify -- --change <change-id>
 npm run harness:browser -- --change <change-id>
-npm run harness:loop -- --change <change-id> --allowed-paths '["client/src/"]' --edit-command '["node","scripts/harness-editor.mjs"]'
+npm run harness:loop -- --change <change-id> --allowed-paths '["apps/client/src/"]' --edit-command '["node","scripts/harness-editor.mjs"]'
 
 # 构建
 npm run build               # server tsc + client vite 构建
@@ -83,12 +71,12 @@ npm run electron:dev        # 构建 + 启动 Electron
 npm run electron:build:mac  # 打包 macOS .dmg
 
 # 测试
-cd server && npm test                       # 全量测试
-cd server && npx vitest run __tests__/xxx   # 单文件测试
+cd apps/server && npm test                       # 全量测试
+cd apps/server && npx vitest run __tests__/xxx   # 单文件测试
 
 # CLI
-cd server && npx tsx cli/index.ts           # CLI 入口
-cd server && npx tsx cli/repl.ts            # 交互式 REPL
+cd apps/server && npx tsx cli/index.ts           # CLI 入口
+cd apps/server && npx tsx cli/repl.ts            # 交互式 REPL
 ```
 
 Harness 的详细协议、检查项、AC 浏览器场景和运行证据见 [.harness/README.md](.harness/README.md)。运行 `harness:verify` 或 `harness:browser` 前需先启动 `npm run dev`；浏览器检查使用外部 `playwright-cli`，不新增 Playwright/Electron 项目依赖。
@@ -115,23 +103,23 @@ docs/exec-plans/README.md       执行计划索引
 
 ## Where to Look First
 
-| 任务           | 入口                                                                 |
-| -------------- | -------------------------------------------------------------------- |
-| 前端入口       | `client/src/App.tsx`                                                 |
-| 消息流/SSE     | `client/src/features/chat/` + `server/routes/conversations.ts`       |
-| ReAct 推理循环 | `server/services/api/orchestratorService.ts` + `reactRoundEngine.ts` |
-| AI 适配器      | `server/services/adapters/`                                          |
-| Wiki 知识库    | `server/services/api/wikiCompiler.ts` + `wikiService.ts`             |
-| 工具实现       | `server/services/tools/`                                             |
-| 数据库迁移     | `server/migrations/`                                                 |
-| 端点注册       | `server/endpoints/`                                                  |
-| 设置/配置      | `server/routes/settings.ts` + `client/src/features/settings/`        |
-| Electron 桌面  | `electron/main.js` + `electron/preload.js`                           |
-| 测试           | 各源码目录下的 `__tests__/`                                          |
+| 任务           | 入口                                                                      |
+| -------------- | ------------------------------------------------------------------------- |
+| 前端入口       | `apps/client/src/App.tsx`                                                 |
+| 消息流/SSE     | `apps/client/src/features/chat/` + `apps/server/routes/conversations.ts`  |
+| ReAct 推理循环 | `apps/server/services/api/orchestratorService.ts` + `reactRoundEngine.ts` |
+| AI 适配器      | `apps/server/services/adapters/`                                          |
+| Wiki 知识库    | `apps/server/services/api/wikiCompiler.ts` + `wikiService.ts`             |
+| 工具实现       | `apps/server/services/tools/`                                             |
+| 数据库迁移     | `apps/server/migrations/`                                                 |
+| 端点注册       | `apps/server/endpoints/`                                                  |
+| 设置/配置      | `apps/server/routes/settings.ts` + `apps/client/src/features/settings/`   |
+| Electron 桌面  | `apps/electron/main.js` + `apps/electron/preload.js`                      |
+| 测试           | 各源码目录下的 `__tests__/`                                               |
 
 ## Constraints (Machine-Readable)
 
-- **MUST**: Server 端 TypeScript 文件名使用 kebab-case；已迁移的 `server/domains/` 与 `server/infrastructure/` 统一执行此规范，其他现有未迁移模块暂不改名
+- **MUST**: Server 端 TypeScript 文件名使用 kebab-case；已迁移的 `apps/server/domains/` 与 `apps/server/infrastructure/` 统一执行此规范，其他现有未迁移模块暂不改名
 
 - **MUST**: 新增 API 端点通过 `endpoints/` 声明式注册，禁止直接写 Express route
 - **MUST**: AI 流式响应使用 SSE，前端使用 `useSSE` hook 消费
@@ -269,6 +257,7 @@ docs/
 - 更新快捷索引：刷新 `docs/product-specs/README.md`、`docs/design-docs/README.md`、`docs/exec-plans/README.md`
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence
 
 This project is indexed by GitNexus as **mint-ai-chat** (14452 symbols, 27719 relationships, 727 execution flows).
@@ -293,22 +282,22 @@ This project is indexed by GitNexus as **mint-ai-chat** (14452 symbols, 27719 re
 
 ## Resources
 
-| Resource | Use for |
-| --- | --- |
-| `gitnexus://repo/mint-ai-chat/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/mint-ai-chat/clusters` | All functional areas |
-| `gitnexus://repo/mint-ai-chat/processes` | All execution flows |
-| `gitnexus://repo/mint-ai-chat/process/{name}` | Step-by-step execution trace |
+| Resource                                      | Use for                                  |
+| --------------------------------------------- | ---------------------------------------- |
+| `gitnexus://repo/mint-ai-chat/context`        | Codebase overview, check index freshness |
+| `gitnexus://repo/mint-ai-chat/clusters`       | All functional areas                     |
+| `gitnexus://repo/mint-ai-chat/processes`      | All execution flows                      |
+| `gitnexus://repo/mint-ai-chat/process/{name}` | Step-by-step execution trace             |
 
 ## CLI
 
-| Task | Read this skill file |
-| --- | --- |
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus-cli/SKILL.md` |
+| Task                                         | Read this skill file                               |
+| -------------------------------------------- | -------------------------------------------------- |
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus-debugging/SKILL.md`       |
+| Rename / extract / split / refactor          | `.claude/skills/gitnexus-refactoring/SKILL.md`     |
+| Tools, resources, schema reference           | `.claude/skills/gitnexus-guide/SKILL.md`           |
+| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->

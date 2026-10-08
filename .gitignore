@@ -4,24 +4,24 @@ data.db*
 .DS_Store
 .env
 *.log
-electron/release/
-electron/server-dist/
-electron/client-dist/
-server/electron-dist/
+apps/electron/release/
+apps/electron/server-dist/
+apps/electron/client-dist/
+apps/server/electron-dist/
 .cache/
 .venv/
 __pycache__/
 *.egg-info/
 .idea/
-electron/.playwright-cli/
+apps/electron/.playwright-cli/
 
 # Build artifacts
-server/build/
+apps/server/build/
 *.gypi
 
 # Test results
-client/test-results/
-server/coverage/
+apps/client/test-results/
+apps/server/coverage/
 .harness/runs/
 
 .playwright-cli/

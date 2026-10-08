@@ -57,10 +57,10 @@ npm install
 ### Web 开发模式
 
 HTTP 模式下，server 需要配置用于加密 API 密钥等敏感数据的
-`AI_CHAT_ENCRYPTION_KEY`。可以将它维护在 `server/.env` 中：
+`AI_CHAT_ENCRYPTION_KEY`。可以将它维护在 `apps/server/.env` 中：
 
 ```dotenv
-# server/.env
+# apps/server/.env
 AI_CHAT_ENCRYPTION_KEY=<openssl rand -hex 16 生成的值>
 ```
 
@@ -110,7 +110,7 @@ Electron 主进程会在首次启动时于 `~/.mint/.env` 自动生成并持久�
 npm run electron:build:mac
 ```
 
-构建产物位于 `electron/release/`。
+构建产物位于 `apps/electron/release/`。
 
 打包、原生依赖或 Electron 配置变更后，运行以下命令从全新 `.app` 中检查 `app.asar`、`app.asar.unpacked` 与 sqlite-vec 动态库：
 
@@ -145,7 +145,7 @@ Mint 的核心定位是个人知识工作台。默认首页围绕 Wiki 展示知
 - **知识浏览** —— 提供文档、知识图谱和知识热度视图；图谱包含概念、实践和方法论节点
 - **模型与数据** —— 支持 OpenAI、Anthropic 和兼容 OpenAI 的端点；应用数据使用本地 SQLite，API 密钥以 AES-256-GCM 加密存储
 - **运行与观测** —— Web 模式通过 Express 提供 HTTP/SSE；Electron 模式通过 IPC 调用主进程服务，并支持 Langfuse / OpenTelemetry 追踪
-- **独立评测** —— `agent-eval/` 提供 Wiki-RAG 数据集、运行记录、来源追溯指标和可视化报告
+- **独立评测** —— `apps/agent-eval/` 提供 Wiki-RAG 数据集、运行记录、来源追溯指标和可视化报告
 
 ## 架构
 
@@ -167,27 +167,16 @@ Mint 的核心定位是个人知识工作台。默认首页围绕 Wiki 展示知
 ## 项目结构
 
 ```
-electron/             # Electron 主进程
-  main.js             # 创建窗口、IPC handlers、生命周期管理
-  preload.js          # 向渲染进程暴露的 contextBridge API
-  logger.js           # 基于文件的日志
+apps/
+  server/              # Express 服务与 Agent runtime（TypeScript）
+  client/              # React SPA（渲染进程）
+  electron/            # Electron 主进程、preload 与桌面打包
+  agent-eval/           # Wiki-RAG 评测 CLI、数据集与报告查看器
+  website/              # GitHub Pages 网站
 
-client/               # React SPA（渲染进程）
-  src/
-    features/         # 按功能组织的 chat、wiki、agents、settings 等模块
-    components/       # 共享 UI 组件
-    hooks/            # useSSE、IPC 与客户端状态 hooks
-    services/         # API 客户端（自动识别 Electron 与 HTTP）
-    styles/           # 设计系统（CSS 自定义属性）
-
-server/               # Express 服务与 Agent runtime（TypeScript）
-  index.ts            # 入口
-  endpoints/          # 声明式 HTTP / Electron IPC endpoint 注册
-  services/           # 业务逻辑层
-  repositories/       # 数据访问层（SQLite）
-  __tests__/          # 集成测试与单元测试
-
-agent-eval/           # Wiki-RAG 评测 CLI、数据集与报告查看器
+packages/
+  react-runtime/       # 可移植的最小 ReAct 循环
+  tool-runtime/        # 可移植的工具注册与单次执行
 ```
 
 ## 许可证

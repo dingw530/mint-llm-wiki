@@ -9,7 +9,10 @@ const result = spawnSync('node_modules/.bin/electron', ['scripts/electron-lifecy
     ...process.env,
     AI_CHAT_ENCRYPTION_KEY: '0123456789abcdef0123456789abcdef',
     AI_CHAT_DB_PATH: `/tmp/mint-electron-smoke-${process.pid}.db`,
-    MINT_ELECTRON_BETTER_SQLITE3_PATH: join(process.cwd(), 'electron/node_modules/better-sqlite3'),
+    MINT_ELECTRON_BETTER_SQLITE3_PATH: join(
+      process.cwd(),
+      'apps/electron/node_modules/better-sqlite3',
+    ),
     ELECTRON_RUN_AS_NODE: '1',
   },
 });

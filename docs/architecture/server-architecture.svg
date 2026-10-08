@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1270" viewBox="0 0 1390 920" role="img" aria-labelledby="title desc">
+<title id="title">Mint Server 架构</title>
+<desc id="desc">Mint Server 当前入口、Application、Domain、Agent Runtime、Bootstrap、Infrastructure 与本地和外部依赖的模块关系图。</desc>
+<defs>
+<pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M 24 0 L 0 0 0 24" fill="none" stroke="#e9eef5" stroke-width="0.7"/></pattern>
+<filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.08"/></filter>
+<marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+<marker id="arrow-purple" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#7c3aed"/></marker>
+<marker id="arrow-teal" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#0891b2"/></marker>
+<marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
+<marker id="arrow-slate" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/></marker>
+<style>
+text{font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue","PingFang SC",Arial,sans-serif;fill:#172033}
+.title{font-size:30px;font-weight:750;letter-spacing:-.4px}.subtitle{font-size:13px;fill:#64748b}.eyebrow{font-size:10px;font-weight:700;letter-spacing:1.6px;fill:#64748b}
+.node-title{font-size:15px;font-weight:700}.node-subtitle{font-size:10.5px;fill:#526174}.node-tag{font-size:9.5px;font-weight:650;fill:#475569}.icon-mark{font-size:8px;font-weight:750;fill:#ffffff}.arrow-label{font-size:9.5px;font-weight:700;fill:#334155}.small{font-size:10px;fill:#475569}.callout-title{font-size:11px;font-weight:750;fill:#92400e}.callout-text{font-size:10px;fill:#475569}.legend{font-size:9.5px;font-weight:600;fill:#475569}
+</style>
+</defs>
+<rect width="1390" height="920" fill="#f8fafc"/>
+<rect width="1390" height="920" fill="url(#grid)" opacity="0.48"/>
+<rect x="0" y="0" width="1390" height="118" fill="#ffffff"/>
+<path d="M0 117.5 H1390" stroke="#e2e8f0"/>
+<text class="eyebrow" x="42" y="31">MINT / SERVER</text>
+<text class="title" x="42" y="68" text-anchor="start">Mint Server 架构</text>
+<text class="subtitle" x="42" y="94" text-anchor="start">当前模块分层 · Application、领域执行、进程组合与基础设施</text>
+<g transform="translate(827 38)">
+<path d="M0 0 H34" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrow-blue)"/>
+<text class="legend" x="43" y="4" text-anchor="start">调用 / 能力</text>
+<path d="M133 0 H167" stroke="#ea580c" stroke-width="2.4" marker-end="url(#arrow-orange)"/>
+<text class="legend" x="176" y="4" text-anchor="start">生命周期</text>
+<path d="M260 0 H294" stroke="#64748b" stroke-width="2.2" stroke-dasharray="6 4" marker-end="url(#arrow-slate)"/>
+<text class="legend" x="303" y="4" text-anchor="start">过渡适配</text>
+</g>
+<rect x="14" y="145" width="1147" height="662" rx="18" fill="#ffffff" fill-opacity="0.65" stroke="#b8c6d8" stroke-width="1.3" stroke-dasharray="7 6"/>
+<rect x="34" y="135" width="184" height="22" rx="11" fill="#f8fafc" stroke="#cbd5e1"/>
+<text class="eyebrow" x="126" y="150" text-anchor="middle">MINT SERVER PROCESS</text>
+<g class="node" role="group" aria-label="服务入口与协议">
+<rect class="node-body" x="40" y="350" width="220" height="105" rx="15" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+<rect x="40" y="364" width="5" height="77" rx="2.5" fill="#2563eb"/>
+<circle cx="70" cy="384" r="15" fill="#2563eb"/>
+<text class="icon-mark" x="70" y="388" text-anchor="middle">API</text>
+<text class="node-title" x="95" y="381" text-anchor="start">服务入口与协议</text>
+<text class="node-subtitle" x="95" y="407" text-anchor="start">HTTP · IPC · CLI · MCP</text>
+</g>
+<g class="node" role="group" aria-label="Application 用例">
+<rect class="node-body" x="330" y="350" width="225" height="115" rx="15" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.5"/>
+<rect x="330" y="364" width="5" height="87" rx="2.5" fill="#7c3aed"/>
+<circle cx="360" cy="384" r="15" fill="#7c3aed"/>
+<text class="icon-mark" x="360" y="388" text-anchor="middle">APP</text>
+<text class="node-title" x="385" y="381" text-anchor="start">Application 用例</text>
+<text class="node-subtitle" x="385" y="407" text-anchor="start">用例流程 · 跨域协调</text>
+<rect x="346" y="438" width="95.6" height="18" rx="9" fill="#ffffff" stroke="#7c3aed" stroke-opacity="0.28"/>
+<text class="node-tag" x="356" y="451" text-anchor="start">application/</text>
+</g>
+<g class="node" role="group" aria-label="业务领域">
+<rect class="node-body" x="620" y="170" width="225" height="125" rx="15" fill="#eef2ff" stroke="#4f46e5" stroke-width="1.5"/>
+<rect x="620" y="184" width="5" height="97" rx="2.5" fill="#4f46e5"/>
+<circle cx="650" cy="204" r="15" fill="#4f46e5"/>
+<text class="icon-mark" x="650" y="208" text-anchor="middle">DOM</text>
+<text class="node-title" x="675" y="201" text-anchor="start">业务领域</text>
+<text class="node-subtitle" x="675" y="227" text-anchor="start">Wiki · Memory · Routing</text>
+<rect x="636" y="268" width="70.4" height="18" rx="9" fill="#ffffff" stroke="#4f46e5" stroke-opacity="0.28"/>
+<text class="node-tag" x="646" y="281" text-anchor="start">domains/</text>
+</g>
+<g class="node" role="group" aria-label="共享服务与工具">
+<rect class="node-body" x="330" y="585" width="225" height="110" rx="15" fill="#f8fafc" stroke="#64748b" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="330" y="599" width="5" height="82" rx="2.5" fill="#64748b"/>
+<circle cx="360" cy="619" r="15" fill="#64748b"/>
+<text class="icon-mark" x="360" y="623" text-anchor="middle">SVC</text>
+<text class="node-title" x="385" y="616" text-anchor="start">共享服务与工具</text>
+<text class="node-subtitle" x="385" y="642" text-anchor="start">tool orchestration · AI · context</text>
+<rect x="346" y="668" width="76.7" height="18" rx="9" fill="#ffffff" stroke="#64748b" stroke-opacity="0.28"/>
+<text class="node-tag" x="356" y="681" text-anchor="start">services/</text>
+</g>
+<g class="node" role="group" aria-label="Bootstrap 组合根">
+<rect class="node-body" x="620" y="420" width="225" height="110" rx="15" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+<rect x="620" y="434" width="5" height="82" rx="2.5" fill="#059669"/>
+<circle cx="650" cy="454" r="15" fill="#059669"/>
+<text class="icon-mark" x="650" y="458" text-anchor="middle">BOOT</text>
+<text class="node-title" x="675" y="451" text-anchor="start">Bootstrap 组合根</text>
+<text class="node-subtitle" x="675" y="477" text-anchor="start">ports · providers · clients</text>
+<rect x="636" y="503" width="83.0" height="18" rx="9" fill="#ffffff" stroke="#059669" stroke-opacity="0.28"/>
+<text class="node-tag" x="646" y="516" text-anchor="start">bootstrap/</text>
+</g>
+<g class="node" role="group" aria-label="Agent Runtime">
+<rect class="node-body" x="910" y="420" width="225" height="110" rx="15" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+<rect x="910" y="434" width="5" height="82" rx="2.5" fill="#ea580c"/>
+<circle cx="940" cy="454" r="15" fill="#ea580c"/>
+<text class="icon-mark" x="940" y="458" text-anchor="middle">RUN</text>
+<text class="node-title" x="965" y="451" text-anchor="start">Agent Runtime</text>
+<text class="node-subtitle" x="965" y="477" text-anchor="start">AgentRun · ReAct · events</text>
+<rect x="926" y="503" width="108.2" height="18" rx="9" fill="#ffffff" stroke="#ea580c" stroke-opacity="0.28"/>
+<text class="node-tag" x="936" y="516" text-anchor="start">agent-runtime/</text>
+</g>
+<g class="node" role="group" aria-label="ServerRuntime">
+<rect class="node-body" x="620" y="650" width="225" height="92" rx="15" fill="#f1f5f9" stroke="#334155" stroke-width="1.5"/>
+<rect x="620" y="664" width="5" height="64" rx="2.5" fill="#334155"/>
+<circle cx="650" cy="684" r="15" fill="#334155"/>
+<text class="icon-mark" x="650" y="688" text-anchor="middle">LIFE</text>
+<text class="node-title" x="675" y="681" text-anchor="start">ServerRuntime</text>
+<text class="node-subtitle" x="675" y="707" text-anchor="start">worker lifecycle · bounded shutdown</text>
+<rect x="636" y="715" width="70.4" height="18" rx="9" fill="#ffffff" stroke="#334155" stroke-opacity="0.28"/>
+<text class="node-tag" x="646" y="728" text-anchor="start">runtime/</text>
+</g>
+<g class="node" role="group" aria-label="Infrastructure">
+<rect class="node-body" x="910" y="170" width="225" height="145" rx="15" fill="#ecfeff" stroke="#0891b2" stroke-width="1.5"/>
+<rect x="910" y="184" width="5" height="117" rx="2.5" fill="#0891b2"/>
+<circle cx="940" cy="204" r="15" fill="#0891b2"/>
+<text class="icon-mark" x="940" y="208" text-anchor="middle">INFRA</text>
+<text class="node-title" x="965" y="201" text-anchor="start">Infrastructure</text>
+<text class="node-subtitle" x="965" y="227" text-anchor="start">config · DB · AI · MCP</text>
+<rect x="926" y="288" width="133.4" height="18" rx="9" fill="#ffffff" stroke="#0891b2" stroke-opacity="0.28"/>
+<text class="node-tag" x="936" y="301" text-anchor="start">2 Settings bridges</text>
+</g>
+<g class="node" role="group" aria-label="SQLite">
+<rect class="node-body" x="1190" y="170" width="185" height="95" rx="15" fill="#f0fdf4" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="1190" y="184" width="5" height="67" rx="2.5" fill="#16a34a"/>
+<circle cx="1220" cy="204" r="15" fill="#16a34a"/>
+<text class="icon-mark" x="1220" y="208" text-anchor="middle">DB</text>
+<text class="node-title" x="1245" y="201" text-anchor="start">SQLite</text>
+<text class="node-subtitle" x="1245" y="227" text-anchor="start">FTS · sqlite-vec</text>
+</g>
+<g class="node" role="group" aria-label="外部能力">
+<rect class="node-body" x="1190" y="460" width="185" height="105" rx="15" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="1190" y="474" width="5" height="77" rx="2.5" fill="#ea580c"/>
+<circle cx="1220" cy="494" r="15" fill="#ea580c"/>
+<text class="icon-mark" x="1220" y="498" text-anchor="middle">EXT</text>
+<text class="node-title" x="1245" y="491" text-anchor="start">外部能力</text>
+<text class="node-subtitle" x="1245" y="517" text-anchor="start">AI · Jev · MCP · Chroma</text>
+</g>
+<g class="node" role="group" aria-label="架构边界测试">
+<rect class="node-body" x="40" y="690" width="220" height="90" rx="15" fill="#fff1f2" stroke="#e11d48" stroke-width="1.5" stroke-dasharray="7 5"/>
+<rect x="40" y="704" width="5" height="62" rx="2.5" fill="#e11d48"/>
+<circle cx="70" cy="724" r="15" fill="#e11d48"/>
+<text class="icon-mark" x="70" y="728" text-anchor="middle">QA</text>
+<text class="node-title" x="95" y="721" text-anchor="start">架构边界测试</text>
+<text class="node-subtitle" x="95" y="747" text-anchor="start">resolved import checks</text>
+<rect x="56" y="753" width="146.0" height="18" rx="9" fill="#ffffff" stroke="#e11d48" stroke-opacity="0.28"/>
+<text class="node-tag" x="66" y="766" text-anchor="start">server/architecture/</text>
+</g>
+<path d="M260 402 L330 407" fill="none" stroke="#2563eb" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-blue)"/>
+<rect class="arrow-label-bg" x="264.0" y="371.0" width="62.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="295" y="386" text-anchor="middle">Use cases</text>
+<path d="M555 397 H584 V232 H620" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-purple)"/>
+<rect class="arrow-label-bg" x="561.0" y="304.0" width="46.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="584" y="319" text-anchor="middle">rules</text>
+<path d="M442 465 V585" fill="none" stroke="#64748b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-slate)" stroke-dasharray="6 4"/>
+<rect class="arrow-label-bg" x="419.0" y="529.0" width="46.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="442" y="544" text-anchor="middle">tools</text>
+<path d="M555 440 H590 V475 H620" fill="none" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-purple)"/>
+<path d="M845 232 H910 V243" fill="none" stroke="#0891b2" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
+<rect class="arrow-label-bg" x="848.0" y="207.0" width="56.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="876" y="222" text-anchor="middle">adapters</text>
+<path d="M845 475 H910" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
+<rect class="arrow-label-bg" x="856.0" y="490.0" width="42.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="877" y="505" text-anchor="middle">ports</text>
+<path d="M845 445 H875 V330 H1022 V315" fill="none" stroke="#059669" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
+<rect class="arrow-label-bg" x="846.0" y="369.0" width="58.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="875" y="384" text-anchor="middle">compose</text>
+<path d="M732 650 V530" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+<rect class="arrow-label-bg" x="700.0" y="579.0" width="64.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="732" y="594" text-anchor="middle">lifecycle</text>
+<path d="M1135 242 H1162 V218 H1190" fill="none" stroke="#16a34a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-teal)"/>
+<rect class="arrow-label-bg" x="1143.0" y="184.0" width="38.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="1162" y="199" text-anchor="middle">SQL</text>
+<path d="M1135 275 H1170 V513 H1190" fill="none" stroke="#ea580c" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+<rect class="arrow-label-bg" x="1151.0" y="394.0" width="38.0" height="22" rx="7" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+<text class="arrow-label" x="1170" y="409" text-anchor="middle">API</text>
+<rect x="40" y="830" width="1335" height="64" rx="12" fill="#fff7ed" stroke="#fed7aa"/>
+<circle cx="62" cy="854" r="10" fill="#f59e0b"/>
+<text class="icon-mark" x="62" y="858" text-anchor="middle">!</text>
+<text class="callout-title" x="82" y="854" text-anchor="start">当前过渡桥接</text>
+<text class="callout-text" x="82" y="875" text-anchor="start">infrastructure/ai/llm-routing-classifier.ts 与 infrastructure/config/wiki-settings.ts 仍读取 Settings application facade；其它层按 public API 与 port 逐步收敛。</text>
+<text class="small" x="42" y="914" text-anchor="start">Source: server/architecture/LAYERS.md + current server/ module map</text>
+</svg>

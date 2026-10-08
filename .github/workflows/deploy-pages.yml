@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'website/**'
+      - 'apps/website/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -28,7 +28,7 @@ jobs:
       - run: npm run build:website
       - uses: actions/upload-pages-artifact@v3 # v3
         with:
-          path: website/dist
+          path: apps/website/dist
 
   deploy:
     environment:

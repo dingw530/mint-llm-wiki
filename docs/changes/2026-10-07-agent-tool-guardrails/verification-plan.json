@@ -1,0 +1,93 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "副作用工具在审批前不会执行，批准后执行一次，拒绝/过期/重放不执行",
+      "risk": "high",
+      "invariants": ["no_execution_before_approval", "single_use_approval"],
+      "requiredEvidence": ["integration"],
+      "probes": ["tool-execution-security"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "审批事件、HTTP/Electron 恢复和 Chat UI 状态一致，拒绝不显示成功",
+      "risk": "high",
+      "invariants": ["approval_state_consistency", "regression_free"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["tool-approval-write-guard-integration", "tool-approval-write-guard"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "启用的 Mint 自有工具 Schema 全部满足闭合对象、深度上限和枚举规则",
+      "risk": "high",
+      "invariants": ["schema_closed", "schema_depth_bounded"],
+      "requiredEvidence": ["unit"],
+      "probes": ["tool-schema-contract"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "MCP 输入按受支持 JSON Schema 约束校验，不支持 Schema 不会调用远端工具",
+      "risk": "high",
+      "invariants": ["schema_validation_complete", "no_remote_call_on_invalid_input"],
+      "requiredEvidence": ["integration"],
+      "probes": ["mcp-schema-validation"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "内置 Schema 错误不进入执行；跨字段错误不触发业务副作用",
+      "risk": "high",
+      "invariants": ["no_execution_on_invalid_schema", "no_side_effect_on_crossfield_invalid"],
+      "requiredEvidence": ["integration"],
+      "probes": ["tool-schema-contract", "tool-input-cross-field"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "同一工具调用至多执行一次；副作用开始后进程中断恢复为 outcome_unknown 且不重放",
+      "risk": "critical",
+      "invariants": ["idempotence", "no_replay_after_unknown", "durable_invocation_state"],
+      "requiredEvidence": ["process-smoke"],
+      "probes": ["tool-outcome-unknown-smoke"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "只有明确安全重试且可重试的失败会再次执行，副作用工具不会盲目重发",
+      "risk": "high",
+      "invariants": ["retry_safety_enforced", "bounded_retry"],
+      "requiredEvidence": ["integration"],
+      "probes": ["tool-retry-policy"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "错误含稳定 code 和 retryable 字段、不含堆栈且保持旧 error 字段兼容",
+      "risk": "medium",
+      "invariants": ["error_contract_stable", "no_stack_leak"],
+      "requiredEvidence": ["integration"],
+      "probes": ["tool-error-contract"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "现有 Wiki、MCP discovery、AgentRun recovery 和 approval continuity 无回归",
+      "risk": "high",
+      "invariants": ["regression_free", "recovery_consistent"],
+      "requiredEvidence": ["integration"],
+      "probes": ["agent-tool-regression"]
+    },
+    {
+      "id": "AC-010",
+      "statement": "ToolExecutionService 主路径为每次调用产生含稳定调用身份和终态字段的结构化日志",
+      "risk": "high",
+      "invariants": ["audit_sink_connected", "terminal_log_present"],
+      "requiredEvidence": ["integration"],
+      "probes": ["tool-audit-log-integration"]
+    },
+    {
+      "id": "AC-011",
+      "statement": "日志参数摘要遵循允许列表，嵌套敏感内容和原始正文不会进入日志",
+      "risk": "high",
+      "invariants": ["no_sensitive_value_in_logs", "safe_summary_only"],
+      "requiredEvidence": ["integration"],
+      "probes": ["tool-audit-redaction"]
+    }
+  ]
+}

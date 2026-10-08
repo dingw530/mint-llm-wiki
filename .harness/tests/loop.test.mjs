@@ -15,7 +15,12 @@ test('stops as blocked when a failing check has no editor', async () => {
   const task = createHarnessTask({
     rootDir,
     changeId: 'demo',
-    sdd: { changePath: rootDir, acceptanceCriteria: [], designDecisions: [], taskPlans: ['TP-001'] },
+    sdd: {
+      changePath: rootDir,
+      acceptanceCriteria: [],
+      designDecisions: [],
+      taskPlans: ['TP-001'],
+    },
     config: {
       maxIterations: 2,
       checks: [{ name: 'bad', command: process.execPath, args: ['-e', 'process.exit(1)'] }],
@@ -34,7 +39,12 @@ test('completes when the first check passes', async () => {
   const task = createHarnessTask({
     rootDir,
     changeId: 'demo',
-    sdd: { changePath: rootDir, acceptanceCriteria: [], designDecisions: [], taskPlans: ['TP-001'] },
+    sdd: {
+      changePath: rootDir,
+      acceptanceCriteria: [],
+      designDecisions: [],
+      taskPlans: ['TP-001'],
+    },
     config: {
       maxIterations: 2,
       checks: [{ name: 'ok', command: process.execPath, args: ['-e', 'process.exit(0)'] }],
@@ -50,16 +60,34 @@ test('rechecks after an in-scope editor change', async () => {
   execFileSync('git', ['init', '--quiet'], { cwd: rootDir });
   await fs.writeFile(path.join(rootDir, 'target.txt'), 'before\n');
   execFileSync('git', ['add', 'target.txt'], { cwd: rootDir });
-  execFileSync('git', ['-c', 'user.email=test@example.com', '-c', 'user.name=test', 'commit', '-qm', 'init'], { cwd: rootDir });
+  execFileSync(
+    'git',
+    ['-c', 'user.email=test@example.com', '-c', 'user.name=test', 'commit', '-qm', 'init'],
+    { cwd: rootDir },
+  );
   const artifactDir = path.join(rootDir, 'run');
   const task = createHarnessTask({
     rootDir,
     changeId: 'demo',
-    sdd: { changePath: rootDir, acceptanceCriteria: [], designDecisions: [], taskPlans: ['TP-001'] },
+    sdd: {
+      changePath: rootDir,
+      acceptanceCriteria: [],
+      designDecisions: [],
+      taskPlans: ['TP-001'],
+    },
     config: {
       maxIterations: 2,
       allowedPaths: ['target.txt'],
-      checks: [{ name: 'check', command: process.execPath, args: ['-e', 'const fs=require("fs"); process.exit(fs.readFileSync("target.txt", "utf8").trim()==="after" ? 0 : 1)'] }],
+      checks: [
+        {
+          name: 'check',
+          command: process.execPath,
+          args: [
+            '-e',
+            'const fs=require("fs"); process.exit(fs.readFileSync("target.txt", "utf8").trim()==="after" ? 0 : 1)',
+          ],
+        },
+      ],
     },
   });
   const result = await runLoop(task, {
@@ -80,10 +108,15 @@ test('stops at the configured iteration limit when edits do not fix the check', 
   const task = createHarnessTask({
     rootDir,
     changeId: 'demo',
-    sdd: { changePath: rootDir, acceptanceCriteria: [], designDecisions: [], taskPlans: ['TP-001'] },
+    sdd: {
+      changePath: rootDir,
+      acceptanceCriteria: [],
+      designDecisions: [],
+      taskPlans: ['TP-001'],
+    },
     config: {
       maxIterations: 2,
-      allowedPaths: ['client/'],
+      allowedPaths: ['apps/client/'],
       checks: [{ name: 'bad', command: process.execPath, args: ['-e', 'process.exit(1)'] }],
     },
   });

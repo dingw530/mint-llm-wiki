@@ -1,0 +1,79 @@
+{
+  "name": "mint-server",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eval": "./dist/eval.js"
+  },
+  "scripts": {
+    "build:runtime-packages": "npm run build -w @mint/react-runtime && npm run build -w @mint/tool-runtime",
+    "prebuild": "npm run build:runtime-packages",
+    "cli": "node ../../scripts/with-node-version.cjs tsx cli/index.ts",
+    "cli:serve": "node ../../scripts/with-node-version.cjs tsx cli/index.ts serve",
+    "start": "node ../../scripts/with-node-version.cjs node --dns-result-order=ipv4first dist/index.js",
+    "dev": "NODE_ENV=development NODE_OPTIONS='--dns-result-order=ipv4first' node ../../scripts/with-node-version.cjs tsx watch index.ts",
+    "build": "node ../../scripts/with-node-version.cjs tsc && node ../../scripts/with-node-version.cjs node ../../scripts/generate-endpoints-manifest.mjs",
+    "pretypecheck": "npm run build:runtime-packages",
+    "typecheck": "node ../../scripts/with-node-version.cjs tsc --noEmit",
+    "pretest": "npm run build:runtime-packages",
+    "build:mcp": "node ../../scripts/with-node-version.cjs esbuild mcp/cli.ts --bundle --platform=node --target=node18 --outfile=dist/mcp-server.cjs --external:better-sqlite3",
+    "test": "node ../../scripts/with-node-version.cjs vitest run --poolOptions.threads.singleThread",
+    "test:watch": "node ../../scripts/with-node-version.cjs vitest",
+    "test:coverage": "node ../../scripts/with-node-version.cjs vitest run --coverage",
+    "pretest:coverage": "npm run build:runtime-packages",
+    "pretest:coverage:check": "npm run build:runtime-packages",
+    "build:bundle": "node ../../scripts/with-node-version.cjs node scripts/bundle.cjs",
+    "rebuild:sqlite": "node ../../scripts/with-node-version.cjs node ../../scripts/rebuild-native.cjs node",
+    "test:coverage:check": "node ../../scripts/with-node-version.cjs vitest run --coverage",
+    "test:boundary": "node ../../scripts/with-node-version.cjs vitest run architecture/"
+  },
+  "bin": {
+    "mint": "./dist/cli/index.js"
+  },
+  "engines": {
+    "node": "20.19.4"
+  },
+  "dependencies": {
+    "@mint/react-runtime": "*",
+    "@mint/tool-runtime": "*",
+    "@ai-sdk/anthropic": "^3.0.0",
+    "@ai-sdk/openai": "^3.0.30",
+    "@ai-sdk/openai-compatible": "^2.0.0",
+    "@anthropic-ai/sandbox-runtime": "0.0.74",
+    "@langfuse/otel": "^5.10.1",
+    "@langfuse/tracing": "^5.10.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/server-everything": "^2026.1.26",
+    "@opentelemetry/sdk-node": "^0.221.0",
+    "ai": "^6.0.95",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "better-sqlite3": "12.8.0",
+    "chalk": "^4.1.2",
+    "chromadb": "^3.5.0",
+    "commander": "^12.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.5.2",
+    "jose": "^6.2.3",
+    "multer": "^2.2.0",
+    "pdfjs-dist": "^4.9.155",
+    "sqlite-vec": "^0.1.9",
+    "undici": "^7.5.0",
+    "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
+    "@types/uuid": "^9.0.0",
+    "@vitest/coverage-v8": "^1.6.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^1.6.1"
+  }
+}

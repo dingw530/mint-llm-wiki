@@ -6,8 +6,8 @@
     ".claude/skills/",
     "tests/architecture/",
     "vitest.config.ts",
-    "server/vitest.config.ts",
-    "client/vitest.config.ts"
+    "apps/server/vitest.config.ts",
+    "apps/client/vitest.config.ts"
   ],
   "checks": [
     {
@@ -31,7 +31,7 @@
       "command": "npm",
       "args": [
         "run",
-        "--workspace=server",
+        "--workspace=apps/server",
         "test:coverage:check",
         "--",
         "--poolOptions.threads.singleThread"
@@ -43,14 +43,14 @@
       "evidenceLevel": "integration",
       "invariants": ["regression_free"],
       "command": "npm",
-      "args": ["run", "--workspace=server", "test:boundary"],
+      "args": ["run", "--workspace=apps/server", "test:boundary"],
       "timeoutMs": 30000
     },
     {
       "name": "lifecycle-integration",
       "evidenceLevel": "integration",
       "invariants": ["rollback", "ordering", "no_new_work", "drain", "bounded_timeout"],
-      "command": "../node_modules/.bin/vitest",
+      "command": "../../node_modules/.bin/vitest",
       "args": [
         "run",
         "runtime/__tests__/lifecycle.integration.test.ts",
@@ -58,7 +58,7 @@
         "vitest.config.ts",
         "--poolOptions.threads.singleThread"
       ],
-      "cwd": "server",
+      "cwd": "apps/server",
       "timeoutMs": 60000
     },
     {

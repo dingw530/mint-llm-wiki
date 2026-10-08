@@ -4,7 +4,7 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'electron/**'
+      - 'apps/electron/**'
       - 'scripts/rebuild-native.cjs'
       - 'scripts/with-node-version.cjs'
       - 'scripts/verify-electron-artifact.mjs'
@@ -13,7 +13,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'electron/**'
+      - 'apps/electron/**'
       - 'scripts/rebuild-native.cjs'
       - 'scripts/with-node-version.cjs'
       - 'scripts/verify-electron-artifact.mjs'
@@ -40,5 +40,5 @@ jobs:
         if: always()
         with:
           name: electron-artifact-evidence
-          path: electron/release/**/verification-evidence.json
+          path: apps/electron/release/**/verification-evidence.json
           if-no-files-found: ignore

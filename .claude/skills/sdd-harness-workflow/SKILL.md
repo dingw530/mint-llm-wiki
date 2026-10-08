@@ -137,7 +137,7 @@ npm run harness:test
 npm run harness:inspect -- --change <change-id>
 ```
 
-项目要求 Node 版本以 `server/package.json.engines` 和 `scripts/with-node-version.cjs` 为准。若出现：
+项目要求 Node 版本以 `apps/server/package.json.engines` 和 `scripts/with-node-version.cjs` 为准。若出现：
 
 ```text
 NODE_MODULE_VERSION ... compiled against a different Node.js version
@@ -256,7 +256,7 @@ Harness 失败时不要立即修改业务代码，按以下顺序处理：
 ```bash
 npm run harness:loop -- \
   --change <change-id> \
-  --allowed-paths '["server/services/api/"]' \
+  --allowed-paths '["apps/server/services/api/"]' \
   --edit-command '["node","scripts/harness-editor.mjs"]' \
   --max-iterations 3
 ```
