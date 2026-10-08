@@ -14,10 +14,10 @@ Agent 管理服务只有 list、findById、create、update、remove 五个入口
 
 | 原路径                                                  | 新路径                                                                 |
 | ------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `server/services/api/agentService.ts`                   | `server/domains/agents/agent-service.ts`                               |
-| `server/repositories/agentRepository.ts`                | `server/infrastructure/persistence/agent-repository.ts`                |
-| `server/services/api/__tests__/agentService.test.ts`    | `server/domains/agents/__tests__/agent-service.test.ts`                |
-| `server/repositories/__tests__/agentRepository.test.ts` | `server/infrastructure/persistence/__tests__/agent-repository.test.ts` |
+| `apps/server/services/api/agentService.ts`                   | `apps/server/domains/agents/agent-service.ts`                               |
+| `apps/server/repositories/agentRepository.ts`                | `apps/server/infrastructure/persistence/agent-repository.ts`                |
+| `apps/server/services/api/__tests__/agentService.test.ts`    | `apps/server/domains/agents/__tests__/agent-service.test.ts`                |
+| `apps/server/repositories/__tests__/agentRepository.test.ts` | `apps/server/infrastructure/persistence/__tests__/agent-repository.test.ts` |
 
 新增 `domains/agents/index.ts` 公共入口和 Agents 自动边界检查。沿用 Memory 的渐进边界：领域应用服务可依赖自己的 infrastructure 仓储；其他生产消费者使用公共应用 API，不直接访问 Agent 仓储。此服务没有后台资源或模型装配需求，不新增 bootstrap 或注入工厂。
 

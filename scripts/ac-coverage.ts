@@ -9,7 +9,7 @@
  *
  * 原理:
  *   1. 从 product-spec.md 解析 验收标准 章节中的 AC-xxx 列表
- *   2. 在 server/ 下的各级 __tests__/ 中搜索匹配的 AC-xxx 引用（describe/it/test/runIf）
+ *   2. 在 apps/server/ 下的各级 __tests__/ 中搜索匹配的 AC-xxx 引用（describe/it/test/runIf）
  *   3. 输出覆盖率矩阵
  *
  * 注意: AC 编号在各变更中独立命名，跨变更扫描时编号可能冲突（如不同变更都有 AC-001）。
@@ -23,9 +23,9 @@ const ROOT = process.cwd();
 const SPEC_DIR = join(ROOT, 'docs', 'changes');
 const WARN_THRESHOLD = 0.8; // 覆盖率低于 80% 时告警
 const CI_FLAG = process.argv.includes('--ci');
-const customPath = process.argv.slice(2).find(
-  (a) => a.startsWith('docs/') || a.startsWith('/') || a.endsWith('product-spec.md'),
-);
+const customPath = process.argv
+  .slice(2)
+  .find((a) => a.startsWith('docs/') || a.startsWith('/') || a.endsWith('product-spec.md'));
 
 interface AcEntry {
   id: string;
@@ -83,9 +83,7 @@ function parseAcEntries(specPath: string): AcEntry[] {
  */
 function collectSpecPaths(): string[] {
   if (customPath) {
-    const resolved = customPath.startsWith('/')
-      ? customPath
-      : join(ROOT, customPath);
+    const resolved = customPath.startsWith('/') ? customPath : join(ROOT, customPath);
     if (!statSync(resolved, { throwIfNoEntry: false })?.isFile()) {
       log('ERROR', `指定的 product-spec 文件不存在: ${resolved}`);
       process.exit(1);
@@ -117,16 +115,14 @@ function collectSpecPaths(): string[] {
  */
 function searchAcInTests(acId: string): { matched: boolean; locations: string[] } {
   const locations: string[] = [];
-  const testDir = join(ROOT, 'server');
+  const testDir = join(ROOT, 'apps/server');
 
   if (!statSync(testDir, { throwIfNoEntry: false })?.isDirectory()) {
     return { matched: false, locations: [] };
   }
 
   // AC 引用的正则模式：describe/it/test/runIf(...) 中的 AC-xxx
-  const acPattern = new RegExp(
-    `(describe|it|test|runIf\\([^)]+\\))\\s*\\(\\s*["']${acId}[：:]`,
-  );
+  const acPattern = new RegExp(`(describe|it|test|runIf\\([^)]+\\))\\s*\\(\\s*["']${acId}[：:]`);
   const acIdPattern = new RegExp(`${acId}[：:]`);
 
   function scanDir(dir: string) {
@@ -152,13 +148,11 @@ function searchAcInTests(acId: string): { matched: boolean; locations: string[] 
         for (let i = 0; i < lines.length; i++) {
           const match = lines[i].match(acPattern);
           if (match) {
-            const testName = lines[i].replace(
-              /^\s*(describe|it|test|runIf\([^)]+\))\s*\(\s*['"]/,
-              '',
-            ).replace(/['"],\s*.*$/, '').trim();
-            locations.push(
-              `${relative(ROOT, fullPath)}:${i + 1} — ${testName}`,
-            );
+            const testName = lines[i]
+              .replace(/^\s*(describe|it|test|runIf\([^)]+\))\s*\(\s*['"]/, '')
+              .replace(/['"],\s*.*$/, '')
+              .trim();
+            locations.push(`${relative(ROOT, fullPath)}:${i + 1} — ${testName}`);
           }
         }
       }
@@ -188,9 +182,10 @@ function printMatrix(results: CoverageResult[]) {
   for (const r of results) {
     const status = r.matched ? '✅ 已覆盖' : '❌ 未覆盖';
     const ref = r.matched ? `yes` : `—`;
-    const desc = r.ac.description.length > descWidth
-      ? r.ac.description.slice(0, descWidth - 3) + '…'
-      : r.ac.description;
+    const desc =
+      r.ac.description.length > descWidth
+        ? r.ac.description.slice(0, descWidth - 3) + '…'
+        : r.ac.description;
     console.log(
       `│ ${r.ac.id.padEnd(idWidth)} │ ${desc.padEnd(descWidth)} │ ${ref.padEnd(6)} │ ${status.padEnd(8)} │`,
     );

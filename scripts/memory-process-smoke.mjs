@@ -6,7 +6,7 @@ import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..');
-const serverRoot = join(root, 'server');
+const serverRoot = join(root, 'apps/server');
 const withNodeVersion = join(root, 'scripts/with-node-version.cjs');
 const tempDir = mkdtempSync(join(tmpdir(), 'mint-memory-process-'));
 const databasePath = join(tempDir, 'data.db');
@@ -97,12 +97,12 @@ function assertOneSelectedMemory(output, entryName) {
 }
 
 async function seedDatabase() {
-  const dbModule = await import('../server/dist/db.js');
+  const dbModule = await import('../apps/server/dist/db.js');
   const settingsRepository =
-    await import('../server/dist/infrastructure/config/settings-repository.js');
+    await import('../apps/server/dist/infrastructure/config/settings-repository.js');
   const conversationRepository =
-    await import('../server/dist/infrastructure/persistence/conversation-repository.js');
-  const memoryService = await import('../server/dist/domains/memory/index.js');
+    await import('../apps/server/dist/infrastructure/persistence/conversation-repository.js');
+  const memoryService = await import('../apps/server/dist/domains/memory/index.js');
   const conversation = conversationRepository.create({
     id: 'memory-process-conversation',
     title: 'Memory process smoke',
@@ -130,7 +130,7 @@ try {
   const replOutput = await runReplMessage(conversationId, query);
   assertOneSelectedMemory(replOutput, 'CLI REPL');
 
-  const { getDb, closeDb } = await import('../server/dist/db.js');
+  const { getDb, closeDb } = await import('../apps/server/dist/db.js');
   const memory = getDb()
     .prepare('SELECT access_count FROM memories WHERE id = ?')
     .get('memory-process-smoke-fact');
@@ -155,7 +155,7 @@ try {
   console.log(JSON.stringify(report, null, 2));
 } finally {
   try {
-    const { closeDb } = await import('../server/dist/db.js');
+    const { closeDb } = await import('../apps/server/dist/db.js');
     closeDb();
   } catch {
     // The child process may have failed before the built server module was loaded.

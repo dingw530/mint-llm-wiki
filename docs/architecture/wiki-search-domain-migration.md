@@ -7,7 +7,7 @@
 - `services/api/wikiSearchService.ts` → `domains/wiki/wiki-search-service.ts`，从既有 Wiki 公共 index 导出原搜索、重建、健康检查及按文档回填 API。
 - `repositories/wikiSearchRepository.ts` → `infrastructure/persistence/wiki-search-repository.ts`；三个既有搜索/混合搜索/仓储测试迁入对应目录，共搬迁五个文件。
 - 新增 `infrastructure/search/wiki-search-runtime.ts`，转接既有设置、vector/Embedding 和 resilience 运行时实现；不改变调用参数、配置、超时或失败分类。
-- 后续收尾（2026-10-04）已将 `services/rerank/`（含 provider、policy、类型和测试）迁至 `domains/wiki/rerank/`，Wiki 搜索改为领域内调用；Jev provider 仅保留对共享 Jev client/config/types 的显式桥接，Wiki index 对外导出 rerank 合约。
+- 后续收尾（2026-10-04）已将 `services/rerank/`（含 provider、policy、类型和测试）迁至 `domains/wiki/rerank/`，Wiki 搜索改为领域内调用；Jev provider 仅保留对共享 Jev apps/client/config/types 的显式桥接，Wiki index 对外导出 rerank 合约。
 - 领域的运行上下文只要求 getJevSettings，由原 RuntimeContext 结构性满足；文件操作改用 Wiki 既有文件适配器。
 - 保持 FTS/hash 幂等索引、RRF/rerank、最佳片段/页面聚合、source-family 补充、结果证据粒度、向量失败降级、生命周期过滤与访问计数更新的顺序和规则。长函数/循环/分支分解为命名函数；事务中的 statement 准备与写入顺序不变。旧 Row 断言换成类型化 prepare。
 

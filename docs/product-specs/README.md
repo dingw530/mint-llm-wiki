@@ -6,6 +6,7 @@
 
 | 变更                                                                                                              | 日期       | 状态   |
 | ----------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| [可移植的最小 ReAct 框架包](../changes/2026-10-08-react-runtime-package/product-spec.md)                          | 2026-10-08 | 已完成 |
 | [记忆语义键归一化](../changes/2026-10-01-memory-semantic-normalization/product-spec.md)                           | 2026-10-01 | 已完成 |
 | [记忆界面默认全局](../changes/2026-10-01-memory-global-default-ui/product-spec.md)                                | 2026-10-01 | 已完成 |
 | [记忆分层、空间召回与领域收敛](../changes/2026-09-30-memory-context-optimization/product-spec.md)                 | 2026-09-30 | 已完成 |

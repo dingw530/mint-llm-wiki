@@ -31,7 +31,7 @@ import { tmpdir } from 'os';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const SERVER_DIR = join(ROOT, 'server');
+const SERVER_DIR = join(ROOT, 'apps/server');
 
 const vitestArgs = process.argv.slice(2);
 

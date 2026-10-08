@@ -37,7 +37,7 @@ node .harness/cli.mjs verify --change <change-id> --allow-legacy
 ```bash
 npm run harness:loop -- \
   --change 2026-07-24-harness-feedback-loop \
-  --allowed-paths '["client/src/features/chat/"]' \
+  --allowed-paths '["apps/client/src/features/chat/"]' \
   --edit-command '["node","scripts/harness-editor.mjs"]'
 ```
 
@@ -73,7 +73,7 @@ npm run harness:loop -- \
 ```bash
 npm run harness:loop -- \
   --change 2026-07-26-my-change \
-  --allowed-paths '["server/services/tools/"]' \
+  --allowed-paths '["apps/server/services/tools/"]' \
   --edit-command '["node","scripts/harness-editor.mjs"]'
 ```
 

@@ -5,9 +5,9 @@ Mint is a TypeScript monorepo with three independent packages. Each package has 
 ## Package Structure
 
 ```
-client/          React SPA — UI layer
-server/          Express API — backend layer
-electron/        Desktop shell — wrapper layer
+apps/client/          React SPA — UI layer
+apps/server/          Express API — backend layer
+apps/electron/        Desktop shell — wrapper layer
 shared/          (reserved) — future shared types/utils
 ```
 
@@ -36,11 +36,11 @@ bootstrap         Process-scoped composition and lifecycle
 http/endpoints    Transport adapters
 ```
 
-**Rule:** Runtime and domain code depend on owned contracts; application coordinates public domain/runtime APIs; infrastructure implements technical capabilities; bootstrap composes concrete dependencies. HTTP, CLI and Electron entry points call application/runtime APIs. Do not add new implementation modules under `server/services/`.
+**Rule:** Runtime and domain code depend on owned contracts; application coordinates public domain/runtime APIs; infrastructure implements technical capabilities; bootstrap composes concrete dependencies. HTTP, CLI and Electron entry points call application/runtime APIs. Do not add new implementation modules under `apps/server/services/`.
 
 ### Application services (incremental migration)
 
-`server/application/` contains HTTP-agnostic use cases that coordinate domain APIs, Agent Runtime, persistence/configuration capabilities and external adapters. Endpoint, route, CLI and Electron entry points call these use cases; application modules do not own Express handlers or transport protocols. Application TypeScript files use kebab-case filenames. The former `server/services/` implementation modules have moved to their runtime, domain, application or infrastructure owners.
+`apps/server/application/` contains HTTP-agnostic use cases that coordinate domain APIs, Agent Runtime, persistence/configuration capabilities and external adapters. Endpoint, route, CLI and Electron entry points call these use cases; application modules do not own Express handlers or transport protocols. Application TypeScript files use kebab-case filenames. The former `apps/server/services/` implementation modules have moved to their runtime, domain, application or infrastructure owners.
 
 [Server services migration evidence](server-services-migration.md) records the move map and verification boundary.
 
@@ -53,7 +53,7 @@ Provider protocol implementations and the API adapter registry live in `infrastr
 The existing top-level Server layer diagram describes the current broad layout. Memory migration adds a finer boundary without implying that the other Server domains have moved:
 
 ```text
-server/
+apps/server/
   domains/memory/                 # memory policy and use cases
   infrastructure/persistence/   # memory SQLite repositories and FTS projection
   infrastructure/ai/            # memory extraction and gate adapters
@@ -61,14 +61,14 @@ server/
   application/conversations/context/ # request-context assembly and providers
 ```
 
-Memory domain implementation imports only its own domain modules, `infrastructure/`, explicit type-only `server/types.ts` contracts, and the shared pure token estimator. Memory-specific persistence and AI adapters are composed by `bootstrap/memory.ts`; application entry points do not import those implementations directly. Infrastructure may import Memory type contracts, never Memory runtime services. Other consumers use `domains/memory/index.ts`; tests may import internal modules for focused unit coverage. Literal dynamic imports and re-exports are checked with the same rule.
+Memory domain implementation imports only its own domain modules, `infrastructure/`, explicit type-only `apps/server/types.ts` contracts, and the shared pure token estimator. Memory-specific persistence and AI adapters are composed by `bootstrap/memory.ts`; application entry points do not import those implementations directly. Infrastructure may import Memory type contracts, never Memory runtime services. Other consumers use `domains/memory/index.ts`; tests may import internal modules for focused unit coverage. Literal dynamic imports and re-exports are checked with the same rule.
 
-`server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. The broader Server proposal now also relocates the former `services/` modules into their owning runtime, application and infrastructure layers.
+`apps/server/architecture/__tests__/memoryBoundary.test.ts` tests the policy, and `memoryBoundary.ts` resolves actual TypeScript dependencies so physical paths and deep relative imports are checked. The broader Server proposal now also relocates the former `services/` modules into their owning runtime, application and infrastructure layers.
 
 ### Routing domain boundary (incremental migration)
 
 ```text
-server/
+apps/server/
   domains/routing/                # Agent choice rules, fallback policy, hooks and runtime ports
   infrastructure/ai/            # Jev routing provider and LLM classifier
   infrastructure/persistence/   # routing_logs repository and writer
@@ -77,14 +77,14 @@ server/
 ```
 
 Routing chooses an Agent; HTTP routing remains in the existing endpoints/routes layout.
-The domain imports only its own modules, type-only `server/types.ts`, and the shared logger/error helpers. Configuration, model classification and audit writes are injected through `RoutingDependencies`. Infrastructure imports Routing type contracts through the public index; bootstrap supplies the fallback Agent id and audit method formatting. Outside domain consumers use the public index for domain APIs or `bootstrap/routing.ts` for the configured service and log queries.
+The domain imports only its own modules, type-only `apps/server/types.ts`, and the shared logger/error helpers. Configuration, model classification and audit writes are injected through `RoutingDependencies`. Infrastructure imports Routing type contracts through the public index; bootstrap supplies the fallback Agent id and audit method formatting. Outside domain consumers use the public index for domain APIs or `bootstrap/routing.ts` for the configured service and log queries.
 
-`server/architecture/routingBoundary.ts` resolves static imports, re-exports and literal dynamic imports with TypeScript. Its tests reject domain dependencies on settings/models/persistence, deep consumer imports, runtime domain imports from Routing infrastructure, and direct infrastructure access outside bootstrap. Focused tests may access internal modules. The file mapping, history checks and verification limits are recorded in [Routing migration evidence](routing-domain-migration.md).
+`apps/server/architecture/routingBoundary.ts` resolves static imports, re-exports and literal dynamic imports with TypeScript. Its tests reject domain dependencies on settings/models/persistence, deep consumer imports, runtime domain imports from Routing infrastructure, and direct infrastructure access outside bootstrap. Focused tests may access internal modules. The file mapping, history checks and verification limits are recorded in [Routing migration evidence](routing-domain-migration.md).
 
 ### Agents configuration boundary (incremental migration)
 
 ```text
-server/
+apps/server/
   domains/agents/                 # Agent CRUD and orchestrator prompt policy
   infrastructure/persistence/
     agent-repository.ts           # existing SQLite Agent storage
@@ -94,12 +94,12 @@ Agents owns configuration and management only; AgentRun, ReAct execution, tool a
 
 Following the incremental Memory boundary, this small application service may access its own infrastructure repository directly; it does not need a new bootstrap lifecycle or dependency-injection factory. Other production modules may not import Agent persistence directly. The domain imports only its own modules, Agent persistence and type-only Server contracts. Infrastructure may consume public domain type contracts, never runtime services.
 
-`server/architecture/agents-boundary.ts` enforces this policy using the existing resolved Server dependency inventory. Focused tests may import internal modules. Migration evidence and scope limitations are recorded in [Agents migration evidence](agents-domain-migration.md).
+`apps/server/architecture/agents-boundary.ts` enforces this policy using the existing resolved Server dependency inventory. Focused tests may import internal modules. Migration evidence and scope limitations are recorded in [Agents migration evidence](agents-domain-migration.md).
 
 ### Conversations management boundary (incremental migration)
 
 ```text
-server/
+apps/server/
   domains/conversations/          # conversation CRUD, route defaults and Agent locking
   infrastructure/persistence/
     conversation-repository.ts   # existing SQLite conversation storage
@@ -111,14 +111,14 @@ HTTP, CLI, Electron and message setup use `domains/conversations/index.ts`. The 
 
 Message streaming and AgentRun remain in their current locations. Request-time conversation reservations are now in `application/conversations/conversation-scope-lock.ts`; Memory space management is in `application/memory/memory-space-service.ts`. This migration does not claim completion of all message/runtime responsibilities.
 
-`server/architecture/conversations-boundary.ts` checks actual resolved imports, including literal dynamic imports. [Conversations migration evidence](conversations-domain-migration.md) records the scope and validation.
+`apps/server/architecture/conversations-boundary.ts` checks actual resolved imports, including literal dynamic imports. [Conversations migration evidence](conversations-domain-migration.md) records the scope and validation.
 
 Conversation slash-command metadata is normalized by `domains/conversations/slash-command.ts`, exported through the existing public index and used by both HTTP and Electron chat paths. It only creates constrained task context; actual tool selection, policy and approval still go through the existing Agent Runtime.
 
 ### Skills, knowledge graph and Wiki management boundaries
 
 ```text
-server/
+apps/server/
   domains/skills/                 # frontmatter, lookup and cache policy
   domains/knowledge-graph/        # graph CRUD and candidate review transactions
   domains/wiki/                   # file/schema management, retention and knowledge lifecycle
@@ -141,7 +141,7 @@ The low-frequency lifecycle timer is composed by bootstrap and remains owned/dra
 
 `domains/wiki/wiki-search-service.ts` owns index orchestration, lexical/vector candidate fusion, page aggregation, evidence/snippet construction, source-family expansion and access feedback. Its public functions are exported through the existing Wiki index. Search state uses only the per-run `getJevSettings` capability instead of importing Agent runtime types.
 
-`infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. Wiki rerank policy and providers live in `domains/wiki/rerank/`; the Jev provider keeps its explicit dependency on the shared client/config utilities in `infrastructure/ai/jev/`. That package owns the external protocol, request/retry handling, shared questions and wire types; routing and memory providers remain composed in `infrastructure/ai/`.
+`infrastructure/persistence/wiki-search-repository.ts` retains SQLite/FTS transactions. Wiki rerank policy and providers live in `domains/wiki/rerank/`; the Jev provider keeps its explicit dependency on the shared apps/client/config utilities in `infrastructure/ai/jev/`. That package owns the external protocol, request/retry handling, shared questions and wire types; routing and memory providers remain composed in `infrastructure/ai/`.
 
 `infrastructure/search/vector/` owns the embedding provider, vector ports/types and idempotent sync/backfill service. `infrastructure/search/wiki-vector-service.ts` composes the Wiki repository and optional Chroma adapter. Resilience policies live in `infrastructure/resilience/` and are shared by vector adapters and the Wiki search runtime. SQLite/sqlite-vec remains the default store. Wiki file primitives live in their filesystem adapter. The ingestion pipeline, evaluation, tools and MCP search entry use the public Wiki API.
 
@@ -150,7 +150,7 @@ The independent vector backfill job now lives in `application/wiki/wiki-vector-b
 ### Model endpoint management boundary
 
 ```text
-server/
+apps/server/
   domains/model-endpoints/                         # CRUD, activation, key handling and verification state
   infrastructure/persistence/model-endpoint-repository.ts # existing model_endpoints SQLite storage
 ```
@@ -165,7 +165,7 @@ HTTP descriptors, settings and the Electron namespace export use `domains/model-
 
 `domains/tool-security/` owns Bash command blocking rules and typed configuration policy. Its `infrastructure/config/bash-security-settings.ts` adapter reads and writes only the existing `bashBlockedCommands` and `bashBlockedDirs` settings keys. HTTP configuration, Electron exports and Bash execution use the domain public index; they do not access settings storage directly. Command matching, built-in block patterns and approval flow are unchanged.
 
-`server/architecture/tool-security-boundary.ts` enforces the public entry and persistence ownership.
+`apps/server/architecture/tool-security-boundary.ts` enforces the public entry and persistence ownership.
 
 ### Settings, MCP and vector infrastructure migration
 
@@ -181,7 +181,7 @@ Approval continuation and its message-persistence adapter now live in `applicati
 
 ### Ingestion event transport
 
-The per-conversation ingestion stream lives under `http/streams/`; A2UI v0.9 task-card projection lives under `infrastructure/transports/` and uses the public Wiki job type. The stream retains the current Wiki ingestion application façade as a transition bridge. Business domains, Agent Runtime and infrastructure do not import the HTTP stream. `server/architecture/ingestion-transport-boundary.ts` checks these dependencies.
+The per-conversation ingestion stream lives under `http/streams/`; A2UI v0.9 task-card projection lives under `infrastructure/transports/` and uses the public Wiki job type. The stream retains the current Wiki ingestion application façade as a transition bridge. Business domains, Agent Runtime and infrastructure do not import the HTTP stream. `apps/server/architecture/ingestion-transport-boundary.ts` checks these dependencies.
 
 Answer and tool-result projection into A2UI v0.9 lives in `infrastructure/transports/a2ui/`. The Agent Runtime consumes its input/output contracts by type, while bootstrap constructs the composer and its Wiki source-reference provider. This output projection remains separate from Agent execution and from the ingestion-task A2UI transport. [AI adapters and A2UI migration evidence](ai-adapters-a2ui-migration.md) records the moved files and checks.
 
@@ -210,7 +210,7 @@ App            components/, features/, types (entry point)
 When you see a violation like:
 
 ```
-VIOLATION: server/endpoints/foo.ts imports server/repositories/bar.ts
+VIOLATION: apps/server/endpoints/foo.ts imports apps/server/repositories/bar.ts
 — endpoints cannot import repositories directly. See docs/architecture/LAYERS.md
 ```
 

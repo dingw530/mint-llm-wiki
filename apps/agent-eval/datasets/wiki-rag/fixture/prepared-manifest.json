@@ -1,0 +1,87 @@
+{
+  "rawDir": "/Users/wangding/WorkSpace/personal/ai-chat/apps/agent-eval/datasets/wiki-rag/raw",
+  "outputDir": "apps/agent-eval/datasets/wiki-rag/fixture",
+  "preparedAt": "2026-08-04T01:55:45.104Z",
+  "sources": [
+    {
+      "sourceFile": "2026-07-10-2026-06-23-置身钉内.txt",
+      "format": "txt",
+      "pageFile": "pages/eval/2026-07-10-2026-06-23-置身钉内.md",
+      "title": "置身钉内",
+      "bytes": 231418,
+      "contentHash": "d1938f618c9ab8c302e1e74a5b76c01da1f5b34e266a4e9db12ec44d2da7c0b6"
+    },
+    {
+      "sourceFile": "2026-07-10-万字干货-harness-engineering如何工程化落地.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-10-万字干货-harness-engineering如何工程化落地.md",
+      "title": "万字干货！Harness Engineering如何工程化落地？",
+      "bytes": 79991,
+      "contentHash": "e554fcf32fcc7b48bcff43fd7ca90656363e7e5e56eddeee915823627e14e107"
+    },
+    {
+      "sourceFile": "2026-07-14-蚂蚁阿福-从-0-到生产的医疗-agent-工程化落地.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-14-蚂蚁阿福-从-0-到生产的医疗-agent-工程化落地.md",
+      "title": "蚂蚁阿福：从 0 到生产的医疗 Agent 工程化落地",
+      "bytes": 28627,
+      "contentHash": "ff5f31411cb0b397b47c04e408bab8509914ef54ad10b64b872dda00e58b8ba0"
+    },
+    {
+      "sourceFile": "2026-07-15-别再把-agent-做成聊天框-企业级-ai-的第一性架构.html",
+      "format": "html",
+      "pageFile": "pages/eval/2026-07-15-别再把-agent-做成聊天框-企业级-ai-的第一性架构.md",
+      "title": "别再把 Agent 做成聊天框：企业级 AI 的第一性架构",
+      "bytes": 4852101,
+      "contentHash": "cb8d2ac8a27c9dd41ff40f07d4e16f2061a706f86542bfdb99e1b80844244b36"
+    },
+    {
+      "sourceFile": "2026-07-22-rag-万字长文-从入门到精通.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-22-rag-万字长文-从入门到精通.md",
+      "title": "RAG 万字长文：从入门到精通",
+      "bytes": 9986,
+      "contentHash": "138597bd4b843487404c0be96c1bfc0fce1826e6a535ef4352aa5b158ebb5442"
+    },
+    {
+      "sourceFile": "2026-07-24-分解一座冰山-后端系统-ai-知识库体系-建设实践-长文干货.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-24-分解一座冰山-后端系统-ai-知识库体系-建设实践-长文干货.md",
+      "title": "分解一座冰山：后端系统「AI 知识库体系」建设实践（长文干货）",
+      "bytes": 70320,
+      "contentHash": "014d4141f1c0ead0653f485851fd813800e8ced7b0374a3bb6f0e8b2a4938e71"
+    },
+    {
+      "sourceFile": "2026-07-24-llm-wiki-v2-构建个人知识库的模式-增强版.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-24-llm-wiki-v2-构建个人知识库的模式-增强版.md",
+      "title": "LLM Wiki v2 — 构建个人知识库的模式（增强版）",
+      "bytes": 12250,
+      "contentHash": "f4c1c5237d6e8def64f4c9435d0551846d68118bcb1b16a12ba3e66d6cb7c94f"
+    },
+    {
+      "sourceFile": "2026-07-26-harness-engineering-v260411-zh.pdf",
+      "format": "pdf",
+      "pageFile": "pages/eval/2026-07-26-harness-engineering-v260411-zh.md",
+      "title": "2026-07-26-harness-engineering-v260411-zh",
+      "bytes": 8579324,
+      "contentHash": "c02244da7775fb6055ca98f1c0ccdd4e6ed8b329e386af99b83c1a1e2a533e5f"
+    },
+    {
+      "sourceFile": "2026-07-28-2026-目标管理指南-smart-原则详解与实战案例-附-boardmix-可视化模板.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-28-2026-目标管理指南-smart-原则详解与实战案例-附-boardmix-可视化模板.md",
+      "title": "2026 目标管理指南：SMART 原则详解与实战案例（附 boardmix 可视化模板）",
+      "bytes": 31115,
+      "contentHash": "baa76475c9d617140da8444683182f09ed7bc49f7b395c49a70bbe7f5f66f511"
+    },
+    {
+      "sourceFile": "2026-07-28-loop-engineering-coding-实践-以一个跑了126.md",
+      "format": "md",
+      "pageFile": "pages/eval/2026-07-28-loop-engineering-coding-实践-以一个跑了126.md",
+      "title": "Loop Engineering Coding 实践：以一个跑了126",
+      "bytes": 65083,
+      "contentHash": "d33c4d2a59ebe97e9d398c16aba091f1c6fa4c4fc8bddcd376e163f8b1e78e05"
+    }
+  ]
+}

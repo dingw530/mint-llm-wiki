@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mint is a TypeScript monorepo for an AI chat desktop application. Three packages with clear boundaries:
+Mint is a TypeScript monorepo for an AI chat desktop application. Three application workspaces and reusable runtime packages with clear boundaries:
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -11,13 +11,15 @@ Mint is a TypeScript monorepo for an AI chat desktop application. Three packages
 └─────────────┘     └─────────────┘     └─────────────┘
 ```
 
-## Packages
+## Workspaces
 
-| Package     | Purpose                                     | Tech                                |
-| ----------- | ------------------------------------------- | ----------------------------------- |
-| `server/`   | REST API, AI adapters, SQLite storage       | Express, better-sqlite3, TypeScript |
-| `client/`   | Chat UI, settings, Wiki and Agent workbench | React 18, Vite, TypeScript          |
-| `electron/` | Desktop packaging                           | Electron, electron-builder          |
+| Package                   | Purpose                                     | Tech                                |
+| ------------------------- | ------------------------------------------- | ----------------------------------- |
+| `apps/server/`            | REST API, AI adapters, SQLite storage       | Express, better-sqlite3, TypeScript |
+| `apps/client/`            | Chat UI, settings, Wiki and Agent workbench | React 18, Vite, TypeScript          |
+| `apps/electron/`          | Desktop packaging                           | Electron, electron-builder          |
+| `packages/react-runtime/` | Portable ReAct loop                         | TypeScript                          |
+| `packages/tool-runtime/`  | Portable tool execution                     | TypeScript                          |
 
 ## Layer Hierarchy
 

@@ -2,23 +2,23 @@
 
 ## Scope
 
-Move the remaining TypeScript modules out of `server/services/api/` according to responsibility while keeping exported operations, HTTP/IPC descriptors, startup/shutdown behavior and settings formats stable. The new `server/application/` layer holds HTTP-agnostic cross-domain use cases. The endpoint-level Jev probe is an infrastructure AI capability. Redundant model/vector connection re-export modules were removed because callers already use `bootstrap/model-connections.ts` or the infrastructure verifier.
+Move the remaining TypeScript modules out of `apps/server/services/api/` according to responsibility while keeping exported operations, HTTP/IPC descriptors, startup/shutdown behavior and settings formats stable. The new `apps/server/application/` layer holds HTTP-agnostic cross-domain use cases. The endpoint-level Jev probe is an infrastructure AI capability. Redundant model/vector connection re-export modules were removed because callers already use `bootstrap/model-connections.ts` or the infrastructure verifier.
 
 ## File mapping
 
 | Previous location | New location | Responsibility |
 | --- | --- | --- |
-| `server/services/api/settingsService.ts` | `server/application/settings/settings-service.ts` | Legacy settings use case and read/write facade |
-| `server/services/api/mcp-server-service.ts` | `server/application/mcp/mcp-server-service.ts` | MCP server configuration use case |
-| `server/services/api/memorySpaceService.ts` | `server/application/memory/memory-space-service.ts` | Memory-space management and binding coordination |
-| `server/services/api/conversationScopeLock.ts` | `server/application/conversations/conversation-scope-lock.ts` | In-process reservation for memory-scope changes |
-| `server/services/api/approval-message-persistence.ts` | `server/application/agent-runtime/approval-message-persistence.ts` | Persist assistant continuation after tool approval |
-| `server/services/api/toolApprovalService.ts` | `server/application/agent-runtime/tool-approval-service.ts` | Consume approval, resume the existing run and adapt stream output |
-| `server/services/api/wikiIngestionJobService.ts` | `server/application/wiki/wiki-ingestion-job-service.ts` | Compose the Wiki domain worker with existing app/runtime capabilities |
-| `server/services/api/wikiVectorBackfillService.ts` | `server/application/wiki/wiki-vector-backfill-service.ts` | Start and coordinate durable Wiki vector backfill jobs |
-| `server/services/api/jevConnectionService.ts` | `server/infrastructure/ai/jev-connection-verification.ts` | Bounded provider connection probe |
-| `server/services/api/modelConnectionService.ts` | Removed | Redundant re-export of `bootstrap/model-connections.ts` |
-| `server/services/api/vectorConnectionService.ts` | Removed | Redundant re-export of `infrastructure/search/vector-connection-verification.ts` |
+| `apps/server/services/api/settingsService.ts` | `apps/server/application/settings/settings-service.ts` | Legacy settings use case and read/write facade |
+| `apps/server/services/api/mcp-server-service.ts` | `apps/server/application/mcp/mcp-server-service.ts` | MCP server configuration use case |
+| `apps/server/services/api/memorySpaceService.ts` | `apps/server/application/memory/memory-space-service.ts` | Memory-space management and binding coordination |
+| `apps/server/services/api/conversationScopeLock.ts` | `apps/server/application/conversations/conversation-scope-lock.ts` | In-process reservation for memory-scope changes |
+| `apps/server/services/api/approval-message-persistence.ts` | `apps/server/application/agent-runtime/approval-message-persistence.ts` | Persist assistant continuation after tool approval |
+| `apps/server/services/api/toolApprovalService.ts` | `apps/server/application/agent-runtime/tool-approval-service.ts` | Consume approval, resume the existing run and adapt stream output |
+| `apps/server/services/api/wikiIngestionJobService.ts` | `apps/server/application/wiki/wiki-ingestion-job-service.ts` | Compose the Wiki domain worker with existing app/runtime capabilities |
+| `apps/server/services/api/wikiVectorBackfillService.ts` | `apps/server/application/wiki/wiki-vector-backfill-service.ts` | Start and coordinate durable Wiki vector backfill jobs |
+| `apps/server/services/api/jevConnectionService.ts` | `apps/server/infrastructure/ai/jev-connection-verification.ts` | Bounded provider connection probe |
+| `apps/server/services/api/modelConnectionService.ts` | Removed | Redundant re-export of `bootstrap/model-connections.ts` |
+| `apps/server/services/api/vectorConnectionService.ts` | Removed | Redundant re-export of `infrastructure/search/vector-connection-verification.ts` |
 
 The six colocated API tests moved beside their application or infrastructure modules and use kebab-case filenames. Endpoint, route, CLI, runtime and Electron consumers now reference the new locations. Existing model/vector endpoint names and Wiki job IPC method names were not changed.
 

@@ -26,7 +26,7 @@ user-invocable: true
 
 ### Step 2: EndpointDescriptor 注册
 
-在 `server/endpoints/definitions/` 下找到对应的定义文件，新增一条 `EndpointDescriptor`：
+在 `apps/server/endpoints/definitions/` 下找到对应的定义文件，新增一条 `EndpointDescriptor`：
 
 ```typescript
 {
@@ -42,14 +42,14 @@ user-invocable: true
 ```
 
 **关键规则：**
-- `id` 必须与 `electron/preload.js` 中 `ipcRenderer.invoke(...)` 的第一个参数完全一致
+- `id` 必须与 `apps/electron/preload.js` 中 `ipcRenderer.invoke(...)` 的第一个参数完全一致
 - 如果 `id` 与前端调用的 IPC 频道名不同，用 `ipcChannel` 字段覆盖
-- `ipcServiceRef` 的 `module` 必须匹配 `electron/main.js` 中 `services` 对象的 key
+- `ipcServiceRef` 的 `module` 必须匹配 `apps/electron/main.js` 中 `services` 对象的 key
 - 如果 endpoint 包含校验/包装逻辑且 `service` 不是直接透传，不要设置 `ipcServiceRef`（否则会绕过包装逻辑）
 
 ### Step 3: 前端 barrel 导出
 
-在 `client/src/services/api.ts` 中，把新增的函数名加入对应行的 re-export：
+在 `apps/client/src/services/api.ts` 中，把新增的函数名加入对应行的 re-export：
 
 ```typescript
 export { ..., xxxAction, ... } from './api/xxx';
@@ -57,7 +57,7 @@ export { ..., xxxAction, ... } from './api/xxx';
 
 ### Step 4: Electron main.js — 服务模块导入
 
-如果新增的服务模块尚未在 `electron/main.js` 的 `loadServiceModules` 中导入：
+如果新增的服务模块尚未在 `apps/electron/main.js` 的 `loadServiceModules` 中导入：
 
 1. 在 `const importApiService = ...` 或 `const importService = ...` 后，加一行：
    ```typescript
@@ -67,7 +67,7 @@ export { ..., xxxAction, ... } from './api/xxx';
 
 ### Step 5: Electron main.js — IPC handler 注册
 
-在 `electron/main.js` 的 `setupIpcHandlers` 函数中，按已有模式新增 `ipcMain.handle`：
+在 `apps/electron/main.js` 的 `setupIpcHandlers` 函数中，按已有模式新增 `ipcMain.handle`：
 
 ```typescript
 ipcMain.handle('xxx:action', (_, ...args) => {
@@ -78,7 +78,7 @@ ipcMain.handle('xxx:action', (_, ...args) => {
 
 ### Step 6: Electron preload.js
 
-在 `electron/preload.js` 的对应分类下新增一行：
+在 `apps/electron/preload.js` 的对应分类下新增一行：
 
 ```typescript
 xxxAction: (...args) => ipcRenderer.invoke('xxx:action', ...args),
@@ -86,7 +86,7 @@ xxxAction: (...args) => ipcRenderer.invoke('xxx:action', ...args),
 
 ### Step 7: 前端 ElectronAPI 类型
 
-在 `client/src/types/index.ts` 的 `ElectronAPI` 接口中新增方法签名：
+在 `apps/client/src/types/index.ts` 的 `ElectronAPI` 接口中新增方法签名：
 
 ```typescript
 xxxAction: (...args) => Promise<ReturnType>;
@@ -94,7 +94,7 @@ xxxAction: (...args) => Promise<ReturnType>;
 
 ### Step 8: Manifest 同步
 
-如果前端使用 `callEndpoint` 方式（而非直接 `request`），更新 `electron/endpoints-manifest.json`：
+如果前端使用 `callEndpoint` 方式（而非直接 `request`），更新 `apps/electron/endpoints-manifest.json`：
 
 - 新增条目的 `id`、`ipcChannel`、`httpPath`
 - 或全局替换（如批量重命名频道时）
@@ -107,10 +107,10 @@ xxxAction: (...args) => Promise<ReturnType>;
 |---|---|
 | `endpoints/definitions/*.ts` → `id` | `xxx:action` |
 | `endpoints/definitions/*.ts` → `ipcChannel`（如有） | 同左或覆盖值 |
-| `electron/preload.js` → `ipcRenderer.invoke(...)` | `xxx:action` |
-| `electron/main.js` → `ipcMain.handle(...)` | `xxx:action` |
-| `client/src/types/index.ts` → `ElectronAPI` 方法名 | 与 preload 属性名一致 |
-| `electron/endpoints-manifest.json` → `id` | `xxx:action` |
+| `apps/electron/preload.js` → `ipcRenderer.invoke(...)` | `xxx:action` |
+| `apps/electron/main.js` → `ipcMain.handle(...)` | `xxx:action` |
+| `apps/client/src/types/index.ts` → `ElectronAPI` 方法名 | 与 preload 属性名一致 |
+| `apps/electron/endpoints-manifest.json` → `id` | `xxx:action` |
 
 ## 示例：清空全部对话
 
@@ -127,15 +127,15 @@ xxxAction: (...args) => Promise<ReturnType>;
   result: 'direct',
 }
 
-// ── electron/main.js ──
+// ── apps/electron/main.js ──
 ipcMain.handle('conversations:clearAll', () => {
   if (!services.convSvc) throw new Error('Services not loaded');
   return services.convSvc.removeAll();
 });
 
-// ── electron/preload.js ──
+// ── apps/electron/preload.js ──
 clearAllConversations: () => ipcRenderer.invoke('conversations:clearAll'),
 
-// ── client/src/types/index.ts ──
+// ── apps/client/src/types/index.ts ──
 clearAllConversations: () => Promise<{ changes: number }>;
 ```

@@ -32,18 +32,15 @@ function appendToTraceability(changeDir, summary) {
   let content = readFileSync(tracePath, 'utf-8');
 
   if (content.includes('## 测试趋势')) {
-    content = content.replace(
-      /(## 测试趋势[\s\S]*?)(?=\n## |$)/,
-      (match, section) => {
-        const rows = section.trim().split('\n');
-        const existingIdx = rows.findIndex(r => r.trim().startsWith(`| ${changeId} `));
-        if (existingIdx >= 0) {
-          rows[existingIdx] = line;
-          return rows.join('\n');
-        }
-        return section.trimEnd() + '\n' + line;
+    content = content.replace(/(## 测试趋势[\s\S]*?)(?=\n## |$)/, (match, section) => {
+      const rows = section.trim().split('\n');
+      const existingIdx = rows.findIndex((r) => r.trim().startsWith(`| ${changeId} `));
+      if (existingIdx >= 0) {
+        rows[existingIdx] = line;
+        return rows.join('\n');
       }
-    );
+      return section.trimEnd() + '\n' + line;
+    });
   } else {
     const table = [
       '',
@@ -77,21 +74,18 @@ if (!existsSync(changeDir)) {
 // Run coverage and capture output
 console.log('⏳ 运行覆盖率检测...');
 try {
-  const output = execSync(
-    'npx vitest run --coverage',
-    {
-      cwd: join(process.cwd(), 'server'),
-      encoding: 'utf-8',
-      timeout: 180000,
-      maxBuffer: 10 * 1024 * 1024,
-    }
-  );
+  const output = execSync('npx vitest run --coverage', {
+    cwd: join(process.cwd(), 'apps/server'),
+    encoding: 'utf-8',
+    timeout: 180000,
+    maxBuffer: 10 * 1024 * 1024,
+  });
 
   // Extract the coverage summary table — last section with pipe characters
-  const lines = output.split('\n').filter(l => l.startsWith('|'));
-  const summaryLines = lines.filter(l => l.includes('services/'));
+  const lines = output.split('\n').filter((l) => l.startsWith('|'));
+  const summaryLines = lines.filter((l) => l.includes('services/'));
   if (summaryLines.length > 0) {
-    const summary = summaryLines.map(l => `\`${l.trim()}\``).join('; ');
+    const summary = summaryLines.map((l) => `\`${l.trim()}\``).join('; ');
     appendToTraceability(changeDir, summary);
   } else {
     console.log('⚠ 未找到覆盖率指标行');

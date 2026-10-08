@@ -13,5 +13,5 @@ __pycache__/
 .DS_Store
 *.md
 docs/
-electron/release/
-electron/.playwright-cli/
+apps/electron/release/
+apps/electron/.playwright-cli/

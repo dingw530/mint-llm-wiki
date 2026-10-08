@@ -6,8 +6,8 @@
 
 | 原路径                                          | 新路径                                                         |
 | ----------------------------------------------- | -------------------------------------------------------------- |
-| `server/services/api/conversationService.ts`    | `server/domains/conversations/conversation-service.ts`         |
-| `server/repositories/conversationRepository.ts` | `server/infrastructure/persistence/conversation-repository.ts` |
+| `apps/server/services/api/conversationService.ts`    | `apps/server/domains/conversations/conversation-service.ts`         |
+| `apps/server/repositories/conversationRepository.ts` | `apps/server/infrastructure/persistence/conversation-repository.ts` |
 
 新增 Conversations 公共入口、基础设施默认配置适配器、架构边界规则及测试、真实 SQLite 会话管理测试。领域负责列表、创建、删除、重命名、Agent 锁定，以及供消息初始化使用的 nullable metadata lookup；默认路由模式通过配置适配器读取既有 settings storage，由领域保留 auto fallback。
 

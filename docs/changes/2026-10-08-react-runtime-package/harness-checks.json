@@ -1,0 +1,137 @@
+{
+  "checks": [
+    {
+      "name": "runtime-package-build",
+      "command": "npm",
+      "args": ["run", "build", "-w", "@mint/react-runtime"],
+      "evidenceLevel": "process-smoke",
+      "invariants": ["package_importable"]
+    },
+    {
+      "name": "runtime-unit",
+      "command": "npm",
+      "args": ["run", "test", "-w", "@mint/react-runtime"],
+      "evidenceLevel": "integration",
+      "invariants": [
+        "tool_call_order",
+        "bounded_steps",
+        "abort_stops_new_work",
+        "tool_error_not_success",
+        "call_id_correlation",
+        "final_answer_stops_loop"
+      ]
+    },
+    {
+      "name": "runtime-package-smoke",
+      "command": "node",
+      "args": ["packages/react-runtime/scripts/package-smoke.mjs"],
+      "evidenceLevel": "process-smoke",
+      "invariants": [
+        "no_mint_runtime_import",
+        "package_importable",
+        "declarations_present",
+        "no_api_key_required",
+        "no_mint_server_required",
+        "installed_tarball_importable"
+      ]
+    },
+    {
+      "name": "runtime-package-pack",
+      "command": "npm",
+      "args": ["pack", "--dry-run", "-w", "@mint/react-runtime"],
+      "evidenceLevel": "process-smoke",
+      "invariants": ["package_packable"]
+    },
+    {
+      "name": "tool-runtime-package-build",
+      "command": "npm",
+      "args": ["run", "build", "-w", "@mint/tool-runtime"],
+      "evidenceLevel": "process-smoke",
+      "invariants": ["tool_runtime_package_importable"]
+    },
+    {
+      "name": "tool-runtime-unit",
+      "command": "npm",
+      "args": ["run", "test", "-w", "@mint/tool-runtime"],
+      "evidenceLevel": "integration",
+      "invariants": [
+        "unknown_tool_rejected",
+        "no_execute_without_allow",
+        "timeout_aborts_tool",
+        "abort_prevents_execute",
+        "structured_tool_result"
+      ]
+    },
+    {
+      "name": "tool-runtime-package-smoke",
+      "command": "node",
+      "args": ["packages/tool-runtime/scripts/package-smoke.mjs"],
+      "evidenceLevel": "process-smoke",
+      "invariants": [
+        "tool_runtime_no_mint_import",
+        "tool_runtime_tarball_importable",
+        "tool_runtime_no_runtime_dependencies",
+        "no_mint_server_required",
+        "policy_deny_exec_count_zero",
+        "policy_allow_exec_count_one"
+      ]
+    },
+    {
+      "name": "tool-runtime-package-pack",
+      "command": "npm",
+      "args": ["pack", "--dry-run", "-w", "@mint/tool-runtime"],
+      "evidenceLevel": "process-smoke",
+      "invariants": ["tool_runtime_packable"]
+    },
+    {
+      "name": "mint-adapter-regression",
+      "command": "../node_modules/.bin/vitest",
+      "args": [
+        "run",
+        "agent-runtime/__tests__/react-loop-core.test.ts",
+        "application/agent-runtime/__tests__/tool-approval-service.test.ts",
+        "application/agent-runtime/__tests__/tool-execution-service.test.ts",
+        "application/conversations/__tests__/message-service.test.ts",
+        "application/tools/agents/__tests__/invoke-agent-tool.test.ts",
+        "--poolOptions.threads.singleThread"
+      ],
+      "cwd": "server",
+      "evidenceLevel": "integration",
+      "invariants": ["legacy_entry_compatible", "approval_path_preserved", "single_terminal_event"]
+    },
+    {
+      "name": "mint-tool-runtime-regression",
+      "command": "../node_modules/.bin/vitest",
+      "args": [
+        "run",
+        "application/agent-runtime/__tests__/tool-execution-security.test.ts",
+        "application/agent-runtime/__tests__/tool-execution-service.test.ts",
+        "application/agent-runtime/__tests__/tool-retry-policy.test.ts",
+        "application/agent-runtime/__tests__/tool-approval-service.test.ts",
+        "application/agent-runtime/__tests__/tool-audit-log.test.ts",
+        "application/agent-runtime/__tests__/tool-handlers.test.ts",
+        "application/agent-runtime/__tests__/tool-catalog-service.test.ts",
+        "application/agent-runtime/__tests__/tool-round-engine.test.ts",
+        "infrastructure/mcp/__tests__/mcp-tool-adapter.test.ts",
+        "application/tools/wiki/__tests__/wiki-ingest-tool.test.ts",
+        "--poolOptions.threads.singleThread"
+      ],
+      "cwd": "server",
+      "evidenceLevel": "integration",
+      "invariants": [
+        "approval_path_preserved",
+        "invocation_ledger_preserved",
+        "retry_safety_preserved",
+        "audit_sink_preserved",
+        "single_tool_execution_gate"
+      ]
+    },
+    {
+      "name": "server-typecheck",
+      "command": "npm",
+      "args": ["run", "typecheck", "-w", "mint-server"],
+      "evidenceLevel": "static",
+      "invariants": ["regression_free"]
+    }
+  ]
+}

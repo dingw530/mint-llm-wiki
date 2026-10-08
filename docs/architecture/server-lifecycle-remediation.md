@@ -30,9 +30,9 @@ runtime.shutdown()
 
 ### 2.1 模块导入会产生启动副作用
 
-`server/app.ts` 在模块导入时注册 `setTimeout`，异步启动 MCP、Memory worker 和 Wiki lifecycle timer，见 [server/app.ts](../../server/app.ts)。
+`apps/server/app.ts` 在模块导入时注册 `setTimeout`，异步启动 MCP、Memory worker 和 Wiki lifecycle timer，见 [apps/server/app.ts](../../apps/server/app.ts)。
 
-`server/index.ts` 又根据 `AI_CHAT_CLIENT_DIST` 是否存在决定是否自动启动 HTTP server，见 [server/index.ts](../../server/index.ts)。
+`apps/server/index.ts` 又根据 `AI_CHAT_CLIENT_DIST` 是否存在决定是否自动启动 HTTP server，见 [apps/server/index.ts](../../apps/server/index.ts)。
 
 这会导致：
 
@@ -42,7 +42,7 @@ runtime.shutdown()
 
 ### 2.2 CLI 存在重复启动风险
 
-CLI 的 `serve` 命令会 import `server/index.ts` 后再次调用 `startServer()`，见 [server/cli/index.ts](../../server/cli/index.ts)。在未设置 `AI_CHAT_CLIENT_DIST` 时，import 本身可能已触发一次自动启动，随后显式调用又会启动一次。
+CLI 的 `serve` 命令会 import `apps/server/index.ts` 后再次调用 `startServer()`，见 [apps/server/cli/index.ts](../../apps/server/cli/index.ts)。在未设置 `AI_CHAT_CLIENT_DIST` 时，import 本身可能已触发一次自动启动，随后显式调用又会启动一次。
 
 端口冲突时当前逻辑会尝试随机端口，这可能掩盖重复启动，而不是暴露入口管理错误。
 
@@ -201,7 +201,7 @@ type ListenMode = 'loopback' | 'container' | 'external';
 
 ### TP-1：消除 import 副作用
 
-范围：`server/app.ts`、`server/index.ts`、Wiki job service 初始化路径。
+范围：`apps/server/app.ts`、`apps/server/index.ts`、Wiki job service 初始化路径。
 
 完成标准：
 
