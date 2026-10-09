@@ -367,6 +367,11 @@ export interface ElectronAPI {
     slashCommand?: SendOptions['slashCommand'],
   ) => void;
   streamRecoveryAction: (conversationId: string, actionId: string) => void;
+  sendToolApproval: (
+    conversationId: string,
+    approvalId: string,
+    action: 'approve' | 'deny',
+  ) => void;
   onChunk: (conversationId: string, callback: (data: string) => void) => () => void;
   onDone: (conversationId: string, callback: () => void) => () => void;
   onError: (conversationId: string, callback: (err: string) => void) => () => void;

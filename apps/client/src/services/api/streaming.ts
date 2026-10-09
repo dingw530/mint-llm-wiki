@@ -1,4 +1,4 @@
-import type { SendCallbacks, SendOptions, StreamReturn } from '@/types';
+import type { ElectronAPI, SendCallbacks, SendOptions, StreamReturn } from '@/types';
 import { BASE_URL, getElectronAPI, isElectron, parseSSEChunk } from '../api/_base';
 
 export function sendMessageStream(
@@ -21,41 +21,17 @@ export function sendMessageStream(
   agent?: string,
   options?: SendOptions,
 ): StreamReturn {
-  // Electron IPC 路径
-  if (isElectron() && !options?.control) {
-    const api = getElectronAPI()!;
-    const lastThought = { value: '' };
-    const onChunk = (raw: string) => {
-      try {
-        parseSSEChunk(JSON.parse(raw), callbacks, lastThought);
-      } catch {
-        /* Ignore malformed chunks. */
-      }
-    };
-    let cleanup = () => {};
-    const onDone = () => {
-      cleanup();
-      callbacks.onDone?.();
-    };
-    const onError = (err: string) => {
-      cleanup();
-      callbacks.onError?.(new Error(err));
-    };
-    const removeChunkListener = api.onChunk(conversationId, onChunk);
-    const removeDoneListener = api.onDone(conversationId, onDone);
-    const removeErrorListener = api.onError(conversationId, onError);
-    cleanup = () => {
-      removeChunkListener();
-      removeDoneListener();
-      removeErrorListener();
-    };
-    api.sendMessage(conversationId, content, agent, !!options?.regenerate, options?.slashCommand);
-
-    return {
-      abort: () => {
-        cleanup();
-      },
-    };
+  // Electron IPC 路径：普通发送与工具审批都必须在主进程内执行，才能命中同一份运行状态。
+  if (isElectron()) {
+    const control = options?.control;
+    if (control) {
+      return streamOverIpc(conversationId, callbacks, (api) =>
+        api.sendToolApproval(conversationId, control.approvalId, control.action),
+      );
+    }
+    return streamOverIpc(conversationId, callbacks, (api) =>
+      api.sendMessage(conversationId, content, agent, !!options?.regenerate, options?.slashCommand),
+    );
   }
 
   // HTTP SSE 路径
@@ -124,4 +100,46 @@ export function sendMessageStream(
     });
 
   return { abort: () => controller.abort() };
+}
+
+/**
+ * 挂载 Electron 聊天监听器后发起一次 IPC 流式请求。
+ * @param conversationId 会话 ID，用于过滤 IPC 事件
+ * @param callbacks 解析分片后的消费回调
+ * @param start 监听器就绪后发出的 IPC 调用
+ * @returns 可中止并卸载监听器的句柄
+ */
+function streamOverIpc(
+  conversationId: string,
+  callbacks: SendCallbacks,
+  start: (api: ElectronAPI) => void,
+): StreamReturn {
+  const api = getElectronAPI()!;
+  const lastThought = { value: '' };
+  const onChunk = (raw: string) => {
+    try {
+      parseSSEChunk(JSON.parse(raw), callbacks, lastThought);
+    } catch {
+      /* Ignore malformed chunks. */
+    }
+  };
+  let cleanup = () => {};
+  const onDone = () => {
+    cleanup();
+    callbacks.onDone?.();
+  };
+  const onError = (err: string) => {
+    cleanup();
+    callbacks.onError?.(new Error(err));
+  };
+  const removeChunkListener = api.onChunk(conversationId, onChunk);
+  const removeDoneListener = api.onDone(conversationId, onDone);
+  const removeErrorListener = api.onError(conversationId, onError);
+  cleanup = () => {
+    removeChunkListener();
+    removeDoneListener();
+    removeErrorListener();
+  };
+  start(api);
+  return { abort: () => cleanup() };
 }

@@ -185,6 +185,7 @@ describe('standard IPC handlers', () => {
     expect([...channels]).toEqual([
       'chat:send',
       'chat:stream-recovery-action',
+      'chat:send-tool-approval',
       'chat:a2ui:subscribe',
       'conversations:generateTitle',
       'messages:list',
@@ -220,5 +221,71 @@ describe('standard IPC handlers', () => {
       'action-1',
       expect.anything(),
     );
+  });
+
+  it('resumes a tool approval through the Electron chat sink', async () => {
+    const handlers = new Map<string, RegisteredHandler>();
+    const resumeToolApproval = vi.fn().mockResolvedValue(undefined);
+    const IpcSink = vi.fn();
+    const ipcMain = {
+      handle(channel: string, handler: RegisteredHandler) {
+        handlers.set(channel, handler);
+      },
+    };
+
+    registerElectronIpcHandlers({
+      ipcMain,
+      services: { msgSvc: { resumeToolApproval }, sinkMod: { IpcSink } },
+      dialog: {},
+      logger: { error: vi.fn() },
+      getMainWindow: () => null,
+    });
+    const event = { sender: { send: vi.fn() } };
+    await handlers.get('chat:send-tool-approval')!(
+      event,
+      'conversation-1',
+      'approval-1',
+      'approve',
+    );
+
+    expect(IpcSink).toHaveBeenCalledWith(event, 'conversation-1');
+    expect(resumeToolApproval).toHaveBeenCalledWith(
+      'conversation-1',
+      'approval-1',
+      'approve',
+      expect.anything(),
+    );
+  });
+
+  it('rejects an invalid tool approval action before touching the chat sink', async () => {
+    const handlers = new Map<string, RegisteredHandler>();
+    const resumeToolApproval = vi.fn().mockResolvedValue(undefined);
+    const ipcMain = {
+      handle(channel: string, handler: RegisteredHandler) {
+        handlers.set(channel, handler);
+      },
+    };
+
+    registerElectronIpcHandlers({
+      ipcMain,
+      services: { msgSvc: { resumeToolApproval }, sinkMod: { IpcSink: vi.fn() } },
+      dialog: {},
+      logger: { error: vi.fn() },
+      getMainWindow: () => null,
+    });
+    const send = vi.fn();
+    await handlers.get('chat:send-tool-approval')!(
+      { sender: { send } },
+      'conversation-1',
+      'a-1',
+      'maybe',
+    );
+
+    expect(send).toHaveBeenCalledWith(
+      'chat:error',
+      'conversation-1',
+      'Invalid tool approval control message',
+    );
+    expect(resumeToolApproval).not.toHaveBeenCalled();
   });
 });
