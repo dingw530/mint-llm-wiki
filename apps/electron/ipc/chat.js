@@ -44,6 +44,25 @@ function registerChatHandlers({ ipcMain, services, logger }) {
     }
   });
 
+  ipcMain.handle('chat:send-tool-approval', async (event, convId, approvalId, action) => {
+    if (!services.msgSvc) {
+      event.sender.send('chat:error', convId, 'Services not loaded');
+      return;
+    }
+    if ((action !== 'approve' && action !== 'deny') || typeof approvalId !== 'string') {
+      event.sender.send('chat:error', convId, 'Invalid tool approval control message');
+      return;
+    }
+
+    const sink = new services.sinkMod.IpcSink(event, convId);
+    try {
+      await services.msgSvc.resumeToolApproval(convId, approvalId, action, sink);
+    } catch (err) {
+      logger.error(`chat:send-tool-approval error: ${err.message}`);
+      if (!sink.writableEnded) event.sender.send('chat:error', convId, err.message);
+    }
+  });
+
   ipcMain.handle('chat:a2ui:subscribe', (event, conversationId) => {
     const service = services.wikiIngestionJobService;
     const a2ui = services.ingestionA2ui;

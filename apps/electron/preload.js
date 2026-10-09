@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('chat:send', convId, content, agent, regenerate, slashCommand),
   streamRecoveryAction: (convId, actionId) =>
     ipcRenderer.invoke('chat:stream-recovery-action', convId, actionId),
+  sendToolApproval: (convId, approvalId, action) =>
+    ipcRenderer.invoke('chat:send-tool-approval', convId, approvalId, action),
   onChunk: (conversationId, callback) => {
     const listener = (_event, eventConversationId, data) => {
       if (eventConversationId === conversationId) callback(data);
