@@ -41,22 +41,75 @@ function isPrivateHost(hostname: string): boolean {
   return false;
 }
 
-function bashPathsStayInDirectory(command: string, directory: string): boolean {
-  const root = path.resolve(directory);
-  const candidates = command.match(/(?:^|\s)(\/[^\s;|&]+|\.\.?\/[^\s;|&]+)/g) || [];
-  return candidates.every((candidate) => {
-    const value = candidate.trim();
-    const resolved = path.resolve(root, value);
-    return resolved === root || resolved.startsWith(`${root}${path.sep}`);
-  });
+/** Bash 的授权范围：默认工作区，以及可选、需逐次批准的 Wiki 根目录。 */
+interface BashScope {
+  workspace: string;
+  wikiRoot: string | null;
 }
 
-function pathStaysInDirectory(candidate: string, directory: string): boolean {
-  const relative = path.relative(path.resolve(directory), path.resolve(candidate));
-  return (
-    relative === '' ||
-    (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))
+/** 候选路径在授权范围内的三种归属。 */
+type BashPathScope = 'workspace' | 'wiki' | 'escape';
+
+/** 命令中出现的绝对路径与显式相对路径候选（`/x`、`./x`、`../x`）。 */
+function bashPathCandidates(command: string): string[] {
+  return (command.match(/(?:^|\s)(\/[^\s;|&]+|\.\.?\/[^\s;|&]+)/g) || []).map((candidate) =>
+    candidate.trim(),
   );
+}
+
+/**
+ * 判断候选路径是否落在根目录内。
+ * @param base `cwd` 按进程工作目录绝对化（cwd 参数为绝对路径）；`root` 以根目录为基准解析相对候选
+ * @returns 路径是否位于该根目录内部
+ */
+function isInsideRoot(candidate: string, root: string, base: 'cwd' | 'root'): boolean {
+  const absoluteRoot = path.resolve(root);
+  const resolved = base === 'cwd' ? path.resolve(candidate) : path.resolve(absoluteRoot, candidate);
+  return resolved === absoluteRoot || resolved.startsWith(`${absoluteRoot}${path.sep}`);
+}
+
+/** 归类候选路径的授权级别：工作区内、仅在 Wiki 根目录内，或越界。 */
+function classifyBashPath(
+  candidate: string,
+  scope: BashScope,
+  base: 'cwd' | 'root',
+): BashPathScope {
+  if (isInsideRoot(candidate, scope.workspace, base)) return 'workspace';
+  if (scope.wikiRoot && isInsideRoot(candidate, scope.wikiRoot, base)) return 'wiki';
+  return 'escape';
+}
+
+/**
+ * Wiki 根目录必须显式配置、可解析为绝对路径且不是文件系统根，
+ * 否则一次批准就会放行整块磁盘。
+ * @returns 可信的 Wiki 根目录绝对路径，或 null
+ */
+function trustedWikiRoot(wikiPath: string | undefined): string | null {
+  if (!wikiPath) return null;
+  const resolved = path.resolve(wikiPath);
+  return path.parse(resolved).root === resolved ? null : resolved;
+}
+
+/**
+ * 评估 Bash 的路径授权范围。
+ * @returns 否决/审批决议；null 表示命令与 cwd 全部落在默认工作区内
+ */
+function evaluateBashScope(
+  command: string,
+  cwd: unknown,
+  scope: BashScope,
+): ToolPolicyDecision | null {
+  const cwdScope = typeof cwd === 'string' ? classifyBashPath(cwd, scope, 'cwd') : null;
+  if (cwdScope === 'escape') return { action: 'deny', reason: 'Bash 工作目录超出允许范围' };
+
+  const pathScopes = bashPathCandidates(command).map((candidate) =>
+    classifyBashPath(candidate, scope, 'root'),
+  );
+  if (pathScopes.includes('escape'))
+    return { action: 'deny', reason: 'Bash 命令访问了允许工作目录之外的路径' };
+  if (cwdScope === 'wiki' || pathScopes.includes('wiki'))
+    return { action: 'approval_required', reason: 'Bash 命令访问 Wiki 知识库目录，需要用户批准' };
+  return null;
 }
 
 /** 只消费结构化工具调用数据的默认策略。 */
@@ -88,14 +141,13 @@ export function evaluateToolPolicy(input: PolicyInput): ToolPolicyDecision {
 
   if (toolName === 'bash' && typeof args === 'object' && args !== null) {
     const command = String((args as { command?: unknown }).command || '');
-    const directory = context.allowedWorkingDirectory ?? getMintWorkspacePath();
-    const cwd = (args as { cwd?: unknown }).cwd;
-    if (directory && typeof cwd === 'string' && !pathStaysInDirectory(cwd, directory)) {
-      return { action: 'deny', reason: 'Bash 工作目录超出允许范围' };
-    }
-    if (directory && !bashPathsStayInDirectory(command, directory)) {
-      return { action: 'deny', reason: 'Bash 命令访问了允许工作目录之外的路径' };
-    }
+    const scope: BashScope = {
+      workspace: context.allowedWorkingDirectory || getMintWorkspacePath(),
+      // 用户显式配置的 Wiki 根目录位于工作区之外：允许触达，但每次都需要用户批准。
+      wikiRoot: trustedWikiRoot(context.wikiPath),
+    };
+    const scoped = evaluateBashScope(command, (args as { cwd?: unknown }).cwd, scope);
+    if (scoped) return scoped;
     if (isHighRiskBashCommand(command)) {
       return { action: 'approval_required', reason: 'Bash 命令可能修改系统或访问敏感目录' };
     }
@@ -110,13 +162,13 @@ export function evaluateToolPolicy(input: PolicyInput): ToolPolicyDecision {
     if (action === 'query_nodes') return { action: 'allow' };
   }
 
+  // 按输入条件审批的工具（http_fetch / bash / knowledge_graph）已在上面各自的分支中返回决策，
+  // 不会走到这里。'conditional' 落到这里说明工具声明了条件却没有实现对应分支，
+  // 因此按最保守解释处理为需要审批，而不是靠一份硬编码的工具名名单来放行。
   if (
     metadata.approvalMode === 'always' ||
+    metadata.approvalMode === 'conditional' ||
     (metadata.approvalMode === undefined && metadata.sideEffect !== 'none') ||
-    (metadata.approvalMode === 'conditional' &&
-      toolName !== 'http_fetch' &&
-      toolName !== 'bash' &&
-      toolName !== 'knowledge_graph') ||
     metadata.requiresApproval ||
     metadata.riskLevel === 'critical' ||
     (metadata.source === 'mcp' && metadata.sideEffect === 'external')

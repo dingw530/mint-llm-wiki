@@ -121,6 +121,13 @@ export type ToolExecutionMode = 'sync' | 'async';
 export type ToolSource = 'builtin' | 'mcp';
 export type ToolRiskLevel = 'low' | 'medium' | 'high' | 'critical';
 export type ToolSideEffect = 'none' | 'filesystem' | 'network' | 'external';
+/**
+ * 工具元数据声明的审批模式。
+ * - `none`：元数据不要求审批。
+ * - `always`：始终要求审批。
+ * - `conditional`：审批条件由工具自身在 `evaluateToolPolicy` 的分支中裁决（参见 bash / http_fetch /
+ *   knowledge_graph）。若工具声明了 `conditional` 却没有实现对应分支，策略会按最保守解释处理为需要审批。
+ */
 export type ToolApprovalMode = 'none' | 'conditional' | 'always';
 
 export interface ToolMetadata {

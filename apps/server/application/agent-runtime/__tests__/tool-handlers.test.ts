@@ -498,6 +498,62 @@ describe('BashTool', () => {
     );
     expect(perm.allowed).toBe(false);
   });
+
+  // tmpDir 在 beforeEach 中创建，因此用例表按 wiki 根目录惰性构造。
+  const wikiContentReads = (wiki: string) => [
+    `cat ${wiki}/pages/secret.md`,
+    `head -50 ${wiki}/pages/secret.md`,
+    `less ${wiki}/pages/secret.md`,
+    `grep -rn TODO ${wiki}/pages`,
+    `rg TODO ${wiki}/pages`,
+    `sed -n '1,20p' ${wiki}/pages/secret.md`,
+    `awk '{print}' ${wiki}/pages/secret.md`,
+    `sort ${wiki}/pages/secret.md`,
+    `diff ${wiki}/pages/a.md ${wiki}/pages/b.md`,
+    `cat ${path.basename(wiki)}/pages/secret.md`,
+  ];
+  const nonContentWikiCommands = (wiki: string) => [
+    // 写：heredoc 重定向，内容不进入对话
+    `cat > ${wiki}/fix.py <<'EOF'\nprint('${wiki}')\nEOF`,
+    // 写：就地改写
+    `sed -i 's/a/b/' ${wiki}/pages/secret.md`,
+    `sed -i.bak 's/a/b/' ${wiki}/pages/secret.md`,
+    `perl -pi -e 's/a/b/' ${wiki}/pages/secret.md`,
+    `gawk -i inplace '{print}' ${wiki}/pages/secret.md`,
+    // 不输出文件内容
+    `ls ${wiki}/pages`,
+    `find ${wiki} -name '*.md'`,
+    `cd ${wiki} && ls`,
+    `wc -l ${wiki}/pages/secret.md`,
+    // 目录名只出现在别的文件名里，不算引用 Wiki
+    `cat /tmp/notes-${path.basename(wiki)}.md`,
+    `grep -rn TODO /tmp/other`,
+    'echo done',
+  ];
+
+  it('blocks content-printing reads of the Wiki', () => {
+    for (const command of wikiContentReads(tmpDir)) {
+      expect(tool.checkPermission({ command }, { ...ctx, wikiPath: tmpDir }).allowed, command).toBe(
+        false,
+      );
+    }
+  });
+
+  it('does not block write or non-content commands against the Wiki', () => {
+    for (const command of nonContentWikiCommands(tmpDir)) {
+      expect(tool.checkPermission({ command }, { ...ctx, wikiPath: tmpDir }).allowed, command).toBe(
+        true,
+      );
+    }
+  });
+
+  it('keeps blocking wiki reads when stdout is piped but not redirected', () => {
+    const perm = tool.checkPermission(
+      { command: `cat ${tmpDir}/pages/secret.md 2>/dev/null | head` },
+      { ...ctx, wikiPath: tmpDir },
+    );
+    expect(perm.allowed).toBe(false);
+  });
 });
 
 // ══════════════════════════════════════════
