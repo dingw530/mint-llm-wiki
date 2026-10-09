@@ -60,8 +60,9 @@ export class WikiIngestTool extends BaseTool<WikiIngestInput, WikiIngestOutput> 
     return false;
   }
 
+  /** 摄入仅把资料登记为后台任务，工具调用本身无立即副作用，因此无需用户审批。 */
   getMetadata(): ToolMetadata {
-    return { ...super.getMetadata(), retrySafety: 'idempotency_key' };
+    return { ...super.getMetadata(), approvalMode: 'none', retrySafety: 'idempotency_key' };
   }
 
   validate(input: unknown): { valid: boolean; error?: string } {

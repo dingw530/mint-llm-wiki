@@ -33,6 +33,7 @@ import { WikiIngestTool } from '../wiki-ingest-tool.js';
 import { wikiIngestionJobService } from '../../../wiki/wiki-ingestion-job-service.js';
 import { ToolExecutor } from '../../../../application/agent-runtime/tooling/tool-executor.js';
 import { ToolRegistry } from '../../../../application/agent-runtime/tooling/tool-registry.js';
+import { evaluateToolPolicy } from '../../../../application/agent-runtime/tooling/tool-policy.js';
 
 const ctx = { conversationId: 'test-conv' };
 
@@ -51,6 +52,19 @@ describe('WikiIngestTool', () => {
     expect(tool.isIdempotent()).toBe(false);
     expect(tool.executionMode).toBe('async');
     expect(tool.executionTimeoutMs).toBe(120000);
+    // 写侧工具默认要求审批，wiki_ingest 显式退出审批以直接受理摄入任务。
+    expect(tool.getMetadata().approvalMode).toBe('none');
+  });
+
+  it('should be allowed by the tool policy without approval', () => {
+    expect(
+      evaluateToolPolicy({
+        toolName: 'wiki_ingest',
+        metadata: tool.getMetadata(),
+        input: { source: '# Hello' },
+        context: ctx,
+      }),
+    ).toEqual({ action: 'allow' });
   });
 
   it('should ingest source text', async () => {
