@@ -60,3 +60,5 @@
 | [外部服务韧性治理](../changes/2026-09-08-external-service-resilience/design-doc.md)                             | 2026-09-08 | 已完成 |
 | [启动与关闭生命周期整改](../changes/2026-09-11-server-lifecycle-remediation/design-doc.md)                      | 2026-09-11 | 已完成 |
 | [Jev 实验性接入（路由与记忆分类）](../changes/2026-09-19-jev-experimental-integration/design-doc.md)            | 2026-09-19 | 已完成 |
+| [Electron 自动更新与版本发布](../changes/2026-10-15-electron-auto-update-release/design-doc.md)                 | 2026-10-15 | 已完成 |
+| [Wiki 知识页增量合并](../changes/2026-10-16-wiki-knowledge-merge/design-doc.md)                                  | 2026-10-16 | 已完成 |

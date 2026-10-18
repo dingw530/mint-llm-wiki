@@ -1,0 +1,151 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "标题或显式别名精确匹配时，新内容写入已有规范路径，保留原标题且不生成重复页。",
+      "risk": "high",
+      "invariants": ["canonical_path", "no_content_loss", "no_duplicate_page"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-integration"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "Jev 开启时只对唯一高置信同一对象候选执行合并；低置信或不同对象保留新页。",
+      "risk": "high",
+      "invariants": ["confidence_gate", "unique_target", "no_content_loss"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-provider", "wiki-identity-integration"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "Jev 关闭时调用 LLM 身份判断，LLM 目标必须属于候选集，否则保留新页。",
+      "risk": "high",
+      "invariants": ["provider_selection", "candidate_path_allowlist", "no_content_loss"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-provider", "wiki-identity-integration"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "Jev 未配置、超时、网络失败或响应无效时回退 LLM；两者都失败时不合并且保留内容。",
+      "risk": "high",
+      "invariants": ["fallback_once", "bounded_timeout", "no_content_loss"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-provider", "wiki-identity-integration"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "标题相似但身份不同的页面仍被写入，不会被标题阈值直接删除。",
+      "risk": "high",
+      "invariants": ["no_false_merge", "no_content_loss", "no_path_overwrite"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-integration"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "映射到同一规范页的多条新页面在一次合并中全部保留。",
+      "risk": "high",
+      "invariants": ["single_write_per_target", "no_content_loss", "ordering"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-integration"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "合并后 Markdown、Source manifest、Claim lifecycle、搜索索引与知识图谱使用相同规范路径且原始归档不变。",
+      "risk": "high",
+      "invariants": ["source_immutable", "canonical_path", "cross_store_consistency"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-identity-ingestion-integration"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "Jev Wiki 身份开关默认关闭，设置保存后重新载入仍回显所选状态。",
+      "risk": "medium",
+      "invariants": ["default_off", "settings_round_trip"],
+      "requiredEvidence": ["unit", "integration", "browser"],
+      "probes": ["settings-unit", "settings-api-integration", "browser-ac"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "标题和每个 alias 独立召回最多 5 个分数不低于 0.75 的候选；候选按路径去重后合并，且只交给既有身份判断器，不直接触发合并。",
+      "risk": "medium",
+      "invariants": [
+        "per_query_top_k",
+        "per_page_candidate_scope",
+        "dedupe_candidates",
+        "no_similarity_only_merge"
+      ],
+      "requiredEvidence": ["unit"],
+      "probes": ["wiki-identity-candidate-recall"]
+    },
+    {
+      "id": "AC-010",
+      "statement": "wiki_merge 仅接受安全的现有 Wiki pages Markdown sourcePath；无效路径拒绝且不写入。",
+      "risk": "high",
+      "invariants": ["source_path_within_pages", "no_path_traversal", "no_write_on_invalid_input"],
+      "requiredEvidence": ["unit", "integration"],
+      "probes": ["wiki-merge-tool", "wiki-merge-integration"]
+    },
+    {
+      "id": "AC-011",
+      "statement": "工具排除源页自身；无候选、different、uncertain 或 provider unavailable 时 source 和 target 均不变。",
+      "risk": "high",
+      "invariants": ["per_page_candidate_scope", "no_mutation_on_no_match", "source_page_retained"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-merge-integration"]
+    },
+    {
+      "id": "AC-012",
+      "statement": "Jev 优先及其唯一高置信 gate、LLM fallback 和 candidate-path allowlist 与摄入规则一致。",
+      "risk": "high",
+      "invariants": ["confidence_gate", "provider_selection", "candidate_path_allowlist"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-merge-integration"]
+    },
+    {
+      "id": "AC-013",
+      "statement": "成功 merge 保留目标路径/title，并保留两页正文和 tags/aliases；unsafe LLM output 使用 deterministic append。",
+      "risk": "high",
+      "invariants": ["canonical_target", "no_content_loss", "metadata_union"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-merge-integration"]
+    },
+    {
+      "id": "AC-014",
+      "statement": "源页 Markdown 快照在活动文件删除前归档；生命周期旧版本和新目标 Claims 保留。",
+      "risk": "high",
+      "invariants": ["revision_snapshot_before_delete", "lifecycle_history", "claims_on_target"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-merge-integration"]
+    },
+    {
+      "id": "AC-015",
+      "statement": "成功后 Wiki links、manifest、graph references 与 search docs 都指向规范目标，sourcePath 不再活动索引。",
+      "risk": "high",
+      "invariants": [
+        "links_remapped",
+        "manifest_consistency",
+        "graph_consistency",
+        "search_index_consistency"
+      ],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-merge-integration"]
+    },
+    {
+      "id": "AC-016",
+      "statement": "跨存储提交失败时源页活动文件保留，归档快照和目标写入可恢复。",
+      "risk": "high",
+      "invariants": ["rollback", "source_page_retained", "no_content_loss"],
+      "requiredEvidence": ["integration"],
+      "probes": ["wiki-merge-integration"]
+    },
+    {
+      "id": "AC-017",
+      "statement": "工具始终要求用户审批且不可自动重试；未获批准时无文件或数据库副作用。",
+      "risk": "high",
+      "invariants": ["approval_required", "retry_never", "no_write_without_approval"],
+      "requiredEvidence": ["unit", "integration"],
+      "probes": ["wiki-merge-tool"]
+    }
+  ]
+}

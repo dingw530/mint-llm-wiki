@@ -1,0 +1,55 @@
+{
+  "scenarios": [
+    {
+      "id": "browser-jev-wiki-identity-toggle",
+      "name": "保存并回显 Jev Wiki 身份判断开关",
+      "acceptanceCriteria": ["AC-008"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["Content Security Policy directive"],
+      "setup": {
+        "routes": [
+          { "pattern": "**/api/agents", "method": "GET", "body": { "agents": [] } },
+          { "pattern": "**/api/endpoints", "method": "GET", "body": { "endpoints": [] } },
+          { "pattern": "**/api/conversations", "method": "GET", "body": { "conversations": [] } },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "systemPrompt": "",
+              "wikiPath": "",
+              "wikiSearchMode": "keyword",
+              "vectorStore": "sqlite",
+              "chromaUrl": "http://127.0.0.1:8000",
+              "jevApiUrl": "https://api.typesafe.ai/v1/systemone",
+              "jevModel": "jev-latest",
+              "jevApiKeyMasked": "",
+              "jevWikiIdentityEnabled": false,
+              "jevRoutingEnabled": false,
+              "jevRoutingMinConfidence": 0.5,
+              "jevMemoryEnabled": false,
+              "jevMemoryGateThreshold": 0.4,
+              "jevRerankEnabled": false
+            }
+          },
+          { "pattern": "**/api/settings", "method": "PUT", "body": { "success": true } }
+        ]
+      },
+      "steps": [
+        { "action": "click", "target": { "css": ".sidebar-header-settings" } },
+        { "action": "waitFor", "target": { "role": "dialog", "name": "设置" } },
+        { "action": "click", "target": { "role": "button", "name": "实验性功能" } },
+        { "action": "waitFor", "target": { "role": "button", "name": "启用 Jev Wiki 身份判断" } },
+        { "action": "waitFor", "text": "已关闭：使用当前 LLM 判断。" },
+        { "action": "click", "target": { "role": "button", "name": "启用 Jev Wiki 身份判断" } },
+        { "action": "waitFor", "text": "已启用：优先使用 Jev，调用失败时回退到 LLM。" },
+        { "action": "click", "target": { "role": "button", "name": "保存" } },
+        { "action": "waitFor", "text": "设置已保存" },
+        { "action": "assertRequests" }
+      ],
+      "assertRequests": [
+        { "method": "GET", "contains": "/api/settings", "status": 200 },
+        { "method": "PUT", "contains": "/api/settings", "status": 200 }
+      ]
+    }
+  ]
+}

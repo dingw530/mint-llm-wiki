@@ -1,0 +1,98 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "所有第一方 workspace 版本与根版本一致，发布 tag 校验正确",
+      "risk": "medium",
+      "requiredEvidence": ["unit"],
+      "invariants": ["version_consistency", "tag_matches_root_version"],
+      "probes": ["release-version-check"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "打包应用启动时检查并下载更新，开发模式跳过更新源",
+      "risk": "high",
+      "requiredEvidence": ["unit", "process-smoke"],
+      "invariants": [
+        "production_feed_packaged_only",
+        "dev_default_skips_update",
+        "download_available_update"
+      ],
+      "probes": ["updater-unit", "electron-smoke"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "更新提示可忽略当前版本；明确选择安装时先完成本地 Server 优雅关闭",
+      "risk": "high",
+      "requiredEvidence": ["integration", "browser", "process-smoke"],
+      "invariants": [
+        "shutdown_before_install",
+        "install_requires_user_action",
+        "ignored_version_stays_ignored"
+      ],
+      "probes": ["updater-lifecycle", "browser-ac", "electron-smoke"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "更新失败时应用继续运行，日志不包含凭据",
+      "risk": "high",
+      "requiredEvidence": ["unit"],
+      "invariants": [
+        "update_failure_keeps_app_running",
+        "logs_exclude_credentials",
+        "download_rejection_handled"
+      ],
+      "probes": ["updater-unit"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "Release 包含版本匹配的 macOS 安装包、ZIP 和更新元数据",
+      "risk": "high",
+      "requiredEvidence": ["process-smoke", "static"],
+      "invariants": ["release_tag_matches_artifact", "mac_update_metadata_present"],
+      "probes": ["electron-artifact", "release-workflow-static"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "缺少签名配置时不会发布正式更新产物",
+      "risk": "medium",
+      "requiredEvidence": ["static"],
+      "invariants": ["unsigned_artifact_not_published"],
+      "probes": ["release-workflow-static"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "开发自动更新仅由显式开关和 loopback URL 启用；下载后显示 Mint toast，但不安装",
+      "risk": "medium",
+      "requiredEvidence": ["unit", "browser"],
+      "invariants": ["dev_update_opt_in", "local_feed_only", "dev_download_never_installs"],
+      "probes": ["dev-update-source", "browser-ac"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "更新源模式、检查、版本发现和下载完成会记录脱敏日志",
+      "risk": "low",
+      "requiredEvidence": ["unit"],
+      "invariants": [
+        "update_check_logged",
+        "update_available_logged",
+        "update_downloaded_logged",
+        "no_feed_url_in_logs"
+      ],
+      "probes": ["updater-event-logs"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "关于页展示当前版本并检查已启用的更新源，结果状态清晰",
+      "risk": "medium",
+      "requiredEvidence": ["unit", "browser"],
+      "invariants": [
+        "check_uses_configured_source",
+        "available_update_auto_downloads",
+        "status_reports_result"
+      ],
+      "probes": ["updater-unit", "browser-ac"]
+    }
+  ]
+}
