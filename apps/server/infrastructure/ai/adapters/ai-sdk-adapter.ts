@@ -50,9 +50,10 @@ export function createAiSdkAdapter(
     toModelTools,
 
     async stream(messages, settings, apiUrl, apiKey, tools, options): Promise<AdapterStream> {
+      const prompt = toModelPrompt(messages, settings.systemPrompt || '');
       const result = streamText({
         model: createModel(apiUrl, apiKey, settings),
-        messages: toModelMessages(messages, settings.systemPrompt || ''),
+        ...prompt,
         tools: toModelTools(tools),
         toolChoice: tools && tools.length > 0 ? 'auto' : undefined,
         abortSignal: options?.signal ?? AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
@@ -70,9 +71,10 @@ export function createAiSdkAdapter(
     },
 
     async call(messages, settings, apiUrl, apiKey, options): Promise<string> {
+      const prompt = toModelPrompt(messages, settings.systemPrompt || '');
       const result = await generateText({
         model: createModel(apiUrl, apiKey, settings),
-        messages: toModelMessages(messages, settings.systemPrompt || ''),
+        ...prompt,
         maxOutputTokens: options?.maxTokens ?? 4096,
         temperature: options?.temperature,
         abortSignal: options?.signal ?? AbortSignal.timeout(AI_REQUEST_TIMEOUT_MS),
@@ -88,6 +90,16 @@ export function createAiSdkAdapter(
 
       return result.text;
     },
+  };
+}
+
+/** Move system history into the AI SDK's dedicated system option. */
+function toModelPrompt(messages: HistoryMessage[], systemPrompt: string) {
+  const modelMessages = toModelMessages(messages, systemPrompt);
+  const systemMessages = modelMessages.filter((message) => message.role === 'system');
+  return {
+    ...(systemMessages.length ? { system: systemMessages } : {}),
+    messages: modelMessages.filter((message) => message.role !== 'system'),
   };
 }
 
