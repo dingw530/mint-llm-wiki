@@ -1974,6 +1974,88 @@ body::after {
   border: 1px solid var(--error-border);
 }
 
+.update-toast {
+  position: fixed;
+  z-index: 1000;
+  top: 20px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 18px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  animation: toastDrop 0.4s var(--ease-spring);
+  font-family: var(--font-body);
+}
+
+.update-toast__copy {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.update-toast__copy strong {
+  font-size: 13px;
+}
+
+.update-toast__copy span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.update-toast__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.update-toast__actions button {
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.update-toast__actions .update-toast__install {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.update-toast__actions button:hover {
+  filter: brightness(1.08);
+}
+
+.update-toast__actions button:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.6;
+}
+
+@media (max-width: 560px) {
+  .update-toast {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .update-toast__actions {
+    justify-content: flex-end;
+  }
+}
+
 /* --------------------------------------------
    Scrollbar — Subtle accent
    -------------------------------------------- */

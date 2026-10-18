@@ -1,7 +1,7 @@
 {
   "name": "mint-ai-chat-project",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "scripts": {
     "dev": "concurrently -n server,client -c yellow,cyan \"npm run dev -w mint-server\" \"npm run dev -w mint-client\"",
@@ -17,6 +17,7 @@
     "verify:source": "node scripts/verify-change.mjs --profile source",
     "verify:change": "node scripts/verify-change.mjs",
     "verify:electron-artifact:mac": "node scripts/verify-electron-artifact.mjs",
+    "check:release-version": "node scripts/check-release-version.mjs",
     "harness:test": "node --test .harness/tests",
     "harness:inspect": "node .harness/cli.mjs inspect",
     "harness:check": "node .harness/cli.mjs check",

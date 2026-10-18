@@ -358,6 +358,16 @@ export interface StreamReturn {
 // ── Electron IPC API 类型 ──
 
 export interface ElectronAPI {
+  getAppVersion: () => Promise<string>;
+  checkForUpdates: () => Promise<{
+    status: 'current' | 'available' | 'disabled' | 'error';
+    availableVersion?: string;
+    message?: string;
+  }>;
+  onUpdateDownloaded: (
+    callback: (update: { version: string; mode: 'local-test' | 'packaged' }) => void,
+  ) => () => void;
+  installDownloadedUpdate: () => Promise<{ success: boolean }>;
   isElectron: boolean;
   platform?: string;
 

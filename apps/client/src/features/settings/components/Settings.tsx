@@ -9,6 +9,7 @@ import SkillsPanel from './SkillsPanel';
 import WikiPanel from './WikiPanel';
 import BashSecurityPanel from './BashSecurityPanel';
 import ExperimentalPanel from './ExperimentalPanel';
+import AboutPanel from './AboutPanel';
 import { createEmptyJevFormState, createJevFormState, toJevSettingsInput } from './jevForm';
 import type { JevFormState } from './jevForm';
 import type { VisibleSettings } from '@/types';
@@ -159,6 +160,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
     { id: 'memories', label: '记忆', icon: 'memory' as const },
     { id: 'wiki', label: '知识库', icon: 'wiki' as const },
     { id: 'experimental', label: '实验性功能', icon: 'flask' as const },
+    { id: 'about', label: '关于', icon: 'info' as const },
   ];
 
   const tabIcon: Record<string, React.ReactNode> = {
@@ -207,6 +209,11 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
     flask: (
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M9 2h6v2h-1v5.17l4.53 7.55A3.5 3.5 0 0115.53 22H8.47a3.5 3.5 0 01-3-5.28L10 9.17V4H9V2zm3 8.28l-4.81 8.01A1.5 1.5 0 008.47 20h7.06a1.5 1.5 0 001.28-2.27L12 10.28zM8.8 16h6.4l1.2 2H7.6l1.2-2z" />
+      </svg>
+    ),
+    info: (
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
       </svg>
     ),
   };
@@ -306,6 +313,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
                 onJevChange={(patch) => setJev((prev) => ({ ...prev, ...patch }))}
               />
             )}
+            {activeTab === 'about' && <AboutPanel />}
           </div>
         </div>
         {activeTab !== 'endpoints' &&
@@ -313,7 +321,8 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
           activeTab !== 'agents' &&
           activeTab !== 'skills' &&
           activeTab !== 'bash' &&
-          activeTab !== 'memories' && (
+          activeTab !== 'memories' &&
+          activeTab !== 'about' && (
             <div className="modal-actions">
               <button className="btn-secondary" onClick={onClose}>
                 取消

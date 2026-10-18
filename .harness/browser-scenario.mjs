@@ -316,6 +316,11 @@ async function executeStep(scenario, step, index, scenarioDir) {
     case 'reload':
       run(['reload']);
       return;
+    case 'dispatchCustomEvent':
+      runPageCode(
+        `window.dispatchEvent(new CustomEvent(${JSON.stringify(step.name)}, { detail: ${JSON.stringify(step.detail ?? null)} }));`,
+      );
+      return;
     default:
       throw new Error(`${label} 不支持的 action：${step.action}`);
   }

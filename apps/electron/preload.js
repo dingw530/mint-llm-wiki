@@ -1,9 +1,23 @@
 /* eslint-disable no-undef, @typescript-eslint/no-require-imports */
 const { contextBridge, ipcRenderer } = require('electron');
+let latestDownloadedUpdate = null;
+
+ipcRenderer.on('updater:downloaded', (_event, update) => {
+  latestDownloadedUpdate = update;
+});
 
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
   platform: process.platform,
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  onUpdateDownloaded: (callback) => {
+    const listener = (_event, update) => callback(update);
+    ipcRenderer.on('updater:downloaded', listener);
+    if (latestDownloadedUpdate) callback(latestDownloadedUpdate);
+    return () => ipcRenderer.removeListener('updater:downloaded', listener);
+  },
+  installDownloadedUpdate: () => ipcRenderer.invoke('updater:install-downloaded'),
 
   // ── 流式对话 ──
   sendMessage: (convId, content, agent, regenerate, slashCommand) =>
