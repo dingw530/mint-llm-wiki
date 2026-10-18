@@ -328,6 +328,7 @@ export interface SendCallbacks {
   onAnswerReady?: (content: string) => void;
   onRunStarted?: (data: Record<string, unknown>) => void;
   onRoundStarted?: (data: Record<string, unknown>) => void;
+  onSubagentStatus?: (data: Record<string, unknown>) => void;
   onAgentStatus?: (data: Record<string, unknown>) => void;
   onLoopDetected?: (data: Record<string, unknown>) => void;
   onRunCompleted?: (data: Record<string, unknown>) => void;

@@ -118,10 +118,12 @@ export default function ChatAreaView({
     <div className="main-area">
       <ChatHeader title={title} />
       <div className="chat-area">
-        {showReactSteps && (decisionTrace.length > 0 || agentRunStatus) && (
+        {(agentRunStatus || (showReactSteps && decisionTrace.length > 0)) && (
           <div className="chat-top-status">
-            {agentRunStatus && <AgentRunStatus status={agentRunStatus} />}
-            {decisionTrace.length > 0 && <DecisionTrace items={decisionTrace} />}
+            {agentRunStatus && (
+              <AgentRunStatus status={agentRunStatus} onToolApproval={onToolApproval} />
+            )}
+            {showReactSteps && decisionTrace.length > 0 && <DecisionTrace items={decisionTrace} />}
           </div>
         )}
         {!endpointsLoading && !chatEnabled && messages.length === 0 && !connectionMode && (

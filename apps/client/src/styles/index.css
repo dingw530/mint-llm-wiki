@@ -3921,11 +3921,12 @@ body::after {
 }
 
 .agent-run-status {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   width: auto;
-  max-width: none;
+  max-width: min(100%, 720px);
   padding: 7px 2px;
   border: 0;
   border-radius: 0;
@@ -3933,8 +3934,9 @@ body::after {
   box-shadow: none;
   color: var(--text-secondary);
   font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
+  white-space: normal;
+  overflow: visible;
+  pointer-events: auto;
 }
 
 .agent-run-status-pulse {
@@ -3969,6 +3971,34 @@ body::after {
 .agent-run-status-warning,
 .agent-run-status-error {
   color: var(--error-text, #c55);
+}
+.agent-run-status-summary,
+.agent-run-subagent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.agent-run-subagent {
+  padding-left: 15px;
+}
+.agent-run-subagent-reason {
+  color: var(--text-secondary);
+}
+.agent-run-subagent-actions {
+  display: inline-flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.agent-run-subagent-actions button {
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .decision-trace summary {

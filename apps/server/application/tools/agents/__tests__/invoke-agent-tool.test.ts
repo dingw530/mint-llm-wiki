@@ -18,6 +18,8 @@ vi.mock('../../../../bootstrap/agent-runtime.js', () => ({
 import * as agentService from '../../../../domains/agents/index.js';
 import * as settingsService from '../../../../application/settings/settings-service.js';
 import { runAgentChat as reactChat } from '../../../../bootstrap/agent-runtime.js';
+import { AgentRun, agentRunRegistry } from '../../../../agent-runtime/agent-run.js';
+import type { Agent, AiSettings } from '../../../../types.js';
 import { InvokeAgentTool } from '../invoke-agent-tool.js';
 
 const ctx = { conversationId: 'test-conv' };
@@ -140,6 +142,81 @@ describe('InvokeAgentTool', () => {
     expect(result.agentId).toBe('worker');
     expect(result.toolCalls).toBe(1);
     expect(result.duration).toBeGreaterThanOrEqual(0);
+  });
+
+  it('publishes child approval state to the parent run without replacing its conversation owner', async () => {
+    vi.mocked(agentService.findById).mockReturnValue({
+      id: 'worker',
+      name: 'Worker',
+      description: '',
+      type: 'worker',
+      systemPrompt: '',
+      mcpServerIds: [],
+      available: true,
+      errorMessage: null,
+      triggerKeywords: [],
+      createdAt: '',
+      updatedAt: '',
+    } satisfies Agent);
+    vi.mocked(settingsService.getAiSettings).mockReturnValue({
+      apiUrl: 'https://api.example.com',
+      apiKey: 'sk-test',
+      modelId: 'model',
+      apiType: 'openai',
+      systemPrompt: '',
+      thinkingMode: false,
+      memoryEnabled: false,
+      reactMaxIterations: 5,
+      toolMaxRetries: 0,
+      showReactSteps: true,
+      maxContextRounds: 10,
+      wikiPath: '',
+      wikiMaxFileSize: 0,
+      wikiSearchMode: 'keyword',
+      embeddingApiUrl: '',
+      embeddingModel: '',
+      embeddingDimensions: 0,
+      vectorStore: 'sqlite',
+      chromaUrl: '',
+      chromaApiKey: '',
+    } satisfies AiSettings);
+    agentRunRegistry.clear();
+    const parent = new AgentRun({ runId: 'parent-run', conversationId: 'test-conv' });
+    const child = new AgentRun({ runId: 'child-run', conversationId: 'test-conv' });
+    agentRunRegistry.register(parent);
+
+    vi.mocked(reactChat).mockImplementation(async (_messages, _settings, sink) => {
+      agentRunRegistry.register(child);
+      child.subscribe((event) => sink.writeEvent?.(event));
+      child.publish({ type: 'run_started', state: 'running' });
+      child.publish({
+        type: 'approval_required',
+        round: 1,
+        callId: 'child-call',
+        toolName: 'write_file',
+        approvalId: 'child-approval',
+        reason: 'confirm write',
+      });
+      return { content: '', reasoning: '', toolCalls: [] };
+    });
+    const parentEvents: Array<{ type: string; [key: string]: unknown }> = [];
+    parent.subscribe((event) => parentEvents.push(event));
+
+    await tool.execute(
+      { agent_id: 'worker', task: 'write something' },
+      { ...ctx, runId: 'parent-run' },
+    );
+
+    expect(parentEvents).toContainEqual(
+      expect.objectContaining({
+        type: 'subagent_status',
+        childRunId: 'child-run',
+        status: 'awaiting_parent_action',
+        approvalId: 'child-approval',
+      }),
+    );
+    expect(agentRunRegistry.getByConversation('test-conv')).toBe(child);
+    agentRunRegistry.clear();
   });
 
   it('should handle agent execution failure', async () => {

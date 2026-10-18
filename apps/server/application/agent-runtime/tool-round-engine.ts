@@ -10,7 +10,11 @@ import type {
   ParsedChunk,
 } from '../../infrastructure/ai/adapters/api-adapter.js';
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
-import { executeTool, executeToolDetailed, getToolResultSummary } from './tool-execution-service.js';
+import {
+  executeTool,
+  executeToolDetailed,
+  getToolResultSummary,
+} from './tool-execution-service.js';
 import { createLogger } from '../../infrastructure/observability/logger.js';
 import type { Sink } from '../../agent-runtime/output-sink.js';
 import type { ReactEventPayload } from '../../agent-runtime/react-events.js';
@@ -226,8 +230,9 @@ export class ToolLoopEngine {
         execution = {
           success: false,
           error: getErrorMessage(error),
-          errorCode: 'TOOL_FAILED',
+          errorCode: 'OUTCOME_UNKNOWN',
           retryable: false,
+          outcomeUnknown: true,
           duration: 0,
         };
       }
@@ -258,9 +263,9 @@ export class ToolLoopEngine {
           errorCode: execution.errorCode,
           retryable: execution.retryable,
           ...(execution.outcomeUnknown ? { outcomeUnknown: true } : {}),
+          ...(execution.diagnosticError ? { diagnosticError: execution.diagnosticError } : {}),
           ...(approvalRequired ? { approvalRequired } : {}),
         };
-
     const resultStr = await serializeToolResultForContext(toolResult, {
       summary: succeeded ? getToolResultSummary(stableCall, toolResult) : undefined,
       conversationId,
@@ -284,6 +289,8 @@ export class ToolLoopEngine {
       succeeded,
       errorCode: execution.errorCode,
       retryable: execution.retryable,
+      outcomeUnknown: execution.outcomeUnknown,
+      diagnosticError: execution.diagnosticError,
       resultSummary: succeeded ? getToolResultSummary(stableCall, toolResult) : undefined,
       approvalRequired,
       rawResult: toolResult,

@@ -58,6 +58,7 @@ export interface ExecutionResult<T = unknown> {
   errorCode?: ToolErrorCode;
   retryable?: boolean;
   outcomeUnknown?: boolean;
+  diagnosticError?: string;
   duration: number; // 执行时长（毫秒）
   retries?: number; // 实际重试次数
   approvalRequired?: {
@@ -392,6 +393,17 @@ export class ToolExecutor {
         }
         const outcomeUnknown = metadata.sideEffect !== 'none' && !retryable;
         const status: ToolInvocationOutcome = outcomeUnknown ? 'outcome_unknown' : 'failed';
+        log.error('tool_execution_failed', {
+          tool: tool.name,
+          source: metadata.source,
+          conversationId: context.conversationId,
+          duration: Date.now() - startTime,
+          errorCode,
+          outcomeUnknown,
+          retryCount: priorRetries + retryCount,
+          error: redactAuditText(lastError.message),
+          ...(lastError.stack ? { stack: redactAuditText(lastError.stack) } : {}),
+        });
         if (!finishInvocation(context, { status, retryable, errorCode })) {
           return failure(
             'OUTCOME_UNKNOWN',
@@ -399,6 +411,7 @@ export class ToolExecutor {
             startTime,
             {
               outcomeUnknown: true,
+              diagnosticError: redactAuditText(lastError.message),
               retries: retryCount,
             },
           );
@@ -410,22 +423,20 @@ export class ToolExecutor {
             retryCount: priorRetries + retryCount,
           });
         }
-        log.info('tool_execution_failed', {
-          tool: tool.name,
-          source: metadata.source,
-          conversationId: context.conversationId,
-          duration: Date.now() - startTime,
-          errorCode,
-        });
         return failure(
           outcomeUnknown ? 'OUTCOME_UNKNOWN' : errorCode,
           outcomeUnknown
             ? errorCode === 'TIMEOUT'
               ? 'Tool timed out; side-effect outcome is unknown'
               : 'Tool may have produced a side effect; outcome is unknown'
-            : lastError.message,
+            : redactAuditText(lastError.message),
           startTime,
-          { retryable, outcomeUnknown, retries: retryCount },
+          {
+            retryable,
+            outcomeUnknown,
+            ...(outcomeUnknown ? { diagnosticError: redactAuditText(lastError.message) } : {}),
+            retries: retryCount,
+          },
         );
       }
     }
@@ -633,6 +644,7 @@ function failure<T = never>(
     error,
     errorCode,
     retryable: false,
+    outcomeUnknown: false,
     duration: Date.now() - startTime,
     ...extra,
   };

@@ -79,22 +79,22 @@ describe('McpToolAdapter', () => {
     expect(tool.validate({}).valid).toBe(true);
   });
 
-  it('requires approval for MCP reads because remote hints are not authorization', () => {
+  it('keeps MCP calls high-risk but does not require per-call approval', () => {
     const tool = createMcpTool(readToolRecord);
     const meta = tool.getMetadata();
     expect(meta.source).toBe('mcp');
     expect(meta.riskLevel).toBe('high');
-    expect(meta.approvalMode).toBe('always');
+    expect(meta.approvalMode).toBe('none');
     expect(meta.serverName).toBe('filesystem');
   });
 
-  it('should require approval for MCP tools without a trusted read-only annotation', () => {
+  it('does not infer approval requirements from MCP tool side effects', () => {
     const tool = createMcpTool(writeToolRecord);
     expect(tool.getMetadata().riskLevel).toBe('high');
-    expect(tool.getMetadata().approvalMode).toBe('always');
+    expect(tool.getMetadata().approvalMode).toBe('none');
   });
 
-  it('should treat all MCP calls as side-effecting for local approval and retry policy', () => {
+  it('treats MCP calls as side-effecting for retry policy', () => {
     const tool = createMcpTool(readToolRecord);
     expect(tool.isReadOnly()).toBe(false);
     expect(tool.isIdempotent()).toBe(false);
@@ -107,21 +107,23 @@ describe('McpToolAdapter', () => {
     expect(tool.isIdempotent()).toBe(false);
   });
 
-  it('requires approval before invoking MCP read tools too', async () => {
+  it('executes MCP calls without requesting per-call approval', async () => {
+    mockCallTool.mockResolvedValue({ content: 'file content' });
     const tool = createMcpTool(readToolRecord);
     const registry = new ToolRegistry();
     registry.register(tool);
+    const requestApproval = vi.fn(() => 'approval-mcp-1');
     const result = await new ToolExecutor(registry).execute(
       tool.name,
       { path: '/tmp/test.txt' },
-      { ...ctx, requestApproval: () => 'approval-mcp-1' },
+      { ...ctx, requestApproval },
     );
 
-    expect(result).toMatchObject({
-      success: false,
-      approvalRequired: { approvalId: 'approval-mcp-1' },
+    expect(result).toMatchObject({ success: true, data: { content: 'file content' } });
+    expect(requestApproval).not.toHaveBeenCalled();
+    expect(mockCallTool).toHaveBeenCalledWith('filesystem', 'read_file', {
+      path: '/tmp/test.txt',
     });
-    expect(mockCallTool).not.toHaveBeenCalled();
   });
 
   it('should delegate execution to mcpService.callTool', async () => {

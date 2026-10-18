@@ -34,6 +34,8 @@ export interface ToolExecutionResult {
   succeeded: boolean;
   errorCode?: string;
   retryable?: boolean;
+  outcomeUnknown?: boolean;
+  diagnosticError?: string;
   resultSummary?: string;
   approvalRequired?: { approvalId?: string; reason: string };
   rawResult?: unknown;

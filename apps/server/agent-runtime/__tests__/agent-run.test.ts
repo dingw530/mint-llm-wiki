@@ -151,6 +151,20 @@ describe('AgentRunRegistry', () => {
     expect(registry.getByConversation('conversation-5')).toBeUndefined();
   });
 
+  it('restores the parent conversation run when a child run terminates', () => {
+    const registry = new AgentRunRegistry();
+    const parent = new AgentRun({ runId: 'parent-run', conversationId: 'shared-conversation' });
+    const child = new AgentRun({ runId: 'child-run', conversationId: 'shared-conversation' });
+    registry.register(parent);
+    registry.register(child);
+
+    expect(registry.getByConversation('shared-conversation')).toBe(child);
+    child.cancel();
+
+    expect(registry.getByConversation('shared-conversation')).toBe(parent);
+    expect(registry.get('parent-run')).toBe(parent);
+  });
+
   it('cancels every active run during process shutdown', () => {
     const registry = new AgentRunRegistry();
     const first = new AgentRun({ runId: 'run-6' });

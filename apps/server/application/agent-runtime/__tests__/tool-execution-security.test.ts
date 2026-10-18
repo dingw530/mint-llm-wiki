@@ -211,6 +211,35 @@ describe('tool runtime security policy', () => {
     );
   });
 
+  it('logs the redacted original error and stack for a failed side-effect tool', async () => {
+    const tool = new SideEffectTool();
+    tool.execute.mockRejectedValue(new Error('wiki merge failed token=secret-value'));
+    const registry = new ToolRegistry();
+    registry.register(tool);
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    try {
+      const result = await new ToolExecutor(registry).execute(
+        tool.name,
+        { value: 'source-page' },
+        { ...context, approvalGranted: true },
+      );
+      const logs = writeSpy.mock.calls.map(([chunk]) => String(chunk)).join('');
+
+      expect(result).toMatchObject({ success: false, errorCode: 'OUTCOME_UNKNOWN' });
+      expect(result.diagnosticError).toContain('wiki merge failed');
+      expect(result.diagnosticError).toContain('token=[REDACTED]');
+      expect(result.diagnosticError).not.toContain('secret-value');
+      expect(logs).toContain('tool_execution_failed');
+      expect(logs).toContain('wiki merge failed');
+      expect(logs).toContain('stack');
+      expect(logs).toContain('token=[REDACTED]');
+      expect(logs).not.toContain('secret-value');
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+
   it('requires approval for a non-read-only builtin by default and does not enter execute before approval', async () => {
     const tool = new BuiltInWriteTool('write_file');
     const registry = new ToolRegistry();

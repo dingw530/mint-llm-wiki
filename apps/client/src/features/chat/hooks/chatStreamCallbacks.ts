@@ -1,7 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { Message, SendCallbacks } from '@/types';
+import type { AgentRunStatusData, SubagentStatusData } from '../components/AgentRunStatus';
 import { parseAgentRunStatusData } from '../components/AgentRunStatus';
-import type { AgentRunStatusData } from '../components/AgentRunStatus';
 import type { ReactReducerEvent } from './useReactEventReducer';
 
 interface StreamCallbackOptions {
@@ -45,10 +45,48 @@ export function createChatStreamCallbacks({
       if (typeof runId !== 'string' || !runId) return;
       updateTempMessage(tempId, (message) => ({ ...message, runId }));
     },
-    onRoundStarted: (data) => dispatchReactEvent({ type: 'round_started', ...data }),
     onAgentStatus: (data) => {
       const status = parseAgentRunStatusData(data);
-      if (status) setAgentRunStatus(status);
+      if (status) setAgentRunStatus((previous) => ({ ...status, subagents: previous?.subagents }));
+    },
+    onSubagentStatus: (data) => {
+      if (
+        typeof data.childRunId !== 'string' ||
+        typeof data.agentId !== 'string' ||
+        !['running', 'awaiting_parent_action', 'completed', 'failed', 'cancelled'].includes(
+          String(data.status),
+        )
+      )
+        return;
+      const subagent: SubagentStatusData = {
+        childRunId: data.childRunId,
+        agentId: data.agentId,
+        status: data.status as SubagentStatusData['status'],
+        approvalId: typeof data.approvalId === 'string' ? data.approvalId : undefined,
+        round: typeof data.round === 'number' ? data.round : undefined,
+        toolName: typeof data.toolName === 'string' ? data.toolName : undefined,
+        reason: typeof data.reason === 'string' ? data.reason : undefined,
+      };
+      setAgentRunStatus((previous) => {
+        const baseStatus = previous || {
+          round: subagent.round || 0,
+          maxRounds: 0,
+          elapsedMs: 0,
+          toolCount: 0,
+          retryCount: 0,
+          loopDetected: false,
+          phase: 'executing_tools',
+        };
+        return {
+          ...baseStatus,
+          subagents: [
+            ...(baseStatus.subagents || []).filter(
+              (item) => item.childRunId !== subagent.childRunId,
+            ),
+            subagent,
+          ],
+        };
+      });
     },
     onLoopDetected: (data) => dispatchReactEvent({ type: 'loop_detected', ...data }),
     onRunCompleted: (data) => {
@@ -224,7 +262,7 @@ export function createToolApprovalCallbacks(
     onRoundStarted: (data) => dispatchReactEvent({ type: 'round_started', ...data }),
     onAgentStatus: (data) => {
       const status = parseAgentRunStatusData(data);
-      if (status) setAgentRunStatus(status);
+      if (status) setAgentRunStatus((previous) => ({ ...status, subagents: previous?.subagents }));
     },
     onChunk: (content) =>
       updateApprovalMessage((message) => {
@@ -240,26 +278,75 @@ export function createToolApprovalCallbacks(
         ...message,
         reasoning: `${message.reasoning || ''}${content}`,
       })),
-    onToolCallEnd: (data) =>
+    onToolCallStart: (data) => {
+      dispatchReactEvent({ type: 'tool_call_start', ...data });
+      updateApprovalMessage((message) => ({
+        ...message,
+        segments: [
+          ...(message.segments || []),
+          {
+            type: 'tool_call',
+            callId: typeof data.callId === 'string' ? data.callId : undefined,
+            toolName: String(data.toolName || ''),
+            summary: typeof data.summary === 'string' ? data.summary : undefined,
+            status: 'running',
+            arguments: data.arguments,
+          },
+        ],
+      }));
+    },
+    onToolCallEnd: (data) => {
+      dispatchReactEvent({ type: 'tool_call_end', ...data });
       updateApprovalMessage((message) => ({
         ...message,
         segments: message.segments?.map((segment) =>
           segment.type === 'tool_call' &&
-          (segment.approvalId === approvalId || segment.callId === data.callId)
-            ? { ...segment, status: 'done' as const, result: String(data.result || '') }
+          typeof data.callId === 'string' &&
+          segment.callId === data.callId
+            ? {
+                ...segment,
+                status: 'done' as const,
+                result: String(data.result || ''),
+                duration: typeof data.duration === 'number' ? data.duration : undefined,
+                summary: typeof data.summary === 'string' ? data.summary : segment.summary,
+              }
             : segment,
         ),
-      })),
-    onToolCallError: (data) =>
+      }));
+    },
+    onToolApprovalRequired: (data) => {
+      dispatchReactEvent({ type: 'approval_required', ...data });
       updateApprovalMessage((message) => ({
         ...message,
         segments: message.segments?.map((segment) =>
           segment.type === 'tool_call' &&
-          (segment.approvalId === approvalId || segment.callId === data.callId)
+          segment.status === 'running' &&
+          typeof data.callId === 'string' &&
+          segment.callId === data.callId
+            ? {
+                ...segment,
+                status: 'approval_required' as const,
+                approvalId: typeof data.approvalId === 'string' ? data.approvalId : undefined,
+                approvalReason: typeof data.reason === 'string' ? data.reason : undefined,
+              }
+            : segment,
+        ),
+      }));
+    },
+    onToolCallError: (data) => {
+      dispatchReactEvent({ type: 'tool_call_error', ...data });
+      if (data.status === 'approval_required') return;
+      updateApprovalMessage((message) => ({
+        ...message,
+        segments: message.segments?.map((segment) =>
+          segment.type === 'tool_call' &&
+          typeof data.callId === 'string' &&
+          segment.callId === data.callId
             ? { ...segment, status: 'error' as const, error: String(data.error || '') }
             : segment,
         ),
-      })),
+      }));
+    },
     onRunCompleted: (data) => dispatchReactEvent({ type: 'run_completed', ...data }),
     onRunCancelled: (data) => {
       dispatchReactEvent({ type: 'run_cancelled', ...data });
@@ -268,6 +355,14 @@ export function createToolApprovalCallbacks(
     onDone: () => {
       setSending(false);
       setStreamingId(null);
+      setAgentRunStatus((previous) =>
+        previous
+          ? {
+              ...previous,
+              subagents: previous.subagents?.filter((item) => item.approvalId !== approvalId),
+            }
+          : previous,
+      );
     },
     onError: (error) => {
       updateApprovalMessage((message) => ({

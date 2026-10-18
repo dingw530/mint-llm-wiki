@@ -77,6 +77,8 @@ interface ToolExecutionResult {
   assistantMsg: HistoryMessage;
   toolMsg: HistoryMessage;
   succeeded: boolean;
+  outcomeUnknown?: boolean;
+  diagnosticError?: string;
   approvalRequired?: { approvalId?: string; reason: string };
   rawResult?: unknown;
 }
@@ -277,6 +279,8 @@ async function executeOneToolCall(
     assistantMsg: execution.assistantMsg,
     toolMsg: execution.toolMsg,
     succeeded: execution.succeeded,
+    outcomeUnknown: execution.outcomeUnknown,
+    diagnosticError: execution.diagnosticError,
     approvalRequired: execution.approvalRequired,
     rawResult: execution.rawResult,
   };
@@ -901,6 +905,9 @@ function createMintToolExecutor(
           ports: context.ports,
         },
       );
+      if (!toolResult.succeeded && toolResult.outcomeUnknown) {
+        context.state.forceFinalAnswer = true;
+      }
       if (toolResult.approvalRequired) {
         context.state.awaitingApproval = true;
         return { messages: [], status: 'paused' as const };
@@ -967,6 +974,7 @@ export async function executeReactRun(
     tools: prepared.tools.map(toMintFrameworkTool),
     signal,
     resolveTools: async () => {
+      if (context.state.forceFinalAnswer || context.executionPolicy?.maxToolCalls === 0) return [];
       prepared.tools = await ports.getToolDefinitions(agent);
       return prepared.tools.map(toMintFrameworkTool);
     },
