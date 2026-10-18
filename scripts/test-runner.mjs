@@ -24,7 +24,7 @@
  */
 
 import { spawnSync } from 'child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { tmpdir } from 'os';
@@ -38,18 +38,21 @@ const vitestArgs = process.argv.slice(2);
 function runVitestJson() {
   const outputDir = mkdtempSync(join(tmpdir(), 'mint-vitest-report-'));
   const outputFile = join(outputDir, 'vitest.json');
+  const nodeVersionRunner = join(ROOT, 'scripts/with-node-version.cjs');
+  const vitestCli = join(ROOT, 'node_modules/vitest/vitest.mjs');
   const args = [
-    '../scripts/with-node-version.cjs',
+    nodeVersionRunner,
     'node',
-    '../node_modules/vitest/vitest.mjs',
+    vitestCli,
     'run',
     ...vitestArgs,
     '--poolOptions.threads.singleThread',
     '--reporter=json',
     `--outputFile=${outputFile}`,
   ];
+  let result;
   try {
-    const result = spawnSync('node', args, {
+    result = spawnSync('node', args, {
       cwd: SERVER_DIR,
       encoding: 'utf-8',
       timeout: 180000,
@@ -60,28 +63,41 @@ function runVitestJson() {
         AI_CHAT_DB_PATH: process.env.AI_CHAT_DB_PATH || '/tmp/ai-chat-test-runner.db',
       },
     });
-    const report = readFileSync(outputFile, 'utf-8');
-    rmSync(outputDir, { recursive: true, force: true });
-    return {
-      report,
-      rawOutput: `${result.stdout || ''}\n${result.stderr || ''}`,
-      exitCode: result.status ?? 1,
-      error: result.error?.message || null,
-    };
   } catch (err) {
-    let report = '';
-    try {
-      report = readFileSync(outputFile, 'utf-8');
-    } catch {
-      /* runner failure before report creation */
-    }
     rmSync(outputDir, { recursive: true, force: true });
     return {
-      report,
+      report: '',
       rawOutput: `${err.stdout || ''}\n${err.stderr || ''}`,
       exitCode: err.status ?? 1,
       error: err.message,
     };
+  }
+
+  const rawOutput = `${result.stdout || ''}\n${result.stderr || ''}`;
+  try {
+    if (!existsSync(outputFile)) {
+      return {
+        report: '',
+        rawOutput,
+        exitCode: result.status ?? 1,
+        error: `Vitest did not create its JSON report. ${result.error?.message || ''}`.trim(),
+      };
+    }
+    return {
+      report: readFileSync(outputFile, 'utf-8'),
+      rawOutput,
+      exitCode: result.status ?? 1,
+      error: result.error?.message || null,
+    };
+  } catch (err) {
+    return {
+      report: '',
+      rawOutput,
+      exitCode: result.status ?? 1,
+      error: err.message,
+    };
+  } finally {
+    rmSync(outputDir, { recursive: true, force: true });
   }
 }
 
