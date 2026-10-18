@@ -133,4 +133,20 @@ describe('JevSettingsCard', () => {
     expect(onChange).toHaveBeenCalledWith({ rerankEnabled: true });
     cleanup(container, root);
   });
+
+  it('keeps Wiki identity matching independent and off by default', async () => {
+    const onChange = vi.fn();
+    const { container, root } = renderCard(createEmptyJevFormState(), onChange);
+    expect(container.textContent).toContain('Wiki 知识页身份判断');
+
+    const enableIdentity = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.getAttribute('aria-label') === '启用 Jev Wiki 身份判断',
+    );
+    expect(enableIdentity?.className).not.toContain('active');
+
+    await act(async () => enableIdentity?.click());
+
+    expect(onChange).toHaveBeenCalledWith({ wikiIdentityEnabled: true });
+    cleanup(container, root);
+  });
 });

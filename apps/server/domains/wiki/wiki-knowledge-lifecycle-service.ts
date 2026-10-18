@@ -78,6 +78,192 @@ export function registerCompiledKnowledge(
   });
 }
 
+/** Register a merged-page snapshot, create the target version, and retain old page/claim rows. */
+export function registerWikiPageMerge(
+  revisionPath: string,
+  revisionText: string,
+  sourcePagePath: string,
+  mergedPage: CompiledPage,
+): {
+  source: lifecycleRepo.WikiSource;
+  targetPage: lifecycleRepo.WikiPage;
+  supersededPageIds: string[];
+} {
+  return lifecycleRepo.transaction(() => {
+    const revisionHash = hashWikiContent(revisionText);
+    const source =
+      lifecycleRepo.findSourceByHash(revisionPath, revisionHash) ||
+      lifecycleRepo.createSource({
+        path: revisionPath,
+        contentHash: revisionHash,
+        sourceType: 'wiki-merge-snapshot',
+      });
+    lifecycleRepo.markSourceCompiled(source.id);
+
+    const targetHash = hashWikiContent(mergedPage.content);
+    const latestTarget = lifecycleRepo.findPageByPath(mergedPage.filename);
+    const targetPage =
+      latestTarget?.contentHash === targetHash
+        ? latestTarget
+        : lifecycleRepo.createPage({
+            path: mergedPage.filename,
+            title: mergedPage.title,
+            contentHash: targetHash,
+            sourceId: source.id,
+            status: 'active',
+            confidence: latestTarget?.confidence ?? 0.7,
+            importance: latestTarget?.importance ?? 0.6,
+            qualityScore: latestTarget?.qualityScore ?? 0.5,
+          });
+    if (targetPage.status !== 'active') lifecycleRepo.updatePageStatus(targetPage.id, 'active');
+
+    const sourcePage = lifecycleRepo.findPageByPath(sourcePagePath);
+    const previousPages = uniquePages([latestTarget, sourcePage]).filter(
+      (page) => page?.id !== targetPage.id,
+    );
+    const previousClaims = previousPages.flatMap((page) =>
+      page ? lifecycleRepo.findActiveClaimsForPage(page.id) : [],
+    );
+
+    for (const previousPage of previousPages) {
+      if (!previousPage) continue;
+      lifecycleRepo.updatePageStatus(previousPage.id, 'superseded');
+      lifecycleRepo.recordEvent(
+        'page',
+        previousPage.id,
+        'superseded',
+        null,
+        source.id,
+        mergedPage.filename,
+        `merged into ${mergedPage.filename}`,
+      );
+    }
+    if (sourcePage && !previousPages.some((page) => page?.id === sourcePage.id)) {
+      lifecycleRepo.updatePageStatus(sourcePage.id, 'superseded');
+      lifecycleRepo.recordEvent(
+        'page',
+        sourcePage.id,
+        'superseded',
+        null,
+        source.id,
+        mergedPage.filename,
+        `merged into ${mergedPage.filename}`,
+      );
+    }
+
+    const claimsByIdentity = groupMergeClaims(previousClaims);
+    for (const claim of previousClaims) {
+      lifecycleRepo.updateClaimStatus(claim.id, 'superseded');
+      lifecycleRepo.recordEvent(
+        'claim',
+        claim.id,
+        'superseded',
+        null,
+        source.id,
+        mergedPage.filename,
+        `claim moved to ${mergedPage.filename}`,
+      );
+    }
+    if (claimsByIdentity.size === 0) {
+      claimsByIdentity.set(`${normalizeClaimKey(mergedPage.title)}\0${mergedPage.title}`, {
+        claimText: mergedPage.title,
+        normalizedKey: `page:${normalizeClaimKey(mergedPage.title)}`,
+        status: 'proposed',
+        confidence: 0.45,
+        importance: 0.4,
+      });
+    }
+
+    for (const claim of claimsByIdentity.values()) {
+      const created = lifecycleRepo.createClaim({
+        pageId: targetPage.id,
+        claimText: claim.claimText,
+        normalizedKey: claim.normalizedKey,
+        status: claim.status,
+        confidence: claim.confidence,
+        importance: claim.importance,
+      });
+      lifecycleRepo.recordEvent(
+        'claim',
+        created.id,
+        'merged',
+        null,
+        source.id,
+        mergedPage.filename,
+        'claim preserved by wiki_merge',
+      );
+    }
+
+    lifecycleRepo.recordEvent(
+      'page',
+      targetPage.id,
+      'merged',
+      null,
+      source.id,
+      mergedPage.filename,
+      `merged source page ${sourcePagePath}`,
+    );
+    return {
+      source,
+      targetPage: lifecycleRepo.findPageById(targetPage.id) || targetPage,
+      supersededPageIds: previousPages.map((page) => page?.id).filter((id): id is string => !!id),
+    };
+  });
+}
+
+function uniquePages(pages: Array<lifecycleRepo.WikiPage | null>): lifecycleRepo.WikiPage[] {
+  const unique = new Map<string, lifecycleRepo.WikiPage>();
+  for (const page of pages) {
+    if (page) unique.set(page.id, page);
+  }
+  return [...unique.values()];
+}
+
+function groupMergeClaims(
+  claims: lifecycleRepo.WikiClaim[],
+): Map<
+  string,
+  Pick<
+    lifecycleRepo.WikiClaim,
+    'claimText' | 'normalizedKey' | 'status' | 'confidence' | 'importance'
+  >
+> {
+  const unique = new Map<
+    string,
+    Pick<
+      lifecycleRepo.WikiClaim,
+      'claimText' | 'normalizedKey' | 'status' | 'confidence' | 'importance'
+    >
+  >();
+  const textsByKey = new Map<string, Set<string>>();
+  for (const claim of claims) {
+    const identity = `${claim.normalizedKey}\0${claim.claimText}`;
+    const existing = unique.get(identity);
+    const status =
+      existing?.status === 'verified' || claim.status === 'verified'
+        ? 'verified'
+        : existing?.status === 'contested' || claim.status === 'contested'
+          ? 'contested'
+          : 'proposed';
+    unique.set(identity, {
+      claimText: claim.claimText,
+      normalizedKey: claim.normalizedKey,
+      status,
+      confidence: Math.max(existing?.confidence ?? 0, claim.confidence),
+      importance: Math.max(existing?.importance ?? 0, claim.importance),
+    });
+    const texts = textsByKey.get(claim.normalizedKey) || new Set<string>();
+    texts.add(claim.claimText);
+    textsByKey.set(claim.normalizedKey, texts);
+  }
+  for (const [identity, claim] of unique) {
+    if ((textsByKey.get(claim.normalizedKey)?.size || 0) > 1) {
+      unique.set(identity, { ...claim, status: 'contested' });
+    }
+  }
+  return unique;
+}
+
 /** Register one compiled page and its claims within the caller-owned transaction. */
 function registerCompiledPage(
   source: lifecycleRepo.WikiSource,

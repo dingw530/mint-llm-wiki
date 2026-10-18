@@ -35,6 +35,7 @@ const GLOBAL_TOOL_NAMES = [
   'read_artifact',
   'write_file',
   'wiki_ingest',
+  'wiki_merge',
   'wiki_lint',
   'wiki_search',
   'knowledge_graph',

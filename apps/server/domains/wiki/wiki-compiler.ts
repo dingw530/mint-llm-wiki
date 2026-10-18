@@ -1,11 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { createHash } from 'node:crypto';
 import {
   normalizeWikiCategories,
   parseWikiFrontmatter,
   stripWikiFrontmatter,
 } from '../../infrastructure/filesystem/wiki-content.js';
+import {
+  createMintWikiLink,
+  resolveWikiMarkdownLink,
+} from '../../infrastructure/filesystem/wiki-link-protocol.js';
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
+import { isWikiRelativePathSafe } from './wiki-path-safety.js';
 import type {
   CompiledPage,
   Relationship,
@@ -22,6 +28,14 @@ import {
   discoverCategoriesFromDir,
 } from '../../infrastructure/filesystem/wiki-content.js';
 import type { AiSettings } from '../../types.js';
+import type { JevSettings } from '../../types.js';
+import { resolveWikiPageIdentity } from './identity/wiki-identity-resolver.js';
+import type {
+  WikiIdentityCandidate,
+  WikiIdentityDecision,
+  WikiIdentityInput,
+  WikiIdentityProviderCall,
+} from './identity/types.js';
 
 export interface CompileResult {
   pages: { filename: string; title: string; size: number; summary: string }[];
@@ -44,6 +58,8 @@ export type WikiCompileProgressStage = 'prepare' | 'evidence' | 'pages';
 export interface CompileSourceOptions {
   title?: string;
   category?: string;
+  jevSettings?: JevSettings;
+  jevIdentityProvider?: WikiIdentityProviderCall;
   /** Return a durable compilation snapshot without writing pages or the index. */
   persistPages?: boolean;
   /** 编译进入真实阶段时通知异步摄入任务。 */
@@ -58,6 +74,16 @@ export interface WikiCompiledClaim {
   importance?: number;
   evidence?: string;
   evidenceQuote?: string;
+}
+
+/** Prepared merge data; no files or lifecycle records have been written yet. */
+export interface WikiPageMergePlan {
+  sourcePath: string;
+  sourceMarkdown: string;
+  sourcePage: CompiledPage;
+  candidates: WikiIdentityCandidate[];
+  decision: WikiIdentityDecision;
+  mergedTargetPage?: CompiledPage;
 }
 
 /** 将原文与证据片段规范化，允许换行和空格差异但不放宽文字内容。 */
@@ -212,16 +238,26 @@ function preserveLeadFacts(sourceText: string, pages: CompiledPage[]): void {
 }
 
 /**
- * 扫描 pages/ 目录，返回已有页面列表（标题 + 文件路径）。
- * 供概念去重校验和 prompt 索引共用。
+ * 扫描 pages/ 目录，返回已有页面的身份候选字段。
+ * 供候选召回与编译提示索引共用。
  */
-function scanExistingPages(
-  wikiPath: string,
-): { title: string; filename: string; category: string; tags: string[] }[] {
+type ExistingWikiPage = WikiIdentityCandidate;
+
+/** Read a frontmatter array while dropping blank and non-string presentation noise. */
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value
+        .map(String)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function scanExistingPages(wikiPath: string): ExistingWikiPage[] {
   const pagesDir = path.join(wikiPath, 'pages');
   if (!fs.existsSync(pagesDir)) return [];
 
-  const entries: { title: string; filename: string; category: string; tags: string[] }[] = [];
+  const entries: ExistingWikiPage[] = [];
   const walk = (dir: string): void => {
     for (const entry of fs.readdirSync(dir).sort()) {
       const fullPath = path.join(dir, entry);
@@ -238,8 +274,13 @@ function scanExistingPages(
       const segments = relativePath.split('/');
       const category = segments.length >= 3 ? segments[1] : 'uncategorized';
       const title = fm?.title ? String(fm.title) : entry.replace(/\.md$/, '');
-      const tags = Array.isArray(fm?.tags) ? fm.tags.map(String) : [];
-      entries.push({ title, filename: relativePath, category, tags });
+      const tags = readStringArray(fm?.tags);
+      const aliases = readStringArray(fm?.aliases);
+      const summary =
+        typeof fm?.summary === 'string'
+          ? fm.summary
+          : getWikiPageSummary(stripWikiFrontmatter(fileContent));
+      entries.push({ title, filename: relativePath, category, tags, aliases, summary });
     }
   };
   walk(pagesDir);
@@ -259,6 +300,7 @@ function buildExistingKnowledgeIndex(wikiPath: string): string {
       e.title +
       ' (分类: ' +
       e.category +
+      (e.aliases.length ? ', 别名: ' + e.aliases.join(', ') : '') +
       (e.tags.length ? ', 标签: ' + e.tags.join(', ') : '') +
       ')',
   );
@@ -292,50 +334,416 @@ function titleSimilarity(a: string, b: string): number {
   return (2 * intersection) / (setA.size + setB.size);
 }
 
-/**
- * 对 AI 编译出的页面做标题去重校验。
- * 如果某个页面标题与已有知识库中的页面高度相似，则不创建新页面，
- * 而是生成一条 relationship 关联到已有页面。
- */
-function deduplicatePages(
-  newPages: CompiledPage[],
-  existingEntries: { title: string; filename: string }[],
-  existingRelationships: Relationship[],
-): { pages: CompiledPage[]; relationships: Relationship[] } {
-  const threshold = 0.75;
-  const kept: CompiledPage[] = [];
-  const extraRelationships: Relationship[] = [];
+/** Normalize titles and aliases for safe exact identity comparisons. */
+function normalizeIdentityName(value: string): string {
+  return value
+    .normalize('NFKC')
+    .trim()
+    .toLocaleLowerCase()
+    .replace(/[\s_-]+/g, '');
+}
 
-  for (const page of newPages) {
-    let matched = false;
-    for (const existing of existingEntries) {
-      const sim = titleSimilarity(page.title, existing.title);
-      if (sim >= threshold) {
-        matched = true;
-        extraRelationships.push({
-          source: page.title,
-          target: existing.title,
-          relation: '属于',
-          reason: '标题相似度 ' + sim.toFixed(2) + '，自动判定为同一概念',
-        });
-        console.log(
-          '[wikiCompiler] 概念去重: "' +
-            page.title +
-            '" → 已有页面 "' +
-            existing.title +
-            '" (相似度 ' +
-            sim.toFixed(2) +
-            ')',
-        );
-        break;
-      }
-    }
-    if (!matched) {
-      kept.push(page);
+/** Find exact title or explicit alias matches before model-based classification. */
+function exactIdentityCandidates(
+  page: CompiledPage,
+  existingPages: ExistingWikiPage[],
+): ExistingWikiPage[] {
+  const incomingNames = [page.title, ...(page.aliases || [])].map(normalizeIdentityName);
+  return existingPages.filter(
+    (candidate) =>
+      incomingNames.includes(normalizeIdentityName(candidate.title)) ||
+      candidate.aliases.some((alias) => incomingNames.includes(normalizeIdentityName(alias))),
+  );
+}
+
+/** Score title similarity against a page's title and aliases for candidate recall. */
+const WIKI_IDENTITY_CANDIDATE_TOP_K = 5;
+const WIKI_IDENTITY_CANDIDATE_SIMILARITY_FLOOR = 0.75;
+
+/** Score one incoming title or alias against an existing page's names. */
+function candidateSimilarity(incomingName: string, candidate: ExistingWikiPage): number {
+  const normalizedIncomingName = normalizeIdentityName(incomingName);
+  const candidateNames = [candidate.title, ...candidate.aliases].map(normalizeIdentityName);
+  return Math.max(
+    ...candidateNames.map((existing) => titleSimilarity(normalizedIncomingName, existing)),
+    0,
+  );
+}
+
+/** Recall a bounded, independent Top-K for each distinct incoming name. */
+function recallIdentityCandidates(
+  page: CompiledPage,
+  existingPages: ExistingWikiPage[],
+): ExistingWikiPage[] {
+  const queryByNormalizedName = new Map<string, string>();
+  for (const name of [page.title, ...(page.aliases || [])]) {
+    const normalizedName = normalizeIdentityName(name);
+    if (normalizedName && !queryByNormalizedName.has(normalizedName)) {
+      queryByNormalizedName.set(normalizedName, name);
     }
   }
 
-  return { pages: kept, relationships: [...extraRelationships, ...existingRelationships] };
+  const candidatesByPath = new Map<string, { candidate: ExistingWikiPage; similarity: number }>();
+  for (const query of queryByNormalizedName.values()) {
+    const topCandidates = existingPages
+      .map((candidate) => ({
+        candidate,
+        similarity: candidateSimilarity(query, candidate),
+      }))
+      .filter((item) => item.similarity >= WIKI_IDENTITY_CANDIDATE_SIMILARITY_FLOOR)
+      .sort(
+        (left, right) =>
+          right.similarity - left.similarity ||
+          left.candidate.filename.localeCompare(right.candidate.filename),
+      )
+      .slice(0, WIKI_IDENTITY_CANDIDATE_TOP_K);
+
+    for (const item of topCandidates) {
+      const existing = candidatesByPath.get(item.candidate.filename);
+      if (!existing || item.similarity > existing.similarity) {
+        candidatesByPath.set(item.candidate.filename, item);
+      }
+    }
+  }
+
+  return [...candidatesByPath.values()]
+    .sort(
+      (left, right) =>
+        right.similarity - left.similarity ||
+        left.candidate.filename.localeCompare(right.candidate.filename),
+    )
+    .map((item) => item.candidate);
+}
+
+/** Build the bounded state used for one incoming compiled page. */
+function buildIdentityInput(page: CompiledPage): WikiIdentityInput {
+  return {
+    title: page.title,
+    category: page.filename.split('/')[1] || '未分类',
+    aliases: page.aliases || [],
+    tags: page.tags,
+    summary: page.summary || getWikiPageSummary(page.content),
+    content: page.content.slice(0, 1800),
+  };
+}
+
+/** Remap Markdown links that resolve to a retired source page. */
+export function remapWikiPageLinks(
+  content: string,
+  pagePath: string,
+  sourcePath: string,
+  targetPath: string,
+): string {
+  return content.replace(/\]\(([^)]+)\)/g, (match, href: string) => {
+    const target = resolveWikiMarkdownLink(pagePath, href);
+    if (target?.path !== sourcePath) return match;
+    const canonicalLink = createMintWikiLink(targetPath, target.fragment);
+    return canonicalLink ? `](${canonicalLink})` : match;
+  });
+}
+
+/** Resolve one page against its own exact or similarity-recalled candidates. */
+async function resolvePageIdentity(
+  settings: AiSettings,
+  page: CompiledPage,
+  existingPages: ExistingWikiPage[],
+  jevSettings: JevSettings | undefined,
+  jevIdentityProvider?: WikiIdentityProviderCall,
+): Promise<{
+  candidates: ExistingWikiPage[];
+  stage: 'exact' | 'similarity';
+  decision: WikiIdentityDecision;
+}> {
+  const exactMatches = exactIdentityCandidates(page, existingPages);
+  if (exactMatches.length === 1) {
+    return {
+      candidates: exactMatches,
+      stage: 'exact',
+      decision: {
+        kind: 'match',
+        targetPath: exactMatches[0].filename,
+        provider: 'deterministic',
+      },
+    };
+  }
+  if (exactMatches.length > 8) {
+    return {
+      candidates: exactMatches,
+      stage: 'exact',
+      decision: {
+        kind: 'uncertain',
+        provider: 'deterministic',
+        reason: 'too_many_exact_alias_targets',
+      },
+    };
+  }
+
+  const candidates = exactMatches.length
+    ? exactMatches
+    : recallIdentityCandidates(page, existingPages);
+  if (candidates.length === 0) {
+    return {
+      candidates,
+      stage: 'similarity',
+      decision: { kind: 'different', provider: 'deterministic' },
+    };
+  }
+  const decision = await resolveWikiPageIdentity(
+    buildIdentityInput(page),
+    candidates,
+    { jevEnabled: jevSettings?.wikiIdentityEnabled === true, jevSettings, aiSettings: settings },
+    { jev: jevIdentityProvider },
+  );
+  return { candidates, stage: exactMatches.length ? 'exact' : 'similarity', decision };
+}
+
+/** Replace incoming page titles with canonical titles in extracted relationships. */
+function remapRelationships(
+  relationships: Relationship[],
+  canonicalTitleByIncomingTitle: Map<string, string>,
+): Relationship[] {
+  return relationships.map((relationship) => ({
+    ...relationship,
+    source: canonicalTitleByIncomingTitle.get(relationship.source) || relationship.source,
+    target: canonicalTitleByIncomingTitle.get(relationship.target) || relationship.target,
+  }));
+}
+
+/** Combine pages that resolve to the same canonical path into one pending write. */
+function coalescePagesByPath(pages: CompiledPage[]): CompiledPage[] {
+  const grouped = new Map<string, CompiledPage[]>();
+  for (const page of pages) {
+    const group = grouped.get(page.filename) || [];
+    group.push(page);
+    grouped.set(page.filename, group);
+  }
+  return [...grouped.values()].map((group) => {
+    if (group.length === 1) return group[0];
+    const first = group[0];
+    return {
+      ...first,
+      tags: mergeLists(
+        [],
+        group.flatMap((page) => page.tags),
+      ),
+      summary: mergeLists([], group.map((page) => page.summary || '').filter(Boolean)).join(' '),
+      content: group
+        .map((page, index) => `### 补充内容 ${index + 1}\n\n${page.content.trim()}`)
+        .join('\n\n'),
+    };
+  });
+}
+
+/** Assign a stable new path when a non-match would otherwise overwrite an existing page. */
+function keepPageAtUniquePath(page: CompiledPage, reservedPaths: Set<string>): CompiledPage {
+  if (!reservedPaths.has(page.filename)) {
+    reservedPaths.add(page.filename);
+    return page;
+  }
+  const directory = path.posix.dirname(page.filename);
+  const extension = path.posix.extname(page.filename) || '.md';
+  const basename = path.posix.basename(page.filename, extension);
+  const suffix = createHash('sha256').update(page.title).digest('hex').slice(0, 8);
+  let candidate = path.posix.join(directory, `${basename}-${suffix}${extension}`);
+  let collisionIndex = 2;
+  while (reservedPaths.has(candidate)) {
+    candidate = path.posix.join(directory, `${basename}-${suffix}-${collisionIndex}${extension}`);
+    collisionIndex += 1;
+  }
+  reservedPaths.add(candidate);
+  return { ...page, filename: candidate };
+}
+
+/** Log candidate structure without exposing page summaries or body content. */
+function logIdentityCandidates(
+  page: CompiledPage,
+  stage: 'exact' | 'similarity',
+  candidates: ExistingWikiPage[],
+): void {
+  console.info('[wikiCompiler] identity-candidates', {
+    stage,
+    incomingTitle: page.title,
+    candidateCount: candidates.length,
+    candidates: candidates.map((candidate) => ({
+      title: candidate.title,
+      filename: candidate.filename,
+      category: candidate.category,
+      aliases: candidate.aliases,
+      tags: candidate.tags,
+    })),
+  });
+}
+
+/** Resolve title-similar pages to canonical paths without dropping new content. */
+async function resolvePageIdentities(
+  settings: AiSettings,
+  newPages: CompiledPage[],
+  existingPages: ExistingWikiPage[],
+  jevSettings: JevSettings | undefined,
+  jevIdentityProvider?: WikiIdentityProviderCall,
+): Promise<{ pages: CompiledPage[]; canonicalTitleByIncomingTitle: Map<string, string> }> {
+  const pages: CompiledPage[] = [];
+  const canonicalTitleByIncomingTitle = new Map<string, string>();
+  const reservedPaths = new Set(existingPages.map((page) => page.filename));
+
+  for (const page of newPages) {
+    console.info('[wikiCompiler] identity-candidate-search:start', {
+      incomingTitle: page.title,
+      existingPageCount: existingPages.length,
+    });
+    const resolution = await resolvePageIdentity(
+      settings,
+      page,
+      existingPages,
+      jevSettings,
+      jevIdentityProvider,
+    );
+    const { candidates, decision } = resolution;
+    logIdentityCandidates(page, resolution.stage, candidates);
+    if (candidates.length > 8) {
+      console.warn('[wikiCompiler] identity-resolution skipped: too many exact alias targets', {
+        candidateCount: candidates.length,
+      });
+      pages.push(keepPageAtUniquePath(page, reservedPaths));
+      continue;
+    }
+    if (decision.kind !== 'match') {
+      if (candidates.length > 0) {
+        console.info('[wikiCompiler] identity-resolution', {
+          provider: decision.provider,
+          decision: decision.kind,
+          fallbackReason: decision.fallbackReason,
+        });
+      }
+      pages.push(keepPageAtUniquePath(page, reservedPaths));
+      continue;
+    }
+
+    const target = candidates.find((candidate) => candidate.filename === decision.targetPath);
+    if (!target) {
+      pages.push(keepPageAtUniquePath(page, reservedPaths));
+      continue;
+    }
+    canonicalTitleByIncomingTitle.set(page.title, target.title);
+    pages.push({ ...page, filename: target.filename, title: target.title });
+  }
+
+  return {
+    pages: coalescePagesByPath(pages),
+    canonicalTitleByIncomingTitle,
+  };
+}
+
+/** Prepare a same-identity merge from an existing source page without writing files. */
+export async function prepareExistingWikiPageMerge(
+  settings: AiSettings,
+  wikiPath: string,
+  sourcePath: string,
+  jevSettings?: JevSettings,
+  jevIdentityProvider?: WikiIdentityProviderCall,
+): Promise<WikiPageMergePlan> {
+  const normalizedSourcePath = sourcePath.replace(/\\/g, '/');
+  if (
+    !normalizedSourcePath.startsWith('pages/') ||
+    !normalizedSourcePath.endsWith('.md') ||
+    !isWikiRelativePathSafe(wikiPath, normalizedSourcePath)
+  ) {
+    throw new Error('源页路径必须是 Wiki 根目录内 pages/ 下的 Markdown 文件');
+  }
+
+  const absoluteSourcePath = path.resolve(wikiPath, normalizedSourcePath);
+  if (!fs.existsSync(absoluteSourcePath) || !fs.statSync(absoluteSourcePath).isFile()) {
+    throw new Error(`源 Wiki 页面不存在: ${normalizedSourcePath}`);
+  }
+
+  const sourceMarkdown = fs.readFileSync(absoluteSourcePath, 'utf-8');
+  const frontmatter = parseWikiFrontmatter(sourceMarkdown);
+  const content = stripWikiFrontmatter(sourceMarkdown);
+  const sourcePage: CompiledPage = {
+    filename: normalizedSourcePath,
+    title:
+      typeof frontmatter?.title === 'string'
+        ? frontmatter.title
+        : path.posix.basename(normalizedSourcePath, '.md'),
+    summary:
+      typeof frontmatter?.summary === 'string' ? frontmatter.summary : getWikiPageSummary(content),
+    tags: readStringArray(frontmatter?.tags),
+    aliases: readStringArray(frontmatter?.aliases),
+    created: typeof frontmatter?.created === 'string' ? frontmatter.created : undefined,
+    source: typeof frontmatter?.source === 'string' ? frontmatter.source : undefined,
+    content,
+  };
+  const existingPages = scanExistingPages(wikiPath).filter(
+    (candidate) => candidate.filename !== normalizedSourcePath,
+  );
+
+  console.info('[wikiCompiler] identity-candidate-search:start', {
+    incomingTitle: sourcePage.title,
+    sourcePath: normalizedSourcePath,
+    existingPageCount: existingPages.length,
+  });
+  const resolution = await resolvePageIdentity(
+    settings,
+    sourcePage,
+    existingPages,
+    jevSettings,
+    jevIdentityProvider,
+  );
+  logIdentityCandidates(sourcePage, resolution.stage, resolution.candidates);
+
+  const originalDecision = resolution.decision;
+  const target =
+    originalDecision.kind === 'match'
+      ? resolution.candidates.find(
+          (candidate) => candidate.filename === originalDecision.targetPath,
+        )
+      : undefined;
+  const decision: WikiIdentityDecision =
+    originalDecision.kind === 'match' && !target
+      ? {
+          kind: 'uncertain',
+          provider: originalDecision.provider,
+          reason: 'target_not_in_candidate_set',
+        }
+      : originalDecision;
+  if (!target || decision.kind !== 'match') {
+    return {
+      sourcePath: normalizedSourcePath,
+      sourceMarkdown,
+      sourcePage,
+      candidates: resolution.candidates,
+      decision,
+    };
+  }
+
+  const incomingPage = {
+    ...sourcePage,
+    filename: target.filename,
+    title: target.title,
+    content: remapWikiPageLinks(
+      sourcePage.content,
+      normalizedSourcePath,
+      normalizedSourcePath,
+      target.filename,
+    ),
+  };
+  const mergedTargetPage = await mergePageIfExists(incomingPage, wikiPath, settings);
+  return {
+    sourcePath: normalizedSourcePath,
+    sourceMarkdown,
+    sourcePage,
+    candidates: resolution.candidates,
+    decision,
+    mergedTargetPage: {
+      ...mergedTargetPage,
+      content: remapWikiPageLinks(
+        mergedTargetPage.content,
+        target.filename,
+        normalizedSourcePath,
+        target.filename,
+      ),
+    },
+  };
 }
 
 /**
@@ -555,7 +963,7 @@ ${sourceText}`,
 // 而是由 LLM 将新旧内容合并为一篇连贯的知识文章。
 
 /** 前端数组字段：合并时取并集。 */
-const UNION_FIELDS = ['tags'];
+const UNION_FIELDS = ['tags', 'aliases'];
 
 /** Body 安全阈值：LLM 合并后的正文长度不得低于原正文与新正文最大值 * 该比值。 */
 const BODY_SHRINK_THRESHOLD = 0.7;
@@ -599,7 +1007,30 @@ function preserveExistingPageMetadata(
   return mergedPage;
 }
 
-/** Validate and apply an LLM page merge; invalid output falls back to the new page. */
+function mergePageWithoutLlm(
+  mergedPage: CompiledPage,
+  existingParsed: Record<string, unknown> | null,
+  existingBody: string,
+  newBody: string,
+): CompiledPage {
+  const existing = existingBody.trim();
+  const incoming = newBody.trim();
+  mergedPage.content =
+    !incoming || existing.includes(incoming)
+      ? existing
+      : `${existing}\n\n## 新资料补充\n\n${incoming}`;
+  mergedPage.tags = mergeLists(
+    (existingParsed?.tags as string[] | undefined) ?? [],
+    mergedPage.tags,
+  );
+  mergedPage.aliases = mergeLists(
+    (existingParsed?.aliases as string[] | undefined) ?? [],
+    mergedPage.aliases ?? [],
+  );
+  return preserveExistingPageMetadata(mergedPage, existingParsed);
+}
+
+/** Validate and apply an LLM page merge; invalid output keeps both page bodies. */
 function applyLlmPageMerge(
   page: CompiledPage,
   mergedPage: CompiledPage,
@@ -614,9 +1045,9 @@ function applyLlmPageMerge(
     console.warn(
       '[wikiCompiler] page-merge: LLM output has no valid frontmatter for "' +
         page.title +
-        '", fallback to new content',
+        '", append new content to preserve both versions',
     );
-    return mergedPage;
+    return mergePageWithoutLlm(mergedPage, existingParsed, existingBody, newBody);
   }
   const maxBodyLen = Math.max(existingBody.length, newBody.length);
   const threshold = maxBodyLen * BODY_SHRINK_THRESHOLD;
@@ -630,7 +1061,7 @@ function applyLlmPageMerge(
         page.title +
         '", fallback',
     );
-    return mergedPage;
+    return mergePageWithoutLlm(mergedPage, existingParsed, existingBody, newBody);
   }
   mergedPage.content = llmBody;
   preserveExistingPageMetadata(mergedPage, existingParsed);
@@ -639,6 +1070,12 @@ function applyLlmPageMerge(
     Array.isArray(llmParsed.tags)
       ? llmParsed.tags.filter((tag): tag is string => typeof tag === 'string')
       : (page.tags ?? []),
+  );
+  mergedPage.aliases = mergeLists(
+    (existingParsed?.aliases as string[] | undefined) ?? [],
+    Array.isArray(llmParsed.aliases)
+      ? llmParsed.aliases.filter((alias): alias is string => typeof alias === 'string')
+      : (page.aliases ?? []),
   );
   console.log(
     `[wikiCompiler] page-merge: merged "${page.title}" via LLM (existing=${existingBody.length} new=${newBody.length} merged=${llmBody.length})`,
@@ -696,10 +1133,10 @@ ${newBody}
     console.warn(
       '[wikiCompiler] page-merge: LLM call failed for "' +
         page.title +
-        '", fallback to new content: ' +
+        '", append new content to preserve both versions: ' +
         (error instanceof Error ? error.message : String(error)),
     );
-    return mergedPage;
+    return mergePageWithoutLlm(mergedPage, existingParsed, existingBody, newBody);
   }
 }
 
@@ -826,18 +1263,27 @@ async function finalizeCompiledPages(
   // 概念去重校验：检查 AI 输出的页面标题是否与已有页面重复
   const existingPages = scanExistingPages(wikiPath);
   if (existingPages.length > 0 && compiled.pages.length > 0) {
-    const deduped = deduplicatePages(compiled.pages, existingPages, compiled.relationships || []);
-    if (deduped.pages.length < compiled.pages.length) {
-      const removed = compiled.pages.length - deduped.pages.length;
-      console.log('[wikiCompiler] 概念去重自动移除 ' + removed + ' 个重复页面');
-      compiled.pages = deduped.pages;
-      compiled.relationships = deduped.relationships;
-    }
+    const resolution = await resolvePageIdentities(
+      settings,
+      compiled.pages,
+      existingPages,
+      options?.jevSettings,
+      options?.jevIdentityProvider,
+    );
+    compiled.pages = resolution.pages;
+    compiled.relationships = remapRelationships(
+      compiled.relationships || [],
+      resolution.canonicalTitleByIncomingTitle,
+    );
+    compiled.claims = (compiled.claims || []).map((claim) => ({
+      ...claim,
+      pageTitle: resolution.canonicalTitleByIncomingTitle.get(claim.pageTitle) || claim.pageTitle,
+    }));
   }
 
-  // 页面合并：对每个页面检查磁盘是否已有同名文件，若有则 LLM 合并
+  // 同一规范路径只合并写入一次，避免多个新页面互相覆盖目标文件。
   const mergedPages: CompiledPage[] = [];
-  for (const page of compiled.pages) {
+  for (const page of coalescePagesByPath(compiled.pages)) {
     const merged = await mergePageIfExists(
       {
         ...page,

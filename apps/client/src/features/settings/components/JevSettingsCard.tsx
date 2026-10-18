@@ -242,6 +242,27 @@ export default function JevSettingsCard({ jev, onChange }: JevSettingsCardProps)
               />
             </div>
           </article>
+
+          <article className={`jev-capability ${jev.wikiIdentityEnabled ? 'is-enabled' : ''}`}>
+            <div className="jev-capability-row">
+              <div className="jev-capability-copy">
+                <h5>Wiki 知识页身份判断</h5>
+                <p>合并资料前判断新旧页面是否指向同一实体或概念。</p>
+                <p className="form-help">
+                  {jev.wikiIdentityEnabled
+                    ? '已启用：优先使用 Jev，调用失败时回退到 LLM。'
+                    : '已关闭：使用当前 LLM 判断。'}{' '}
+                  判断不确定时保留新页面。
+                </p>
+              </div>
+              <ToggleRow
+                enabled={jev.wikiIdentityEnabled}
+                enableLabel="启用 Jev Wiki 身份判断"
+                disableLabel="关闭 Jev Wiki 身份判断"
+                onToggle={(next) => onChange({ wikiIdentityEnabled: next })}
+              />
+            </div>
+          </article>
         </div>
       </section>
 

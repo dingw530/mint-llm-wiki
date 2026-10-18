@@ -24,6 +24,7 @@ export interface CompiledPage {
   title: string;
   summary?: string;
   tags: string[];
+  aliases?: string[];
   created?: string;
   source?: string;
   content: string;
@@ -114,6 +115,7 @@ export interface LooseWikiPage {
   title: string;
   summary?: string;
   tags: string[];
+  aliases?: string[];
   created: string;
   source: string;
   content: string;
@@ -155,6 +157,7 @@ export const INGEST_SYSTEM_PROMPT = `你是一个知识编译助手，遵循 LLM
 5. 每个页面必须包含以下字段：
    - title: 页面标题
    - tags: [标签列表]
+   - aliases: [只记录原始资料明确出现或明确等价的名称变体、译名或缩写；没有证据时输出空数组]
    - created: YYYY-MM-DD（当前日期）
    - source: {sourceFilename}（原始资料文件名）
 6. 内容用 Markdown 编写，结构清晰
@@ -169,20 +172,16 @@ export const INGEST_SYSTEM_PROMPT = `你是一个知识编译助手，遵循 LLM
 
 输出前自检：长文是否已按独立主题拆成多页；每页分类是否符合当前 Schema 中的定义；如果所有页面都落入同一分类，必须重新检查是否遗漏了其他主题。
 
-## 概念去重（重要）
-在创建新页面之前，必须参考下方「已有知识库索引」，检查要创建的概念是否已存在。
+## 已有知识身份与增量更新
+在生成页面时参考下方「已有知识库索引」，识别新资料涉及的已有知识，但不要因名称或主题相似而省略新资料支持的页面内容。
 
 {existingKnowledgeIndex}
 
 判定规则：
-- 如果新资料中的某个概念与已有页面「相同」（标题接近、主题重叠）→ 禁止为该概念创建新页面。改为在 relationships 中添加一条关系，将该概念关联到已有页面：
-  - source: 新资料中涉及该概念的描述
-  - target: 已有页面的 title
-  - relation: "属于"或"基于"
-  - reason: 说明为何判定为同一概念
-- 如果新资料是对已有概念的补充或扩展 → 同样禁止创建新页面。将补充内容作为一条关系记录到 relationships 中。
-- 如果新资料完全不涉及任何已有概念 → 正常创建新页面。
-- 当新资料同时包含已有概念和新概念时 → 已有概念的仅建关系，新概念的正常创建页面。
+- 每个由原始资料实质支持的知识点都必须生成页面内容，包括与已有页面同一对象或概念的内容；后续编译步骤会把匹配页映射到规范页面并合并。
+- 标题相似、主题相关或属于同一领域，不足以证明是同一对象；不得因此省略事实或创建“属于/基于”关系替代页面内容。
+- aliases 只列出能明确指向同一具体实体或概念的名称变体、译名或缩写；不得把相关主题、子概念或实现细节写成别名。
+- relationships 只描述不同知识页面之间的真实语义关系，不用于代替相同身份的内容合并。
 
 
 ## 关系提取
@@ -218,6 +217,7 @@ export const INGEST_SYSTEM_PROMPT = `你是一个知识编译助手，遵循 LLM
       "title": "页面标题",
       "summary": "一句话说明本页覆盖的核心主题",
       "tags": ["标签1"],
+      "aliases": ["仅指向同一实体或概念的名称变体"],
       "created": "YYYY-MM-DD",
       "source": "原始文件名",
       "content": "正文内容（纯 Markdown，不含 YAML frontmatter）"
@@ -380,11 +380,20 @@ export function tryParseLooseJson(text: string): LooseWikiParseResult | null {
       content += ch;
     }
 
-    // extract optional created/source fields (appear after tags, before content)
+    // extract optional aliases/created/source fields (appear after tags, before content)
     let created = '';
     let source = '';
     let summary = '';
     const beforeContent = rest.slice(0, contentKeyMatch.index!);
+    const aliasesMatch = beforeContent.match(/"aliases"\s*:\s*(\[[^\]]*\])/);
+    let aliases: string[] = [];
+    if (aliasesMatch) {
+      try {
+        aliases = JSON.parse(aliasesMatch[1]);
+      } catch {
+        aliases = [];
+      }
+    }
     const createdMatch = beforeContent.match(/"created"\s*:\s*"([^"]+)"/);
     if (createdMatch) created = createdMatch[1];
     const sourceMatch = beforeContent.match(/"source"\s*:\s*"([^"]+)"/);
@@ -392,7 +401,7 @@ export function tryParseLooseJson(text: string): LooseWikiParseResult | null {
     const summaryMatch = beforeContent.match(/"summary"\s*:\s*"([^"]+)"/);
     if (summaryMatch) summary = summaryMatch[1];
 
-    pages.push({ filename, title, summary, tags, created, source, content });
+    pages.push({ filename, title, summary, tags, aliases, created, source, content });
   }
 
   if (pages.length > 0) {
@@ -664,6 +673,11 @@ export function writeWikiPages(
 function renderWikiPage(page: CompiledPage): string {
   const frontmatterParts = [`title: ${page.title}`];
   if (page.tags && page.tags.length > 0) frontmatterParts.push(`tags: [${page.tags.join(', ')}]`);
+  if (page.aliases?.length) {
+    frontmatterParts.push(
+      `aliases: [${page.aliases.map((alias) => JSON.stringify(alias)).join(', ')}]`,
+    );
+  }
   if (page.created) frontmatterParts.push(`created: ${page.created}`);
   if (page.source) frontmatterParts.push(`source: ${page.source}`);
   return ['---', ...frontmatterParts, '---', '', page.content].join('\n');

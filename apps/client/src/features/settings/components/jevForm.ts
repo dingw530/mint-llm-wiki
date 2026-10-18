@@ -16,6 +16,7 @@ export interface JevFormState {
   memoryEnabled: boolean;
   memoryGateThreshold: number;
   rerankEnabled: boolean;
+  wikiIdentityEnabled: boolean;
 }
 
 export const DEFAULT_JEV_API_URL = 'https://api.typesafe.ai/v1/systemone';
@@ -23,7 +24,7 @@ export const DEFAULT_JEV_MODEL = 'jev-latest';
 export const DEFAULT_JEV_ROUTING_MIN_CONFIDENCE = 0.5;
 export const DEFAULT_JEV_MEMORY_GATE_THRESHOLD = 0.4;
 
-/** 首次渲染与设置加载前的占位初值；两个子开关默认关闭。 */
+/** 首次渲染与设置加载前的占位初值；实验性功能子开关默认关闭。 */
 export function createEmptyJevFormState(): JevFormState {
   return {
     apiUrl: DEFAULT_JEV_API_URL,
@@ -35,6 +36,7 @@ export function createEmptyJevFormState(): JevFormState {
     memoryEnabled: false,
     memoryGateThreshold: DEFAULT_JEV_MEMORY_GATE_THRESHOLD,
     rerankEnabled: false,
+    wikiIdentityEnabled: false,
   };
 }
 
@@ -62,6 +64,7 @@ export function createJevFormState(visible: Partial<VisibleSettings>): JevFormSt
         ? visible.jevMemoryGateThreshold
         : defaults.memoryGateThreshold,
     rerankEnabled: visible.jevRerankEnabled === true,
+    wikiIdentityEnabled: visible.jevWikiIdentityEnabled === true,
   };
 }
 
@@ -83,6 +86,7 @@ export function toJevSettingsInput(
   | 'jevMemoryEnabled'
   | 'jevMemoryGateThreshold'
   | 'jevRerankEnabled'
+  | 'jevWikiIdentityEnabled'
 > {
   return {
     jevApiUrl: form.apiUrl.trim(),
@@ -92,6 +96,7 @@ export function toJevSettingsInput(
     jevMemoryEnabled: form.memoryEnabled,
     jevMemoryGateThreshold: form.memoryGateThreshold,
     jevRerankEnabled: form.rerankEnabled,
+    jevWikiIdentityEnabled: form.wikiIdentityEnabled,
     ...(form.apiKey ? { jevApiKey: form.apiKey } : {}),
   };
 }

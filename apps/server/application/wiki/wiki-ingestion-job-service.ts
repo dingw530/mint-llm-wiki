@@ -1,4 +1,5 @@
 import * as settingsService from '../settings/settings-service.js';
+import { resolveWikiIdentityWithJev } from '../../infrastructure/ai/jev/wiki-identity-provider.js';
 import {
   WikiIngestionJobService,
   type WikiIngestionJobDependencies,
@@ -40,7 +41,12 @@ export interface WikiIngestionJobServiceOverrides extends Partial<
 const defaultDependencies: WikiIngestionJobServiceOverrides = {
   getAiSettings: () => settingsService.getAiSettings(),
   parseFile,
-  ingestWikiSource,
+  ingestWikiSource: (settings, wikiPath, request) =>
+    ingestWikiSource(settings, wikiPath, {
+      ...request,
+      jevSettings: settingsService.getJevSettings(),
+      jevIdentityProvider: resolveWikiIdentityWithJev,
+    }),
   archiveWikiUpload,
   discardWikiStagedFile,
   cleanupIngestionStagedFiles: cleanupWikiIngestionJobStagedFiles,

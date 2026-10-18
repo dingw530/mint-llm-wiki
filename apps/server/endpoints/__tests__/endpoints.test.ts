@@ -507,6 +507,7 @@ runIf(server)('AC-013: Jev 设置声明式端点', () => {
         jevRoutingMinConfidence: 0.6,
         jevMemoryEnabled: true,
         jevMemoryGateThreshold: 0.4,
+        jevWikiIdentityEnabled: true,
       }),
     });
     expect(save.status).toBe(200);
@@ -522,6 +523,7 @@ runIf(server)('AC-013: Jev 设置声明式端点', () => {
       jevRoutingMinConfidence: 0.6,
       jevMemoryEnabled: true,
       jevMemoryGateThreshold: 0.4,
+      jevWikiIdentityEnabled: true,
     });
     expect(body.jevApiKeyMasked).toBe('sk-****y');
     expect(JSON.stringify(body)).not.toContain('sk-http-test-key');
@@ -574,6 +576,7 @@ runIf(server)('AC-013: Jev 设置声明式端点', () => {
         'jevRoutingMinConfidence',
         'jevMemoryEnabled',
         'jevMemoryGateThreshold',
+        'jevWikiIdentityEnabled',
       ]),
     );
   });

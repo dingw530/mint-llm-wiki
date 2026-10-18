@@ -386,6 +386,16 @@ export function reinforceClaim(id: string, confidence: number): WikiClaim {
   );
 }
 
+/** Update Claim lifecycle state while retaining its historical row. */
+export function updateClaimStatus(id: string, status: WikiClaimStatus): WikiClaim {
+  getDb()
+    .prepare('UPDATE wiki_claims SET status=?, updated_at=? WHERE id=?')
+    .run(status, now(), id);
+  return mapClaim(
+    getDb().prepare<unknown[], WikiClaimRow>('SELECT * FROM wiki_claims WHERE id = ?').get(id)!,
+  );
+}
+
 /** 记录页面被检索命中的访问反馈。 */
 export function touchPage(id: string): WikiPage {
   const timestamp = now();

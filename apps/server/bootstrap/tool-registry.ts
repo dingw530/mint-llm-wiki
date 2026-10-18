@@ -7,6 +7,7 @@ import { InvokeAgentTool } from '../application/tools/agents/invoke-agent-tool.j
 import { KnowledgeGraphTool } from '../application/tools/knowledge-graph/knowledge-graph-tool.js';
 import { SkillTool } from '../application/tools/skills/skill-tool.js';
 import { WikiIngestTool } from '../application/tools/wiki/wiki-ingest-tool.js';
+import { WikiMergeTool } from '../application/tools/wiki/wiki-merge-tool.js';
 import { WikiLintTool } from '../application/tools/wiki/wiki-lint-tool.js';
 import { WikiSearchTool } from '../application/tools/wiki/wiki-search-tool.js';
 import { DiscoverToolsTool, LoadToolTool } from '../application/tools/mcp/tool-catalog-tools.js';
@@ -22,6 +23,7 @@ const builtinTools = [
   new ReadArtifactTool(),
   new WriteFileTool(),
   new WikiIngestTool(),
+  new WikiMergeTool(),
   new WikiLintTool(),
   new WikiSearchTool(),
   new KnowledgeGraphTool(),
