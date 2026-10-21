@@ -1,0 +1,95 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "完整参数与调用身份原子保存，执行前已提交；失败不执行。",
+      "risk": "high",
+      "invariants": ["snapshot_before_execute", "atomic_claim", "fail_closed"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-arguments-integration"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "显式读取返回原文，数据库和普通元数据不新增明文。",
+      "risk": "high",
+      "invariants": ["exact_round_trip", "encrypted_at_rest", "explicit_read"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-arguments-integration"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "重试及冲突不覆盖快照，旧记录无参数仍兼容。",
+      "risk": "medium",
+      "invariants": ["immutable_snapshot", "legacy_missing"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-arguments-integration"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "重启后未知调用参数仍可读取，且仍拒绝重放。",
+      "risk": "high",
+      "invariants": ["unknown_no_replay", "durable_snapshot"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-arguments-integration"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "工具已注册且模型可见，只允许当前会话所属运行；归属缺失或读取失败拒绝。",
+      "risk": "high",
+      "invariants": ["registered_visible", "conversation_scope", "fail_closed"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-query-integration"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "默认不解密，显式请求返回完整原文或明确标注缺失/不可读。",
+      "risk": "high",
+      "invariants": ["explicit_read", "no_default_decrypt", "exact_round_trip"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-query-integration"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "查询只返回 Ledger 事实，不修改未知状态、不执行重放、不伪造完整结果。",
+      "risk": "high",
+      "invariants": ["read_only", "unknown_no_replay", "external_state_unverified"],
+      "requiredEvidence": ["integration"],
+      "probes": ["invocation-query-integration"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "恢复上下文自动包含原 callId、原工具名、完整参数及合成未知结果；不要求模型提供 ID。",
+      "risk": "high",
+      "invariants": [
+        "restored_identity",
+        "exact_arguments",
+        "synthetic_unknown_result",
+        "no_auto_replay"
+      ],
+      "requiredEvidence": ["integration"],
+      "probes": ["recovery-transcript-integration"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "历史参数不可读时标注占位参数并拒绝 Retry；恢复合成本身不修改原运行状态。",
+      "risk": "high",
+      "invariants": [
+        "placeholder_marked",
+        "no_replay_without_arguments",
+        "no_retry_without_arguments",
+        "origin_immutable"
+      ],
+      "requiredEvidence": ["integration"],
+      "probes": ["recovery-transcript-integration"]
+    },
+    {
+      "id": "AC-010",
+      "statement": "Ledger 已记录 succeeded 时，恢复卡片隐藏 retry；继续核对可用，直接 retry API 会拒绝。",
+      "risk": "high",
+      "invariants": ["no_retry_after_success", "continue_to_verify", "server_retry_guard"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["recovery-transcript-integration", "browser-ac"]
+    }
+  ]
+}

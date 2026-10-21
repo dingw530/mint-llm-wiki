@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import type { Migration } from './types.js';
+import { decrypt } from '../infrastructure/security/encryption.js';
 
 interface SQLiteColumnInfo {
   name: string;
@@ -960,6 +961,139 @@ const migrations: Migration[] = [
         CREATE INDEX IF NOT EXISTS idx_agent_tool_invocations_status
           ON agent_tool_invocations(status, updated_at);
       `);
+    },
+  },
+  {
+    id: 34,
+    name: 'add-tool-invocation-arguments',
+    up: (db) => {
+      db.exec('ALTER TABLE agent_tool_invocations ADD COLUMN arguments_encrypted TEXT');
+    },
+  },
+  {
+    id: 35,
+    name: 'add-conversation-session-events',
+    up: (db) => {
+      db.exec(
+        [
+          'CREATE TABLE IF NOT EXISTS conversation_session_state (',
+          '  conversation_id TEXT PRIMARY KEY,',
+          '  schema_version INTEGER NOT NULL CHECK(schema_version > 0),',
+          '  generation TEXT NOT NULL,',
+          '  last_seq INTEGER NOT NULL DEFAULT 0 CHECK(last_seq >= 0),',
+          "  history_completeness TEXT NOT NULL CHECK(history_completeness IN ('complete', 'legacy_partial')),",
+          '  tail_incomplete INTEGER NOT NULL DEFAULT 0 CHECK(tail_incomplete IN (0, 1)),',
+          '  owner_id TEXT,',
+          '  owner_fence INTEGER NOT NULL DEFAULT 0 CHECK(owner_fence >= 0),',
+          '  lease_expires_at TEXT,',
+          '  created_at TEXT NOT NULL,',
+          '  updated_at TEXT NOT NULL,',
+          '  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE',
+          ');',
+          'CREATE TABLE IF NOT EXISTS conversation_session_events (',
+          '  conversation_id TEXT NOT NULL,',
+          '  event_id TEXT NOT NULL,',
+          '  seq INTEGER NOT NULL CHECK(seq > 0),',
+          '  schema_version INTEGER NOT NULL CHECK(schema_version > 0),',
+          '  run_id TEXT NOT NULL,',
+          '  turn_id TEXT NOT NULL,',
+          '  event_type TEXT NOT NULL,',
+          '  round INTEGER,',
+          '  call_id TEXT,',
+          '  created_at TEXT NOT NULL,',
+          '  payload_encrypted TEXT NOT NULL,',
+          '  PRIMARY KEY (conversation_id, seq),',
+          '  UNIQUE (conversation_id, event_id),',
+          '  FOREIGN KEY (conversation_id) REFERENCES conversation_session_state(conversation_id) ON DELETE CASCADE',
+          ');',
+          'CREATE INDEX IF NOT EXISTS idx_conversation_session_events_run',
+          '  ON conversation_session_events(conversation_id, run_id, seq);',
+          'CREATE INDEX IF NOT EXISTS idx_conversation_session_events_call',
+          '  ON conversation_session_events(conversation_id, run_id, call_id, seq);',
+        ].join('\n'),
+      );
+    },
+  },
+  {
+    id: 36,
+    name: 'store-conversation-session-events-as-json',
+    up: (db) => {
+      db.transaction(() => {
+        const table = db
+          .prepare(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'conversation_session_events'",
+          )
+          .get();
+        if (!table) return;
+        const columns = db.prepare('PRAGMA table_info(conversation_session_events)').all() as {
+          name: string;
+        }[];
+        if (columns.some((column) => column.name === 'payload_json')) return;
+        const rows = db
+          .prepare('SELECT * FROM conversation_session_events ORDER BY conversation_id, seq')
+          .all() as Array<{
+          conversation_id: string;
+          event_id: string;
+          seq: number;
+          schema_version: number;
+          run_id: string;
+          turn_id: string;
+          event_type: string;
+          round: number | null;
+          call_id: string | null;
+          created_at: string;
+          payload_encrypted: string;
+        }>;
+        db.exec(`
+          CREATE TABLE conversation_session_events_v2 (
+            conversation_id TEXT NOT NULL,
+            event_id TEXT NOT NULL,
+            seq INTEGER NOT NULL CHECK(seq > 0),
+            schema_version INTEGER NOT NULL CHECK(schema_version > 0),
+            run_id TEXT NOT NULL,
+            turn_id TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            round INTEGER,
+            call_id TEXT,
+            created_at TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            PRIMARY KEY (conversation_id, seq),
+            UNIQUE (conversation_id, event_id),
+            FOREIGN KEY (conversation_id) REFERENCES conversation_session_state(conversation_id) ON DELETE CASCADE
+          );
+        `);
+        const insert = db.prepare(`
+          INSERT INTO conversation_session_events_v2
+            (conversation_id, event_id, seq, schema_version, run_id, turn_id,
+             event_type, round, call_id, created_at, payload_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        for (const row of rows) {
+          const payload = decrypt(String(row.payload_encrypted));
+          JSON.parse(payload);
+          insert.run(
+            row.conversation_id,
+            row.event_id,
+            row.seq,
+            row.schema_version,
+            row.run_id,
+            row.turn_id,
+            row.event_type,
+            row.round,
+            row.call_id,
+            row.created_at,
+            payload,
+          );
+        }
+        db.exec(`
+          DROP TABLE conversation_session_events;
+          ALTER TABLE conversation_session_events_v2 RENAME TO conversation_session_events;
+          CREATE INDEX idx_conversation_session_events_run
+            ON conversation_session_events(conversation_id, run_id, seq);
+          CREATE INDEX idx_conversation_session_events_call
+            ON conversation_session_events(conversation_id, run_id, call_id, seq);
+        `);
+      }).immediate();
     },
   },
 ];

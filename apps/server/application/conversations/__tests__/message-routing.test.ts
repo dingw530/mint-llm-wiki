@@ -17,6 +17,56 @@ function emptyMemoryContextResult() {
   };
 }
 
+/** 隔离普通路由单测中的 Session 持久化端口。 */
+function mockSessionPersistence(): void {
+  vi.doMock('../../../infrastructure/persistence/conversation-session-repository.js', () => ({
+    ConversationSessionRepository: vi.fn().mockImplementation(() => ({
+      ensureConversation: vi.fn(() => ({ generation: 'routing-test', lastSequence: 0 })),
+      withTransaction: vi.fn((operation: () => unknown) => operation()),
+      claimOwner: vi.fn((conversationId: string, ownerId: string) => ({
+        conversationId,
+        ownerId,
+        ownerFence: 1,
+        expiresAt: '2026-10-21T00:05:00.000Z',
+      })),
+      readAll: vi.fn(() => []),
+      appendBatch: vi.fn(
+        (
+          _conversationId: string,
+          expectedLastSequence: number,
+          _fence: number,
+          batch: unknown[],
+        ) => ({
+          lastSequence: expectedLastSequence + batch.length,
+        }),
+      ),
+      renewOwner: vi.fn((lease: unknown) => lease),
+      releaseOwner: vi.fn(() => true),
+    })),
+  }));
+  vi.doMock('../conversation-session-recovery-service.js', () => ({
+    repairInterruptedConversation: vi.fn(() => ({
+      status: 'nothing_to_repair',
+      lastSequence: 0,
+      events: [],
+    })),
+  }));
+  vi.doMock('../session-run-writer.js', () => ({
+    ConversationSessionRunWriter: vi.fn().mockImplementation(() => ({
+      startHeartbeat: vi.fn(),
+      startUserTurn: vi.fn(),
+      startTurn: vi.fn(),
+      recordContextSnapshot: vi.fn(),
+      recordToolCatalog: vi.fn(),
+      recordModelMessage: vi.fn(),
+      recordToolDispatch: vi.fn(),
+      recordToolResult: vi.fn(),
+      recordRunTerminal: vi.fn(),
+      close: vi.fn(),
+    })),
+  }));
+}
+
 // Ensure encryption key is set
 if (!process.env.AI_CHAT_ENCRYPTION_KEY) {
   process.env.AI_CHAT_ENCRYPTION_KEY = crypto.randomBytes(16).toString('hex');
@@ -106,6 +156,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
 
   beforeEach(() => {
     vi.resetModules();
+    mockSessionPersistence();
   });
 
   it('should route to streamChat when agent has no tools', async () => {

@@ -4,6 +4,7 @@ import { ReadArtifactTool } from '../infrastructure/tools/read-artifact-tool.js'
 import { ReadFileTool } from '../application/tools/wiki/read-wiki-file-tool.js';
 import { WriteFileTool } from '../application/tools/wiki/write-wiki-file-tool.js';
 import { InvokeAgentTool } from '../application/tools/agents/invoke-agent-tool.js';
+import { GetToolInvocationTool } from '../application/tools/agents/get-tool-invocation-tool.js';
 import { KnowledgeGraphTool } from '../application/tools/knowledge-graph/knowledge-graph-tool.js';
 import { SkillTool } from '../application/tools/skills/skill-tool.js';
 import { WikiIngestTool } from '../application/tools/wiki/wiki-ingest-tool.js';
@@ -19,6 +20,7 @@ const builtinTools = [
   new SkillTool(),
   new BashTool(),
   new InvokeAgentTool(),
+  new GetToolInvocationTool(),
   new ReadFileTool(),
   new ReadArtifactTool(),
   new WriteFileTool(),

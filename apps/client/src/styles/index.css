@@ -379,6 +379,40 @@ body::after {
   white-space: nowrap;
 }
 
+.chat-view-tabs {
+  align-self: stretch;
+  display: flex;
+  gap: 18px;
+  margin-left: 20px;
+  -webkit-app-region: no-drag;
+}
+
+.chat-view-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+}
+
+.chat-view-tabs button.is-active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.chat-conversation-view,
+.chat-trajectory-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chat-trajectory-view {
+  padding: 20px 24px;
+}
+
 .memory-scope-control {
   display: flex;
   align-items: center;
@@ -1396,6 +1430,11 @@ body::after {
   border-left-color: var(--warning-text, #d99a2b);
 }
 
+.tool-call-segment.tool-call-outcome_unknown {
+  opacity: 1;
+  border-left-color: var(--warning-text, #d99a2b);
+}
+
 .tool-call-header {
   display: flex;
   align-items: center;
@@ -1429,6 +1468,12 @@ body::after {
 }
 
 .tool-call-status-approval {
+  color: var(--warning-text, #d99a2b);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tool-call-status-unknown {
   color: var(--warning-text, #d99a2b);
   font-size: 11px;
   font-weight: 700;
@@ -1471,6 +1516,14 @@ body::after {
   margin-top: 4px;
   padding: 4px 8px;
   background: var(--error-bg);
+  border-radius: var(--radius-sm);
+}
+
+.tool-call-unknown-body {
+  color: var(--warning-text, #d99a2b);
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
 }
 

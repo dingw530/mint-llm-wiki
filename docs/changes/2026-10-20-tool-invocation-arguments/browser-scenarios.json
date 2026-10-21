@@ -1,0 +1,104 @@
+{
+  "scenarios": [
+    {
+      "id": "ledger-success-does-not-offer-retry",
+      "acceptanceCriteria": ["AC-010"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": { "agents": [{ "id": "general", "label": "通用助手", "available": true }] }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": { "showReactSteps": false, "routingMode": "manual" }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": { "endpoints": [] }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "ledger-success-conversation",
+                  "title": "中断的文件写入",
+                  "type": "chat",
+                  "createdAt": "2026-10-20T08:00:00.000Z",
+                  "updatedAt": "2026-10-20T08:01:00.000Z",
+                  "lockedAgent": null,
+                  "routingMode": "manual"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/*/messages",
+            "method": "GET",
+            "body": { "messages": [] }
+          },
+          {
+            "pattern": "**/api/conversations/*/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ""
+          },
+          {
+            "pattern": "**/api/conversations/ledger-success-conversation/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": [
+                {
+                  "runId": "run-ledger-success",
+                  "status": "interrupted",
+                  "unknownTools": [
+                    {
+                      "callId": "call-write-file",
+                      "toolName": "write_file",
+                      "recoveryLevel": "requires_confirmation",
+                      "ledgerStatus": "succeeded"
+                    }
+                  ],
+                  "actions": ["continue", "abandon"]
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/ledger-success-conversation/agent-runs/run-ledger-success/recovery-actions",
+            "method": "POST",
+            "body": {
+              "action": {
+                "id": "action-continue",
+                "action": "continue",
+                "status": "reserved",
+                "successorRunId": "successor-run"
+              }
+            }
+          },
+          {
+            "pattern": "**/api/conversations/ledger-success-conversation/agent-runs/recovery-actions/action-continue/stream",
+            "method": "POST",
+            "contentType": "text/event-stream",
+            "body": "data: [DONE]\n\n"
+          }
+        ]
+      },
+      "steps": [
+        { "action": "waitFor", "text": "工具账本记录执行成功" },
+        { "action": "assertText", "text": "不会重试已成功的调用" },
+        { "action": "assertNotText", "text": "重试运行" },
+        { "action": "click", "target": { "role": "button", "name": "继续运行" } },
+        { "action": "assertRequests" }
+      ],
+      "assertRequests": [{ "contains": "/recovery-actions", "method": "POST", "countAtLeast": 2 }]
+    }
+  ]
+}

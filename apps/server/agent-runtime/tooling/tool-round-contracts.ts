@@ -1,6 +1,6 @@
 import type { ApiAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
 import type { ReactEventPayload } from '../react-events.js';
-import type { RuntimeContext } from './runtime-context.js';
+import type { RuntimeContext, SessionRecordingPort } from './runtime-context.js';
 import type {
   AiSettings,
   HistoryMessage,
@@ -19,6 +19,8 @@ export interface ToolRoundInput {
   label?: string;
   emitEvent?: (event: ReactEventPayload) => void;
   runtimeContext?: RuntimeContext;
+  runId?: string;
+  round?: number;
 }
 
 export interface ToolRoundResult {
@@ -35,6 +37,7 @@ export interface ToolExecutionResult {
   errorCode?: string;
   retryable?: boolean;
   outcomeUnknown?: boolean;
+  dispatchCommitted?: boolean;
   diagnosticError?: string;
   resultSummary?: string;
   approvalRequired?: { approvalId?: string; reason: string };
@@ -43,10 +46,12 @@ export interface ToolExecutionResult {
 
 export interface ApprovalResumeContext {
   runId?: string;
+  recoveryActionId?: string;
   messages: HistoryMessage[];
   settings: AiSettings;
   agent?: string;
   reasoning?: string;
+  sessionRecorder?: SessionRecordingPort;
 }
 
 export interface ToolExecutionOptions {

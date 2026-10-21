@@ -8,6 +8,8 @@
 
 | 变更                                                                                                           | 日期       | 状态   |
 | -------------------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| [会话轨迹持久化与恢复](../changes/2026-10-20-session-trajectory-recovery/exec-plan.md)                         | 2026-10-20 | 提案   |
+| [工具调用参数对账记录](../changes/2026-10-20-tool-invocation-arguments/exec-plan.md)                           | 2026-10-20 | AC通过 |
 | [可移植的最小 ReAct 框架包](../changes/2026-10-08-react-runtime-package/exec-plan.md)                          | 2026-10-08 | 已完成 |
 | [记忆语义键归一化](../changes/2026-10-01-memory-semantic-normalization/exec-plan.md)                           | 2026-10-01 | 已完成 |
 | [记忆界面默认全局](../changes/2026-10-01-memory-global-default-ui/exec-plan.md)                                | 2026-10-01 | 已完成 |
@@ -63,4 +65,4 @@
 | [启动与关闭生命周期整改](../changes/2026-09-11-server-lifecycle-remediation/exec-plan.md)                      | 2026-09-11 | 已完成 |
 | [Jev 实验性接入（路由与记忆分类）](../changes/2026-09-19-jev-experimental-integration/exec-plan.md)            | 2026-09-19 | 已完成 |
 | [Electron 自动更新与版本发布](../changes/2026-10-15-electron-auto-update-release/exec-plan.md)                 | 2026-10-15 | 已完成 |
-| [Wiki 知识页增量合并](../changes/2026-10-16-wiki-knowledge-merge/exec-plan.md)                                   | 2026-10-16 | 已完成 |
+| [Wiki 知识页增量合并](../changes/2026-10-16-wiki-knowledge-merge/exec-plan.md)                                 | 2026-10-16 | 已完成 |

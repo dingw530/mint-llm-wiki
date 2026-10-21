@@ -8,6 +8,7 @@ import { runAgentChat as reactChat } from '../../../bootstrap/agent-runtime.js';
 import * as conversationRepo from '../../../infrastructure/persistence/conversation-repository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRun, agentRunRegistry } from '../../../agent-runtime/agent-run.js';
+import type { SessionRecordingPort } from '../../../agent-runtime/tooling/runtime-context.js';
 
 vi.mock('../../../bootstrap/agent-runtime.js', () => ({
   runAgentChat: vi.fn(
@@ -78,6 +79,22 @@ class SafeFailureApprovalTool extends BaseTool<{ value: string }, string> {
       requiresApproval: true,
     };
   }
+}
+
+function createSessionRecorder(): SessionRecordingPort {
+  return {
+    record: vi.fn(() => []),
+    recordModelMessage: vi.fn(),
+    recordToolCatalog: vi.fn(),
+    recordContextSnapshot: vi.fn(),
+    recordToolDispatch: vi.fn(),
+    recordToolResult: vi.fn(),
+    recordApproval: vi.fn(),
+    recordRunTerminal: vi.fn(),
+    startHeartbeat: vi.fn(),
+    pauseForApproval: vi.fn(),
+    close: vi.fn(),
+  } as unknown as SessionRecordingPort;
 }
 
 describe('tool approval service', () => {
@@ -244,6 +261,7 @@ describe('tool approval service', () => {
     toolRegistry.register(tool);
     const conversationId = `agent-run-approval-${uuidv4()}`;
     const runId = `original-agent-run-${uuidv4()}`;
+    const sessionRecorder = createSessionRecorder();
     conversationRepo.create({
       id: conversationId,
       title: 'AgentRun Approval',
@@ -262,6 +280,7 @@ describe('tool approval service', () => {
         messages: [{ role: 'user', content: 'continue this task' }],
         settings: { apiUrl: 'https://api.test', apiKey: 'test-key', modelId: 'test-model' },
         agent: 'general',
+        sessionRecorder,
       },
     });
     const run = new AgentRun({ runId, conversationId });
@@ -297,7 +316,19 @@ describe('tool approval service', () => {
       conversationId,
       undefined,
       run,
+      expect.objectContaining({ sessionRecorder }),
     );
+    expect(sessionRecorder.recordApproval).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'agent-run-approval-call', status: 'approved' }),
+    );
+    expect(sessionRecorder.recordToolDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'agent-run-approval-call' }),
+    );
+    expect(sessionRecorder.recordToolResult).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'agent-run-approval-call', status: 'success' }),
+    );
+    expect(sessionRecorder.recordRunTerminal).toHaveBeenCalledWith('completed');
+    expect(sessionRecorder.close).toHaveBeenCalledOnce();
     expect(agentRunRegistry.get(runId)).toBeUndefined();
   });
 

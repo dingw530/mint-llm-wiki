@@ -58,6 +58,7 @@ export interface ExecutionResult<T = unknown> {
   errorCode?: ToolErrorCode;
   retryable?: boolean;
   outcomeUnknown?: boolean;
+  dispatchCommitted?: boolean;
   diagnosticError?: string;
   duration: number; // 执行时长（毫秒）
   retries?: number; // 实际重试次数

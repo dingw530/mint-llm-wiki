@@ -52,6 +52,10 @@ router.post(
       return;
     }
 
+    if (regenerate === true) {
+      messageService.validateConversationRegeneration(req.params.id as string);
+    }
+
     // 客户端断开连接时清理
     req.on('close', () => {
       if (res.headersSent && !res.writableEnded) {

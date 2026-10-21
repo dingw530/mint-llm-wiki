@@ -72,6 +72,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('conversations:listRecoverableRuns', conversationId),
   resolveAgentRunRecovery: (conversationId, runId, data) =>
     ipcRenderer.invoke('conversations:resolveRecoveryAction', conversationId, runId, data),
+  getConversationTrajectory: (conversationId, query) =>
+    ipcRenderer.invoke('conversations:getTrajectory', conversationId, query),
+  getConversationTrajectoryEvent: (conversationId, eventId) =>
+    ipcRenderer.invoke('conversations:getTrajectoryEvent', conversationId, eventId),
+  subscribeConversationTrajectory: (conversationId, afterSeq) =>
+    ipcRenderer.invoke('conversations:subscribeTrajectory', conversationId, afterSeq),
+  unsubscribeConversationTrajectory: (subscriptionId) =>
+    ipcRenderer.invoke('conversations:unsubscribeTrajectory', subscriptionId),
+  onConversationTrajectoryUpdate: (subscriptionId, callback) => {
+    const listener = (_event, eventSubscriptionId, update) => {
+      if (eventSubscriptionId === subscriptionId) callback(update);
+    };
+    ipcRenderer.on('conversations:trajectoryUpdate', listener);
+    return () => ipcRenderer.removeListener('conversations:trajectoryUpdate', listener);
+  },
+  onConversationTrajectoryError: (subscriptionId, callback) => {
+    const listener = (_event, eventSubscriptionId, error) => {
+      if (eventSubscriptionId === subscriptionId) callback(error);
+    };
+    ipcRenderer.on('conversations:trajectoryError', listener);
+    return () => ipcRenderer.removeListener('conversations:trajectoryError', listener);
+  },
 
   // ── 消息 ──
   getMessages: (convId) => ipcRenderer.invoke('messages:list', convId),

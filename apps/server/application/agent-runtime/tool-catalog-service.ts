@@ -32,6 +32,7 @@ const GLOBAL_TOOL_NAMES = [
   'invoke_skill',
   'bash',
   'invoke_agent',
+  'get_tool_invocation',
   'read_artifact',
   'write_file',
   'wiki_ingest',

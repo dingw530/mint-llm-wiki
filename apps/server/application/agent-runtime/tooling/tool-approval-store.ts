@@ -1,16 +1,19 @@
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { AiSettings, HistoryMessage, ToolCall } from '../../../types.js';
+import type { SessionRecordingPort } from '../../../agent-runtime/tooling/runtime-context.js';
 
 export interface ApprovalResumeContext {
   runId?: string;
+  recoveryActionId?: string;
   messages: HistoryMessage[];
   settings: AiSettings;
   agent?: string;
   reasoning?: string;
+  sessionRecorder?: SessionRecordingPort;
 }
 
-const APPROVAL_TTL_MS = 10 * 60 * 1000;
+export const TOOL_APPROVAL_TTL_MS = 10 * 60 * 1000;
 
 export interface PendingToolApproval {
   id: string;
@@ -52,7 +55,7 @@ export class ToolApprovalStore {
       ...request,
       id,
       createdAt: now,
-      expiresAt: now + APPROVAL_TTL_MS,
+      expiresAt: now + TOOL_APPROVAL_TTL_MS,
     });
     return id;
   }

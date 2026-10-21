@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useState, type RefObject } from 'react';
 import MessageList from './MessageList';
 import InputBox from './InputBox';
 import AgentBar from './AgentBar';
@@ -11,6 +11,7 @@ import type { MarkdownRendererProps } from '@/shared/components/MarkdownRenderer
 import type { Agent, DecisionTraceItem, EndpointOutput, Message, ReActStep } from '@/types';
 import ModelConnectionPanel from './ModelConnectionPanel';
 import RecoveryCards from './RecoveryCards';
+import ConversationTraceView from './ConversationTraceView';
 import type { RecoverableAgentRun, RecoveryAction } from '@/services/api/agentRunRecovery';
 
 function LoadingSpinner() {
@@ -114,48 +115,63 @@ export default function ChatAreaView({
   recoverableRuns,
   onRecoveryAction,
 }: ChatAreaViewProps) {
+  const [activeTab, setActiveTab] = useState<'conversation' | 'trajectory'>('conversation');
   return (
     <div className="main-area">
-      <ChatHeader title={title} />
+      <ChatHeader title={title} activeTab={activeTab} onTabChange={setActiveTab} />
       <div className="chat-area">
-        {(agentRunStatus || (showReactSteps && decisionTrace.length > 0)) && (
-          <div className="chat-top-status">
-            {agentRunStatus && (
-              <AgentRunStatus status={agentRunStatus} onToolApproval={onToolApproval} />
+        {activeTab === 'conversation' ? (
+          <div className="chat-conversation-view" role="tabpanel" aria-label="对话">
+            {(agentRunStatus || (showReactSteps && decisionTrace.length > 0)) && (
+              <div className="chat-top-status">
+                {agentRunStatus && (
+                  <AgentRunStatus status={agentRunStatus} onToolApproval={onToolApproval} />
+                )}
+                {showReactSteps && decisionTrace.length > 0 && (
+                  <DecisionTrace items={decisionTrace} />
+                )}
+              </div>
             )}
-            {showReactSteps && decisionTrace.length > 0 && <DecisionTrace items={decisionTrace} />}
+            {!endpointsLoading && !chatEnabled && messages.length === 0 && !connectionMode && (
+              <div className="chat-model-gate">
+                <div className="chat-model-gate-icon">✦</div>
+                <h2>连接模型后开始对话</h2>
+                <p>当前 Chat 暂不可用，先连接一个可验证的模型端点。</p>
+                <button className="btn-primary" onClick={() => onConnectModel('repair')}>
+                  连接模型
+                </button>
+              </div>
+            )}
+            {activeConversation && recoverableRuns.length > 0 && (
+              <RecoveryCards runs={recoverableRuns} onResolve={onRecoveryAction} />
+            )}
+            {loading ? (
+              <div className="messages-loading">
+                <LoadingSpinner />
+              </div>
+            ) : (
+              <MessageList
+                messages={messages}
+                streamingId={streamingId}
+                scrollRef={messagesEndRef}
+                onRegenerate={onRegenerate}
+                onRepair={onRepair}
+                reactSteps={reactSteps}
+                reactRunId={reactRunId}
+                showReactSteps={showReactSteps}
+                onLinkClick={onLinkClick}
+                onToolApproval={onToolApproval}
+              />
+            )}
           </div>
-        )}
-        {!endpointsLoading && !chatEnabled && messages.length === 0 && !connectionMode && (
-          <div className="chat-model-gate">
-            <div className="chat-model-gate-icon">✦</div>
-            <h2>连接模型后开始对话</h2>
-            <p>当前 Chat 暂不可用，先连接一个可验证的模型端点。</p>
-            <button className="btn-primary" onClick={() => onConnectModel('repair')}>
-              连接模型
-            </button>
-          </div>
-        )}
-        {activeConversation && recoverableRuns.length > 0 && (
-          <RecoveryCards runs={recoverableRuns} onResolve={onRecoveryAction} />
-        )}
-        {loading ? (
-          <div className="messages-loading">
-            <LoadingSpinner />
+        ) : activeConversation ? (
+          <div className="chat-trajectory-view" role="tabpanel" aria-label="轨迹">
+            <ConversationTraceView conversationId={activeConversation} />
           </div>
         ) : (
-          <MessageList
-            messages={messages}
-            streamingId={streamingId}
-            scrollRef={messagesEndRef}
-            onRegenerate={onRegenerate}
-            onRepair={onRepair}
-            reactSteps={reactSteps}
-            reactRunId={reactRunId}
-            showReactSteps={showReactSteps}
-            onLinkClick={onLinkClick}
-            onToolApproval={onToolApproval}
-          />
+          <div className="chat-trajectory-view" role="tabpanel" aria-label="轨迹">
+            选择一个对话以查看轨迹。
+          </div>
         )}
         <div className="chat-composer">
           <div className="chat-input-zone">

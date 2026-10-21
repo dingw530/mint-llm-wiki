@@ -1,0 +1,54 @@
+{
+  "scenarios": [
+    {
+      "id": "trace-real-restart",
+      "acceptanceCriteria": ["AC-015", "AC-016", "AC-019"],
+      "execution": {
+        "command": "node scripts/with-node-version.cjs node --import tsx scripts/session-restart-browser-smoke.mjs",
+        "evidenceDirectory": "HARNESS_RUN_DIR/session-restart-browser-*",
+        "isolatedDatabase": true,
+        "serverProcessRestart": true,
+        "modelProvider": "local deterministic OpenAI-compatible stream"
+      },
+      "setup": {
+        "routes": [],
+        "fixture": {
+          "priorReadTool": "read_file succeeds and its result is persisted",
+          "interruptedTool": "write_file is dispatched, the file contains only its first segment, and its Ledger attempt is 1",
+          "restart": "stop and restart the HTTP server with the same SQLite file",
+          "noExternalModel": true
+        }
+      },
+      "steps": [
+        { "action": "click", "target": { "role": "tab", "name": "对话" } },
+        { "action": "waitFor", "text": "read_file" },
+        { "action": "click", "target": { "role": "tab", "name": "轨迹" } },
+        { "action": "waitFor", "text": "结果未知" },
+        { "action": "assertText", "text": "read_file" },
+        { "action": "click", "target": { "role": "button", "name": "write_file", "exact": false } },
+        { "action": "waitFor", "text": "crash-fixture.txt" },
+        { "action": "click", "target": { "role": "tab", "name": "对话" } },
+        {
+          "action": "fill",
+          "target": { "placeholder": "输入消息..." },
+          "value": "请先核对文件的实际状态，再决定是否继续。"
+        },
+        { "action": "click", "target": { "role": "tab", "name": "轨迹" } },
+        { "action": "click", "target": { "role": "tab", "name": "对话" } },
+        { "action": "assertText", "text": "请先核对文件的实际状态，再决定是否继续。" },
+        { "action": "click", "target": { "role": "button", "name": "发送消息" } },
+        { "action": "waitFor", "text": "已完成只读核对" },
+        { "action": "click", "target": { "role": "tab", "name": "轨迹" } },
+        { "action": "assertText", "text": "结果未知" },
+        { "action": "screenshot", "filename": "trajectory-real-restart.png" }
+      ],
+      "processAssertions": [
+        "The new model request contains the original read_file call and successful result before the new question.",
+        "The new model request contains the interrupted write_file call and its unknown result before the new question.",
+        "The previous tool Ledger attempt remains 1 and the partial file is unchanged.",
+        "Exactly one recovery_result and one final assistant message are persisted.",
+        "The ordinary new message path does not call the recovery retry endpoint."
+      ]
+    }
+  ]
+}

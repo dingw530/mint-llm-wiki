@@ -7,7 +7,13 @@ export interface RecoverableAgentRun {
   runId: string;
   status: 'interrupted';
   unknownToolCount?: number;
-  unknownTools: Array<{ callId: string; toolName: string; recoveryLevel: string }>;
+  unknownTools: Array<{
+    callId: string;
+    toolName: string;
+    recoveryLevel: string;
+    ledgerStatus: 'executing' | 'succeeded' | 'failed' | 'outcome_unknown' | 'missing';
+    argumentsAvailable: boolean;
+  }>;
   actions: RecoveryAction[];
 }
 

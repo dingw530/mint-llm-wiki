@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runMigrations } from '../index.js';
+import { encrypt } from '../../infrastructure/security/encryption.js';
 
 describe('runMigrations', () => {
   let db: Database.Database | undefined;
@@ -75,10 +76,93 @@ describe('runMigrations', () => {
       id: number;
     }[];
     expect(appliedIds.map(({ id }) => id)).toEqual(
-      Array.from({ length: 33 }, (_, index) => index + 1),
+      Array.from({ length: 36 }, (_, index) => index + 1),
     );
+    expect(db.prepare('SELECT name FROM _migrations WHERE id = 35').get()).toEqual({
+      name: 'add-conversation-session-events',
+    });
+    expect(db.prepare('SELECT name FROM _migrations WHERE id = 36').get()).toEqual({
+      name: 'store-conversation-session-events-as-json',
+    });
     expect(warningLog).toHaveBeenCalledWith(
       '[db/migration] Skipped compatible: #1 add-reasoning-to-messages: duplicate column name: reasoning',
     );
+  });
+
+  it('atomically migrates existing encrypted session events to JSON', () => {
+    vi.stubEnv('AI_CHAT_ENCRYPTION_KEY', 'session-migration-key');
+    db = new Database(':memory:');
+    db.exec(`
+      CREATE TABLE _migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')));
+      CREATE TABLE conversations (id TEXT PRIMARY KEY);
+      CREATE TABLE conversation_session_state (conversation_id TEXT PRIMARY KEY);
+      CREATE TABLE conversation_session_events (
+        conversation_id TEXT NOT NULL, event_id TEXT NOT NULL, seq INTEGER NOT NULL,
+        schema_version INTEGER NOT NULL, run_id TEXT NOT NULL, turn_id TEXT NOT NULL,
+        event_type TEXT NOT NULL, round INTEGER, call_id TEXT, created_at TEXT NOT NULL,
+        payload_encrypted TEXT NOT NULL, PRIMARY KEY (conversation_id, seq),
+        UNIQUE (conversation_id, event_id),
+        FOREIGN KEY (conversation_id) REFERENCES conversation_session_state(conversation_id) ON DELETE CASCADE
+      );
+    `);
+    const markApplied = db.prepare('INSERT INTO _migrations (id, name) VALUES (?, ?)');
+    for (let id = 1; id <= 35; id += 1) markApplied.run(id, 'existing');
+    db.prepare('INSERT INTO conversations (id) VALUES (?)').run('conversation-1');
+    db.prepare('INSERT INTO conversation_session_state (conversation_id) VALUES (?)').run(
+      'conversation-1',
+    );
+    const event = {
+      schemaVersion: 1,
+      conversationId: 'conversation-1',
+      eventId: 'event-1',
+      seq: 1,
+      runId: 'run-1',
+      turnId: 'turn-1',
+      createdAt: '2026-10-20T00:00:00.000Z',
+      type: 'user_message',
+      messageId: 'message-1',
+      content: 'hello from old session',
+    };
+    db.prepare(
+      `INSERT INTO conversation_session_events
+        (conversation_id, event_id, seq, schema_version, run_id, turn_id, event_type, round, call_id, created_at, payload_encrypted)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      'conversation-1',
+      'event-1',
+      1,
+      1,
+      'run-1',
+      'turn-1',
+      'user_message',
+      null,
+      null,
+      event.createdAt,
+      encrypt(JSON.stringify(event)),
+    );
+
+    vi.stubEnv('AI_CHAT_ENCRYPTION_KEY', 'wrong-session-migration-key');
+    expect(() => runMigrations(db!)).toThrow(
+      'Migration failed: #36 store-conversation-session-events-as-json',
+    );
+    expect(db.prepare('PRAGMA table_info(conversation_session_events)').all()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'payload_encrypted' })]),
+    );
+    expect(db.prepare('SELECT id FROM _migrations WHERE id = 36').get()).toBeUndefined();
+
+    vi.stubEnv('AI_CHAT_ENCRYPTION_KEY', 'session-migration-key');
+
+    runMigrations(db);
+
+    const migrated = db
+      .prepare('SELECT payload_json FROM conversation_session_events WHERE event_id = ?')
+      .get('event-1') as { payload_json: string };
+    expect(JSON.parse(migrated.payload_json)).toEqual(event);
+    expect(db.prepare('PRAGMA table_info(conversation_session_events)').all()).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'payload_json' })]),
+    );
+    expect(db.prepare('SELECT count(*) AS count FROM conversation_session_events').get()).toEqual({
+      count: 1,
+    });
   });
 });

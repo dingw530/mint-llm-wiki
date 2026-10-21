@@ -1,6 +1,7 @@
 const { registerChatHandlers } = require('./chat');
 const { registerConversationHandlers } = require('./conversations');
 const { registerWikiHandlers } = require('./wiki');
+const { registerTrajectoryHandlers } = require('./trajectory');
 
 /**
  * 注册依赖 Electron 上下文的 IPC handlers。
@@ -11,6 +12,7 @@ function registerElectronIpcHandlers(dependencies) {
   registerChatHandlers(dependencies);
   registerConversationHandlers(dependencies);
   registerWikiHandlers(dependencies);
+  registerTrajectoryHandlers(dependencies);
 }
 
 module.exports = {

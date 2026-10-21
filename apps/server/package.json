@@ -8,7 +8,7 @@
     "./eval": "./dist/eval.js"
   },
   "scripts": {
-    "build:runtime-packages": "npm run build -w @mint/react-runtime && npm run build -w @mint/tool-runtime",
+    "build:runtime-packages": "npm run build -w @mint/react-runtime && npm run build -w @mint/tool-runtime && npm run build -w @mint/session",
     "prebuild": "npm run build:runtime-packages",
     "cli": "node ../../scripts/with-node-version.cjs tsx cli/index.ts",
     "cli:serve": "node ../../scripts/with-node-version.cjs tsx cli/index.ts serve",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@mint/react-runtime": "*",
     "@mint/tool-runtime": "*",
+    "@mint/session": "*",
     "@ai-sdk/anthropic": "^3.0.0",
     "@ai-sdk/openai": "^3.0.30",
     "@ai-sdk/openai-compatible": "^2.0.0",

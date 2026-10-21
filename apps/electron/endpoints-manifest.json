@@ -511,6 +511,44 @@
     "async": true
   },
   {
+    "id": "conversations:getTrajectory",
+    "ipcChannel": "conversations:getTrajectory",
+    "preloadMethod": "getConversationTrajectory",
+    "method": "GET",
+    "httpPath": "/conversations/:id/trajectory",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      },
+      {
+        "from": "query",
+        "optional": true
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
+    "id": "conversations:getTrajectoryEvent",
+    "ipcChannel": "conversations:getTrajectoryEvent",
+    "preloadMethod": "getConversationTrajectoryEvent",
+    "method": "GET",
+    "httpPath": "/conversations/:id/trajectory/events/:eventId",
+    "args": [
+      {
+        "from": "path",
+        "name": "id"
+      },
+      {
+        "from": "path",
+        "name": "eventId"
+      }
+    ],
+    "result": "direct",
+    "async": false
+  },
+  {
     "id": "conversations:getMemorySpace",
     "ipcChannel": "conversations:getMemorySpace",
     "preloadMethod": "getConversationMemorySpace",

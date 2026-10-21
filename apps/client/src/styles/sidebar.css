@@ -1,6 +1,8 @@
 /* ── Sidebar ── */
 
 .sidebar {
+  --sidebar-text-main: color-mix(in srgb, var(--text-primary) 80%, var(--text-secondary));
+  --sidebar-text-muted: var(--text-secondary);
   width: 260px;
   min-width: 260px;
   background: linear-gradient(
@@ -90,7 +92,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--sidebar-text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
   -webkit-app-region: no-drag;
@@ -145,7 +147,7 @@
   background: transparent;
   cursor: pointer;
   transition: all 0.18s ease;
-  color: var(--text-tertiary);
+  color: var(--sidebar-text-main);
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 550;
@@ -217,11 +219,19 @@
   stroke: var(--accent);
 }
 
+.platform-darwin-electron .module-btn {
+  border: 1px solid transparent;
+}
+
 .platform-darwin-electron .module-btn.active {
   background: var(--accent-subtle);
   border: 1px solid var(--accent-border);
   box-shadow: none;
   color: var(--text-primary);
+}
+
+.platform-darwin-electron .module-chat-row {
+  border: 1px solid transparent;
 }
 
 .platform-darwin-electron .module-chat-row:has(> .module-btn.active) {
@@ -232,7 +242,7 @@
 
 .platform-darwin-electron .module-chat-row > .module-btn.active {
   background: transparent;
-  border: none;
+  border-color: transparent;
   box-shadow: none;
 }
 
@@ -315,7 +325,7 @@
 
 .conversation-group-title {
   margin: 7px 10px 3px;
-  color: var(--text-tertiary);
+  color: var(--sidebar-text-muted);
   font-size: 10px;
   font-weight: 650;
   letter-spacing: 0.08em;
@@ -394,7 +404,7 @@
   white-space: nowrap;
   font-size: 12px;
   font-weight: 550;
-  color: var(--text-secondary);
+  color: var(--sidebar-text-main);
 }
 
 .conversation-item:hover .title,
@@ -1174,7 +1184,7 @@
   border: none;
   border-radius: var(--radius-md);
   background: transparent;
-  color: var(--text-tertiary);
+  color: var(--sidebar-text-muted);
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 500;
