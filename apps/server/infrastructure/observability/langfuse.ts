@@ -208,7 +208,7 @@ class LangfuseRunObserver {
     const tool = this.tools.get(event.callId);
     if (!tool) return;
     tool.update({
-      ...(shouldCaptureLangfuseContent() ? { output: safeLangfuseValue(event.result) } : {}),
+      ...(shouldCaptureLangfuseContent() ? { output: safeLangfuseOutput(event.result) } : {}),
       metadata: {
         status: event.status,
         ...(event.duration !== undefined ? { durationMs: event.duration } : {}),
@@ -308,6 +308,19 @@ function safeLangfuseText(value: string): string {
     '$1[REDACTED]',
   );
   return redacted.length > 1000 ? `${redacted.slice(0, 1000)}…` : redacted;
+}
+
+/**
+ * Keeps serialized JSON tool results structured after applying Langfuse-safe truncation.
+ * @param value Serialized tool result
+ * @returns Sanitized JSON value or a bounded plain-text string
+ */
+export function safeLangfuseOutput(value: string): unknown {
+  try {
+    return safeLangfuseValue(JSON.parse(value) as unknown);
+  } catch {
+    return safeLangfuseText(value);
+  }
 }
 
 function safeLangfuseValue(value: unknown, depth = 0): unknown {
