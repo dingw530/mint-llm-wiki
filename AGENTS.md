@@ -36,7 +36,7 @@ packages/
 
 - **Server 文件命名**：`apps/server/` 下的 TypeScript 文件统一使用 **kebab-case**，例如 `memory-service.ts`、`routing-policy.ts`、`memory-service.test.ts`。已迁移的 `apps/server/domains/` 与 `apps/server/infrastructure/` 统一执行此规范；其他现有未迁移模块暂不批量改名，后续迁移或新建文件时遵守此规范。符号名仍沿用既有 TypeScript 命名约定。
 
-- **注释规范**: 新增方法添加 JSDOC 注释，参数和返回值标注类型
+- **注释规范**: 新增方法添加 JSDOC 注释，参数和返回值标注类型；注释使用中文；涉及到复杂的调用链路时，对上游和下游进行说明
 - **避免硬编码**: 颜色/间距/字体使用 CSS custom properties（design tokens），后端常量抽取到对应模块
 - **前端结构**: feature-based 目录组织，按功能模块划分而非组件类型
 - **API 适配器**: 新增 AI 提供商时在 `apps/server/services/adapters/` 添加适配器，实现统一的 `AIAdapter` 接口
