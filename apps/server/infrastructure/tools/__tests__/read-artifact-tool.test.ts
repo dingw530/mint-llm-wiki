@@ -44,6 +44,23 @@ describe('ReadArtifactTool', () => {
     expect(summary).not.toContain('NaN');
   });
 
+  it('uses default pagination when optional fields are omitted at execution time', async () => {
+    const artifactPath = join(root, 'conversation', 'large-result.json');
+    const source = 'x'.repeat(15_311);
+    await mkdir(join(root, 'conversation'), { recursive: true });
+    await writeFile(artifactPath, source, 'utf8');
+
+    const result = await Reflect.apply(tool.execute, tool, [
+      { path: artifactPath },
+      { conversationId: 'conv-1' },
+    ]);
+
+    expect(result.content).toBe(source.slice(0, 12_000));
+    expect(result.offset).toBe(0);
+    expect(result.totalChars).toBe(source.length);
+    expect(result.truncated).toBe(true);
+  });
+
   it('rejects paths outside the artifact root', async () => {
     await expect(
       tool.execute({ path: join(root, '..', 'outside.json') }, { conversationId: 'conv-1' }),
