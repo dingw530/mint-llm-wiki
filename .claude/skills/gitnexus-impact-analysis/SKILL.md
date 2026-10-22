@@ -46,14 +46,14 @@ Repository: <name> (<path>)   Worktree: <path>   Index: <commit>, <n> behind HEA
 
 ```
 0. list_repos {}                                           → Bind repo (and worktree)
-1. impact({target: "X", direction: "upstream"}) or `node .gitnexus/run.cjs impact "X" --direction upstream --repo .`
+1. impact({target: "X", direction: "upstream"}) or `npm run gitnexus -- impact "X" --direction upstream --repo .`
 2. READ gitnexus://repo/{name}/processes                   → Check affected execution flows
-3. detect_changes({scope: "all"}) or `node .gitnexus/run.cjs detect-changes --scope all --repo .`
+3. detect_changes({scope: "all"}) or `npm run gitnexus -- detect-changes --scope all --repo .`
 4. Assess risk and report to user, echoing repo/worktree/index identity
 ```
 
-> If "Index is stale" → run `node .gitnexus/run.cjs analyze` in terminal.
-> If `.gitnexus/run.cjs` is missing, replace `node .gitnexus/run.cjs` with `npx gitnexus` in the fallback commands.
+> If "Index is stale" → run `npm run gitnexus -- analyze` in terminal.
+> CLI fallback: use the project-pinned command `npm run gitnexus -- <command>`.
 
 ## Checklist
 
@@ -104,7 +104,7 @@ symbols before enrichment.
 
 ## Tools
 
-**impact** — the primary tool for symbol blast radius. If MCP is unavailable, use `node .gitnexus/run.cjs impact <symbol> --direction upstream --repo .` instead:
+**impact** — the primary tool for symbol blast radius. If MCP is unavailable, use `npm run gitnexus -- impact <symbol> --direction upstream --repo .` instead:
 
 ```
 impact({
@@ -123,7 +123,7 @@ impact({
   - authRouter (src/routes/auth.ts:22) [CALLS, 95%]
 ```
 
-**detect_changes** — git-diff based impact analysis. If MCP is unavailable, use `node .gitnexus/run.cjs detect-changes --scope all --repo .` instead:
+**detect_changes** — git-diff based impact analysis. If MCP is unavailable, use `npm run gitnexus -- detect-changes --scope all --repo .` instead:
 
 ```
 detect_changes({scope: "all"})
@@ -152,7 +152,7 @@ before treating an empty change set as a passed check.
 0. list_repos {}
    → total: 2 (my-app, billing-api) — both define validateUser, so bind explicitly
 
-1. impact({target: "validateUser", repo: "my-app", direction: "upstream"}) or `node .gitnexus/run.cjs impact "validateUser" --direction upstream --repo .`
+1. impact({target: "validateUser", repo: "my-app", direction: "upstream"}) or `npm run gitnexus -- impact "validateUser" --direction upstream --repo .`
    → d=1: loginHandler, apiMiddleware (WILL BREAK)
    → d=2: authRouter, sessionManager (LIKELY AFFECTED)
 
