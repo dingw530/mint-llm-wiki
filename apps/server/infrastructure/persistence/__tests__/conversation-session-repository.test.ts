@@ -4,10 +4,7 @@ import type { SessionEvent } from '@mint/session';
 import { deriveModelHistory } from '@mint/session';
 import { projectTrace } from '@mint/session/trace';
 import { runMigrations } from '../../../migrations/index.js';
-import {
-  ConversationSessionRepository,
-  ConversationSessionRepositoryError,
-} from '../conversation-session-repository.js';
+import { ConversationSessionRepository } from '../conversation-session-repository.js';
 
 const now = '2026-10-20T00:00:00.000Z';
 const conversationId = 'conversation-session-test';
@@ -63,7 +60,6 @@ describe('ConversationSessionRepository', () => {
     expect(first).toMatchObject({
       historyCompleteness: 'legacy_partial',
       lastSequence: 2,
-      ownerFence: 0,
     });
     expect(second.generation).toBe(first.generation);
     expect(events.map((event) => event.eventId)).toEqual([
@@ -85,37 +81,13 @@ describe('ConversationSessionRepository', () => {
     ).toEqual({ count: 2 });
   });
 
-  it('claims and renews an exclusive lease, then fences an expired owner', () => {
-    const first = repository.claimOwner(conversationId, 'process-a', 10_000, now);
-    expect(first.ownerFence).toBe(1);
-    expect(() => repository.claimOwner(conversationId, 'process-b', 10_000, now)).toThrow(
-      ConversationSessionRepositoryError,
-    );
-
-    const renewed = repository.renewOwner(first, 10_000, '2026-10-20T00:00:02.000Z');
-    expect(renewed.ownerFence).toBe(first.ownerFence);
-    const second = repository.claimOwner(
-      conversationId,
-      'process-b',
-      10_000,
-      '2026-10-20T00:00:13.000Z',
-    );
-    expect(second.ownerFence).toBe(2);
-    expect(() => repository.renewOwner(renewed, 10_000, '2026-10-20T00:00:14.000Z')).toThrow(
-      'lease expired or was fenced',
-    );
-    expect(repository.releaseOwner(renewed, '2026-10-20T00:00:14.000Z')).toBe(false);
-  });
-
-  it('appends a fenced JSON event batch and rejects stale cursors', () => {
+  it('appends a JSON event batch and rejects stale sequence cursors', () => {
     const state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-a', 10_000, now);
     const events = [userEvent('event-1', 1, 'private request')];
 
     const updated = repository.appendBatch(
       conversationId,
       state.lastSequence,
-      lease.ownerFence,
       events,
       '2026-10-20T00:00:01.000Z',
     );
@@ -126,7 +98,6 @@ describe('ConversationSessionRepository', () => {
       repository.appendBatch(
         conversationId,
         0,
-        lease.ownerFence,
         [userEvent('event-2', 1, 'stale append')],
         '2026-10-20T00:00:02.000Z',
       ),
@@ -139,7 +110,6 @@ describe('ConversationSessionRepository', () => {
 
   it('folds exact legacy duplicate model tool responses across full reads and pages', () => {
     let state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-duplicate', 10_000, now);
     const toolCall = {
       id: 'duplicate-call',
       type: 'function',
@@ -184,13 +154,7 @@ describe('ConversationSessionRepository', () => {
     ];
 
     for (const event of events) {
-      state = repository.appendBatch(
-        conversationId,
-        state.lastSequence,
-        lease.ownerFence,
-        [event],
-        now,
-      );
+      state = repository.appendBatch(conversationId, state.lastSequence, [event], now);
     }
 
     const allEvents = repository.readAll(conversationId);
@@ -216,17 +180,10 @@ describe('ConversationSessionRepository', () => {
 
   it('still rejects a repeated tool id when the model response differs', () => {
     let state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-conflict', 10_000, now);
     const first = modelToolCallEvent('model-response-1', 1, '/tmp/a.txt');
     const conflict = modelToolCallEvent('model-response-2', 2, '/tmp/b.txt');
     for (const event of [first, conflict]) {
-      state = repository.appendBatch(
-        conversationId,
-        state.lastSequence,
-        lease.ownerFence,
-        [event],
-        now,
-      );
+      state = repository.appendBatch(conversationId, state.lastSequence, [event], now);
     }
 
     expect(() => repository.readAll(conversationId)).toThrow(
@@ -236,11 +193,9 @@ describe('ConversationSessionRepository', () => {
 
   it('rolls back the full batch and cursor when an event identity conflicts', () => {
     const state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-a', 10_000, now);
     repository.appendBatch(
       conversationId,
       state.lastSequence,
-      lease.ownerFence,
       [userEvent('stable-event', 1, 'first')],
       now,
     );
@@ -249,7 +204,6 @@ describe('ConversationSessionRepository', () => {
       repository.appendBatch(
         conversationId,
         1,
-        lease.ownerFence,
         [userEvent('stable-event', 2, 'duplicate')],
         '2026-10-20T00:00:01.000Z',
       ),
@@ -260,7 +214,6 @@ describe('ConversationSessionRepository', () => {
 
   it('rolls back a message row and its session event as one composed transaction', () => {
     const state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-atomic', 10_000, now);
 
     expect(() =>
       repository.withTransaction(() => {
@@ -272,7 +225,6 @@ describe('ConversationSessionRepository', () => {
         repository.appendBatch(
           conversationId,
           state.lastSequence,
-          lease.ownerFence,
           [userEvent('atomic-event', 1, 'atomic prompt')],
           '2026-10-20T00:00:01.000Z',
         );
@@ -287,7 +239,6 @@ describe('ConversationSessionRepository', () => {
 
   it('keeps the session tail marked incomplete after an interrupted turn is appended', () => {
     const state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-a', 10_000, now);
     const event: SessionEvent = {
       schemaVersion: 1,
       conversationId,
@@ -302,7 +253,6 @@ describe('ConversationSessionRepository', () => {
     const updated = repository.appendBatch(
       conversationId,
       state.lastSequence,
-      lease.ownerFence,
       [event],
       '2026-10-20T00:00:01.000Z',
     );
@@ -311,11 +261,9 @@ describe('ConversationSessionRepository', () => {
 
   it('pages on one snapshot watermark and returns only events in the conversation', () => {
     const state = repository.ensureConversation(conversationId, now);
-    const lease = repository.claimOwner(conversationId, 'process-a', 10_000, now);
     repository.appendBatch(
       conversationId,
       state.lastSequence,
-      lease.ownerFence,
       [userEvent('page-1', 1, 'one'), userEvent('page-2', 2, 'two')],
       '2026-10-20T00:00:01.000Z',
     );

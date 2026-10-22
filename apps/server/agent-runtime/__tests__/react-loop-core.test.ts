@@ -45,7 +45,6 @@ async function runToolFailure(outcomeUnknown: boolean): Promise<{
     recordApproval: vi.fn(),
     recordRunTerminal: vi.fn(),
     recordInterrupted: vi.fn(),
-    startHeartbeat: vi.fn(),
     pauseForApproval: vi.fn(),
     close: vi.fn(),
   } as unknown as SessionRecordingPort;
@@ -226,7 +225,6 @@ describe('Agent Runtime ports', () => {
       recordApproval: vi.fn(),
       recordRunTerminal: vi.fn(),
       recordInterrupted: vi.fn(),
-      startHeartbeat: vi.fn(),
       pauseForApproval: vi.fn(),
       close: vi.fn(),
     } as unknown as SessionRecordingPort;

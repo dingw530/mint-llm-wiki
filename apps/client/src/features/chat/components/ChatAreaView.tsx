@@ -116,6 +116,7 @@ export default function ChatAreaView({
   onRecoveryAction,
 }: ChatAreaViewProps) {
   const [activeTab, setActiveTab] = useState<'conversation' | 'trajectory'>('conversation');
+  const hasRecoverableRuns = Boolean(activeConversation && recoverableRuns.length > 0);
   return (
     <div className="main-area">
       <ChatHeader title={title} activeTab={activeTab} onTabChange={setActiveTab} />
@@ -142,9 +143,6 @@ export default function ChatAreaView({
                 </button>
               </div>
             )}
-            {activeConversation && recoverableRuns.length > 0 && (
-              <RecoveryCards runs={recoverableRuns} onResolve={onRecoveryAction} />
-            )}
             {loading ? (
               <div className="messages-loading">
                 <LoadingSpinner />
@@ -163,6 +161,9 @@ export default function ChatAreaView({
                 onToolApproval={onToolApproval}
               />
             )}
+            {hasRecoverableRuns && (
+              <RecoveryCards runs={recoverableRuns} onResolve={onRecoveryAction} />
+            )}
           </div>
         ) : activeConversation ? (
           <div className="chat-trajectory-view" role="tabpanel" aria-label="轨迹">
@@ -173,45 +174,47 @@ export default function ChatAreaView({
             选择一个对话以查看轨迹。
           </div>
         )}
-        <div className="chat-composer">
-          <div className="chat-input-zone">
-            <IngestionTaskCards conversationId={activeConversation} />
-            <div className="chat-input-row">
-              <div className="chat-input-main">
-                {sending ? (
-                  <button className="stop-btn" onClick={onStop}>
-                    <svg
-                      viewBox="0 0 24 24"
-                      width="16"
-                      height="16"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
-                    </svg>
-                    停止生成
-                  </button>
-                ) : (
-                  <InputBox onSend={onSend} disabled={sending || !chatEnabled}>
-                    <AgentBar
-                      agents={agents}
-                      activeAgent={activeAgent}
-                      autoRoutedAgent={autoRoutedAgent}
-                      lockedAgent={lockedAgent}
-                      routingMode={routingMode}
-                      onSelectAgent={onSelectAgent}
-                      onUnlock={onUnlock}
-                    />
-                    <ModelSwitcher
-                      activeEndpoint={activeEndpoint}
-                      endpoints={endpoints}
-                      onEndpointChange={onEndpointChange}
-                    />
-                  </InputBox>
-                )}
+        {!hasRecoverableRuns && (
+          <div className="chat-composer">
+            <div className="chat-input-zone">
+              <IngestionTaskCards conversationId={activeConversation} />
+              <div className="chat-input-row">
+                <div className="chat-input-main">
+                  {sending ? (
+                    <button className="stop-btn" onClick={onStop}>
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" />
+                      </svg>
+                      停止生成
+                    </button>
+                  ) : (
+                    <InputBox onSend={onSend} disabled={sending || !chatEnabled}>
+                      <AgentBar
+                        agents={agents}
+                        activeAgent={activeAgent}
+                        autoRoutedAgent={autoRoutedAgent}
+                        lockedAgent={lockedAgent}
+                        routingMode={routingMode}
+                        onSelectAgent={onSelectAgent}
+                        onUnlock={onUnlock}
+                      />
+                      <ModelSwitcher
+                        activeEndpoint={activeEndpoint}
+                        endpoints={endpoints}
+                        onEndpointChange={onEndpointChange}
+                      />
+                    </InputBox>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
       {connectionMode && (
         <ModelConnectionPanel

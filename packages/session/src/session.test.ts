@@ -355,7 +355,6 @@ describe('session projections', () => {
 describe('crash recovery planning', () => {
   it('marks a dispatched tool outcome unknown without replaying it', () => {
     const plan = planSessionRecovery(interruptedPrefix(), 'run-1', {
-      hasActiveOwner: false,
       readLedgerStatus: () => 'succeeded',
       now: '2026-10-20T00:01:00.000Z',
     });
@@ -376,7 +375,6 @@ describe('crash recovery planning', () => {
   it('marks a recorded model call without a dispatch as not started', () => {
     const events = interruptedPrefix().filter((event) => event.type !== 'tool_dispatch_committed');
     const plan = planSessionRecovery(events, 'run-1', {
-      hasActiveOwner: false,
       readLedgerStatus: () => 'missing',
       now: '2026-10-20T00:01:00.000Z',
     });
@@ -393,16 +391,12 @@ describe('crash recovery planning', () => {
     });
   });
 
-  it('does not repair a live owner and produces no duplicate repair after append', () => {
+  it('produces no duplicate recovery after append', () => {
     const events = interruptedPrefix();
     const options = {
-      hasActiveOwner: false,
       readLedgerStatus: () => 'outcome_unknown' as const,
       now: '2026-10-20T00:01:00.000Z',
     };
-    expect(planSessionRecovery(events, 'run-1', { ...options, hasActiveOwner: true }).status).toBe(
-      'blocked_active_owner',
-    );
     const repair = planSessionRecovery(events, 'run-1', options);
     expect(planSessionRecovery([...events, ...repair.events], 'run-1', options).status).toBe(
       'nothing_to_repair',

@@ -232,9 +232,8 @@ function createWorkerSource(input) {
     conversationModule.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Transport smoke', routingMode: 'manual' });
     const repository = new sessionModule.ConversationSessionRepository();
     const initial = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 30000);
     const writer = new writerModule.ConversationSessionRunWriter(repository,
-      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'transport-turn', lease, initial.lastSequence);
+      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'transport-turn', initial.lastSequence);
     writer.startUserTurn('transport-user', '更新工具结果', new Date().toISOString());
     writer.recordModelMessage(1, [{ role: 'assistant', content: null, tool_calls: [{
       id: ${JSON.stringify(input.callId)}, type: 'function',

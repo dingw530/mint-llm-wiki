@@ -1,13 +1,13 @@
 # 执行计划：会话轨迹持久化与恢复
 
 - 变更：`2026-10-20-session-trajectory-recovery`
-- 状态：TP-001 至 TP-008 已验收；TP-009 执行中。
-- 本次目标：在既有第一、二期迭代上补齐 Session 权威聊天投影，并移除 Session 事件的常规加解密。
+- 状态：TP-001 至 TP-008 已验收；TP-009 与 TP-010 执行中。
+- 本次目标：补齐 Session 权威聊天投影，并移除 Session 写入租约，改由持久轨迹重建中断状态。
 - 前置：核对依赖变更 `2026-10-20-tool-invocation-arguments` 的实际代码与迁移；保留用户现有所有未提交改动。
 
 ## 完成定义与实施范围
 
-实现验收需满足 AC-001 至 AC-018 的 requiredEvidence 与全部 invariants，真实重启证据和浏览器交互证据分别存在；不得以 Harness inspect 成功代表实现完成。最新非 Docker Harness 通过 17/17 检查并汇总 18/18 AC claims PASS；Docker smoke 按用户要求跳过。
+实现验收需满足 AC-001 至 AC-020 的 requiredEvidence 与全部 invariants，真实重启证据和浏览器交互证据分别存在；AC-006 已随无租约设计修订，原有 claim 需要重验。此前 Harness 通过 17/17 检查并汇总 18/18 AC claims PASS；该证据不覆盖当前设计修订。Docker smoke 按用户要求跳过。
 第一期完成 TP-001 至 TP-004；第二期完成 TP-005 至 TP-008。第一期检查点不是单独前端发布开关，不允许激活日志后绕过语义写入。
 允许的生产修改范围在各 TP 中列出；`.harness/`、`.claude/skills/`、测试配置与其他用户改动默认受保护。不自动提交。
 
@@ -24,20 +24,22 @@
 | TP     | 阶段 | 任务                                         | 依赖                   | 状态                                      |
 | ------ | ---- | -------------------------------------------- | ---------------------- | ----------------------------------------- |
 | TP-001 | 一期 | session 事件契约、恢复纯函数、模型与轨迹投影 | 无                     | 已实现并通过 AC claims                    |
-| TP-002 | 一期 | SQLite、加密、所有权与旧消息导入             | TP-001                 | 已实现并通过 AC claims                    |
+| TP-002 | 一期 | SQLite、事件存储与旧消息导入                 | TP-001                 | 已实现并通过 AC claims                    |
 | TP-003 | 一期 | 全执行路径的模型/工具语义记录与检查点        | TP-001、TP-002         | 已实现并通过 AC claims                    |
-| TP-004 | 一期 | 冷修复、未知结果和强退窗口                   | TP-002、TP-003         | 已实现并通过 AC claims                    |
+| TP-004 | 一期 | 冷修复、未知结果和强退窗口                   | TP-002、TP-003         | 按无租约设计重验                          |
 | TP-005 | 二期 | 统一普通发送/恢复/审批/重新生成上下文入口    | TP-003、TP-004         | 已实现并通过 AC claims                    |
 | TP-006 | 二期 | 轨迹快照、详情、增量与 HTTP/IPC              | TP-001、TP-002、TP-004 | 已实现并通过 AC claims                    |
 | TP-007 | 二期 | agent-ui 组件库、独立轨迹面板和宿主接入      | TP-001、TP-006         | 已实现并通过 AC claims                    |
 | TP-008 | 二期 | 真实重启、生命周期、浏览器和打包验收         | TP-005、TP-006、TP-007 | 非 Docker 验收通过；Docker 按用户要求跳过 |
 | TP-009 | 补充 | Session 权威聊天历史投影与事件明文迁移       | TP-001…TP-008          | 进行中                                    |
+| TP-010 | 补充 | 移除 Session 租约并改用日志恢复与序号 CAS    | TP-009                 | 进行中                                    |
 
 ## 当前任务
 
 | TP     | 任务                   | 状态   |
 | ------ | ---------------------- | ------ |
 | TP-009 | 权威历史投影与明文迁移 | 进行中 |
+| TP-010 | 移除 Session 写入租约  | 进行中 |
 
 TP-008 已按范围完成。用户要求跳过 Docker；其余默认检查和本变更专用 probes 均通过，18 条 AC claims 全部 PASS。
 
@@ -50,6 +52,15 @@ TP-009 延续原变更目录和编号，不覆盖 TP-001 至 TP-008 的历史验
 - 内容：Session 事件成为聊天与轨迹的权威来源；同一 turn 的中间模型响应和工具过程合并显示，最终回答保留稳定 messageId。前端将持久 A2UI 块合并进 Session 段。`messages` 仅保留兼容、记忆和 A2UI 关联用途。迁移 36 在事务内将旧密文迁移为 `payload_json`，正常读写不再调用加解密。凭据和 Tool Invocation Ledger 加密不变。
 - 验收：旧载荷迁移完整且原子；JSON 明文读写；聊天刷新重建 user、assistant、reasoning、tool call/result/unknown；A2UI 通过稳定 messageId 关联；不会重复投影。
 - GitNexus：曾有 `getMessages` LOW 与 `decodeEvent` HIGH 的上游影响结果；本轮 CLI refresh/impact 因 GitNexus runner 触发 npm registry 网络请求而失败，未将该结果视作无影响。源码调用点由 `routes/messages.ts` 与 Session `readAll/readPage/readEvent` 确认。
+
+## TP-010：移除 Session 写入租约
+
+- 关联：DS-002/005/007；修订 AC-006，保留 AC-005/007/015/016 的恢复语义。
+- 修改范围：Session repository、RunWriter、message/recovery/trajectory 服务、Session recovery pure package、相关测试和 smoke scripts、migration 37、本变更的 SDD/Harness 追溯文件。
+- 目标：数据库不再记录 owner、lease expiry 或 fencing token；writer 不再认领、续租或释放所有权；进程重启后通过持久 Session 重建工具结果与中断边界。
+- 并发规则：当前进程的 AgentRunRegistry 跳过活跃会话的冷修复；ConversationScopeLock 阻止同进程重复执行；SQLite `lastSequence` 比较并交换处理追加冲突，恢复服务重新读取日志后有限重算。
+- 验证：服务端与客户端 typecheck、相关 Session/恢复/写入测试、session-crash 与 restart smoke、migration 验证、Prettier、`git diff --check`。当前实现完成后更新每项证据；未实跑的检查不得标记通过。
+- 风险：移除跨进程活动 owner 协调；共享同一 SQLite 的多个独立 Mint server 不再由 Session 层互斥，序号 CAS 只能阻止事件交错并使冲突方失败。本产品单实例运行仍由进程内 Registry/ScopeLock 保护。
 
 ## TP-001：@mint/session
 

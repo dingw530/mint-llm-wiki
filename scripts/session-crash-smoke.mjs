@@ -30,7 +30,6 @@ async function runCrashRecoveryProbe() {
     });
     const partialContent = await readFile(targetPath, 'utf8');
     if (partialContent !== '第一段已写入\n') throw new Error('工具副作用未停在预期的部分状态');
-    await wait(2_200);
     const evidence = await recoverInNewProcess({
       databasePath,
       targetPath,
@@ -55,8 +54,6 @@ async function runCrashRecoveryProbe() {
     process.stdout.write(`SESSION_WRITE_DENIED_OK ${JSON.stringify(deniedWriteEvidence)}\n`);
     const approvalEvidence = await runColdApprovalProbe(temporaryDirectory);
     process.stdout.write(`SESSION_COLD_APPROVAL_OK ${JSON.stringify(approvalEvidence)}\n`);
-    const fencingEvidence = await runCrossProcessFencingProbe(temporaryDirectory);
-    process.stdout.write(`SESSION_CROSS_PROCESS_FENCING_OK ${JSON.stringify(fencingEvidence)}\n`);
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }
@@ -76,7 +73,6 @@ async function runSucceededLedgerWithoutSessionResultProbe(temporaryDirectory) {
   worker.kill('SIGKILL');
   const exit = await waitForExit(worker);
   if (exit.signal !== 'SIGKILL') throw new Error('Ledger success 探针未被 SIGKILL 结束');
-  await wait(2_200);
   const recovery = spawnWorker(createSucceededRecoveryWorkerSource(input), input.databasePath);
   const output = await collectWorkerOutput(recovery);
   if (output.exitCode !== 0)
@@ -109,7 +105,6 @@ async function runPreEffectCrashProbe(temporaryDirectory) {
   worker.kill('SIGKILL');
   const exit = await waitForExit(worker);
   if (exit.signal !== 'SIGKILL') throw new Error('副作用前强退探针未被 SIGKILL 结束');
-  await wait(2_200);
   const recovery = spawnWorker(createRecoveryWorkerSource(input), input.databasePath);
   const output = await collectWorkerOutput(recovery);
   if (output.exitCode !== 0)
@@ -141,7 +136,6 @@ async function runNotDispatchedToolProbe(temporaryDirectory) {
   worker.kill('SIGKILL');
   const exit = await waitForExit(worker);
   if (exit.signal !== 'SIGKILL') throw new Error('未分派工具调用探针未被 SIGKILL 结束');
-  await wait(2_200);
   const recovery = spawnWorker(createRecoveryWorkerSource(input), input.databasePath);
   const output = await collectWorkerOutput(recovery);
   if (output.exitCode !== 0)
@@ -151,59 +145,6 @@ async function runNotDispatchedToolProbe(temporaryDirectory) {
     .find((item) => item.startsWith('SESSION_RECOVERY_EVIDENCE '));
   if (!line) throw new Error(`未分派调用恢复没有返回证据：${output.stdout}`);
   return JSON.parse(line.slice('SESSION_RECOVERY_EVIDENCE '.length));
-}
-
-/** 验证独立进程中的活动租约阻止修复，过期持有者随后被 fencing 拒绝。 */
-async function runCrossProcessFencingProbe(temporaryDirectory) {
-  const input = {
-    databasePath: path.join(temporaryDirectory, 'cross-process-fencing.db'),
-    targetPath: path.join(temporaryDirectory, 'fencing-target.txt'),
-    conversationId: `fencing-${randomUUID()}`,
-    runId: `run-${randomUUID()}`,
-    callId: `call-${randomUUID()}`,
-    expectedLedgerStatus: 'missing',
-    expectedAttempt: 0,
-    expectedRecoveryEventStatus: 'outcome_unknown',
-    expectedFileContent: '',
-    expectedMessageFragment: 'outcome is unknown',
-    expectDispatch: true,
-  };
-  const owner = spawnWorker(createActiveOwnerWorkerSource(input), input.databasePath);
-  await waitForMarker(owner, 'SESSION_ACTIVE_OWNER_READY');
-  const blocked = spawnWorker(createActiveOwnerCheckWorkerSource(input), input.databasePath);
-  const blockedOutput = await collectWorkerOutput(blocked);
-  if (
-    blockedOutput.exitCode !== 0 ||
-    !blockedOutput.stdout.includes('SESSION_ACTIVE_OWNER_BLOCKED')
-  ) {
-    owner.kill('SIGKILL');
-    throw new Error(
-      `活动持有者没有阻止另一进程修复：${blockedOutput.stderr || blockedOutput.stdout}`,
-    );
-  }
-  await wait(2_200);
-  const recovery = spawnWorker(createRecoveryWorkerSource(input), input.databasePath);
-  const recoveryOutput = await collectWorkerOutput(recovery);
-  if (recoveryOutput.exitCode !== 0) {
-    owner.kill('SIGKILL');
-    throw new Error(`fencing 探针冷恢复失败：${recoveryOutput.stderr || recoveryOutput.stdout}`);
-  }
-  const newOwner = spawnWorker(createNewLeaseHolderWorkerSource(input), input.databasePath);
-  await waitForMarker(newOwner, 'SESSION_NEW_OWNER_READY');
-  const ownerOutput = await collectWorkerOutput(owner);
-  newOwner.kill('SIGKILL');
-  if (ownerOutput.exitCode !== 0 || !ownerOutput.stdout.includes('SESSION_STALE_OWNER_REJECTED')) {
-    throw new Error(`旧持有者未被 fencing 拒绝：${ownerOutput.stderr || ownerOutput.stdout}`);
-  }
-  const line = recoveryOutput.stdout
-    .split('\n')
-    .find((item) => item.startsWith('SESSION_RECOVERY_EVIDENCE '));
-  if (!line) throw new Error(`fencing 恢复没有返回证据：${recoveryOutput.stdout}`);
-  return {
-    activeOwner: 'blocked',
-    staleOwner: 'fenced',
-    recovery: JSON.parse(line.slice('SESSION_RECOVERY_EVIDENCE '.length)),
-  };
 }
 
 /** 在工具结果已提交、下一模型轮次尚未开始时强退并核验不会重复修复。 */
@@ -221,7 +162,6 @@ async function runResultCommittedBeforeNextRoundProbe(temporaryDirectory) {
   worker.kill('SIGKILL');
   const exit = await waitForExit(worker);
   if (exit.signal !== 'SIGKILL') throw new Error('结果已提交探针未被 SIGKILL 结束');
-  await wait(2_200);
   const recovery = spawnWorker(
     createCommittedResultRecoveryWorkerSource(input),
     input.databasePath,
@@ -250,7 +190,6 @@ async function runDeniedWriteProbe(temporaryDirectory) {
   worker.kill('SIGKILL');
   const exit = await waitForExit(worker);
   if (exit.signal !== 'SIGKILL') throw new Error('写入拒绝探针未被 SIGKILL 结束');
-  await wait(2_200);
   const recovery = spawnWorker(createDeniedWriteRecoveryWorkerSource(input), input.databasePath);
   const output = await collectWorkerOutput(recovery);
   if (output.exitCode !== 0) throw new Error(`写入拒绝恢复失败：${output.stderr || output.stdout}`);
@@ -275,7 +214,6 @@ async function runColdApprovalProbe(temporaryDirectory) {
   worker.kill('SIGKILL');
   const exit = await waitForExit(worker);
   if (exit.signal !== 'SIGKILL') throw new Error('冷审批探针未被 SIGKILL 结束');
-  await wait(2_200);
   const recovery = spawnWorker(createColdApprovalRecoveryWorkerSource(input), input.databasePath);
   const output = await collectWorkerOutput(recovery);
   if (output.exitCode !== 0) throw new Error(`冷审批恢复失败：${output.stderr || output.stdout}`);
@@ -410,13 +348,11 @@ function createCrashWorkerSource(input) {
     conversations.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Crash recovery', routingMode: 'manual' });
     const repository = new sessionModule.ConversationSessionRepository(db);
     const initialState = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 2000);
     const writer = new writerModule.ConversationSessionRunWriter(
       repository,
       ${JSON.stringify(input.conversationId)},
       ${JSON.stringify(input.runId)},
       'turn-crash-probe',
-      lease,
       initialState.lastSequence,
     );
     writer.startUserTurn('message-crash-probe', '写入文件', new Date().toISOString());
@@ -483,9 +419,8 @@ function createNotDispatchedWorkerSource(input) {
     conversations.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Not started recovery', routingMode: 'manual' });
     const repository = new sessionModule.ConversationSessionRepository(db);
     const state = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 2000);
     const writer = new writerModule.ConversationSessionRunWriter(repository,
-      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-not-started', lease, state.lastSequence);
+      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-not-started', state.lastSequence);
     writer.startUserTurn('message-not-started', '写入文件', new Date().toISOString());
     writer.recordModelMessage(1, [{ role: 'assistant', content: null, tool_calls: [{
       id: ${JSON.stringify(input.callId)}, type: 'function',
@@ -493,88 +428,6 @@ function createNotDispatchedWorkerSource(input) {
     }] }]);
     process.stdout.write('SESSION_MODEL_TOOL_CALL_COMMITTED\\n');
     await new Promise(() => {});
-  `;
-}
-
-/** 构造持有活动租约、并在租约被接管后尝试写入的旧进程。 */
-function createActiveOwnerWorkerSource(input) {
-  const argumentsJson = JSON.stringify({ path: input.targetPath, content: 'never-written' });
-  return `
-    const [dbModule, conversations, sessionModule, writerModule] = await Promise.all([
-      import(${JSON.stringify(serverUrl('db.ts'))}),
-      import(${JSON.stringify(serverUrl('infrastructure/persistence/conversation-repository.ts'))}),
-      import(${JSON.stringify(serverUrl('infrastructure/persistence/conversation-session-repository.ts'))}),
-      import(${JSON.stringify(serverUrl('application/conversations/session-run-writer.ts'))}),
-    ]);
-    const db = dbModule.getDb();
-    conversations.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Cross process fencing', routingMode: 'manual' });
-    const repository = new sessionModule.ConversationSessionRepository(db);
-    const initial = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 2000);
-    const writer = new writerModule.ConversationSessionRunWriter(repository,
-      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-fencing', lease, initial.lastSequence);
-    writer.startUserTurn('message-fencing', '检查活动租约', new Date().toISOString());
-    writer.recordModelMessage(1, [{ role: 'assistant', content: null, tool_calls: [{
-      id: ${JSON.stringify(input.callId)}, type: 'function',
-      function: { name: 'write_file', arguments: ${JSON.stringify(argumentsJson)} },
-    }] }]);
-    writer.recordToolDispatch({ callId: ${JSON.stringify(input.callId)}, toolName: 'write_file',
-      argumentsJson: ${JSON.stringify(argumentsJson)}, retrySafety: 'never' });
-    process.stdout.write('SESSION_ACTIVE_OWNER_READY\\n');
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    const current = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const staleEvent = {
-      schemaVersion: 1, conversationId: ${JSON.stringify(input.conversationId)},
-      eventId: 'stale-owner-terminal', runId: ${JSON.stringify(input.runId)},
-      turnId: 'turn-fencing', createdAt: new Date().toISOString(),
-      type: 'run_terminal', outcome: 'completed', seq: current.lastSequence + 1,
-    };
-    try {
-      repository.appendBatch(${JSON.stringify(input.conversationId)}, current.lastSequence,
-        lease.ownerFence, [staleEvent]);
-      throw new Error('旧持有者意外写入成功');
-    } catch (error) {
-      if (error.code !== 'SESSION_OWNER_STALE') throw error;
-    }
-    process.stdout.write('SESSION_STALE_OWNER_REJECTED\\n');
-    dbModule.closeDb();
-  `;
-}
-
-/** 构造竞争进程，确认活动会话所有者存在时冷修复不写入事件。 */
-function createActiveOwnerCheckWorkerSource(input) {
-  return `
-    const [dbModule, sessionModule, recoveryModule] = await Promise.all([
-      import(${JSON.stringify(serverUrl('db.ts'))}),
-      import(${JSON.stringify(serverUrl('infrastructure/persistence/conversation-session-repository.ts'))}),
-      import(${JSON.stringify(serverUrl('application/conversations/conversation-session-recovery-service.ts'))}),
-    ]);
-    dbModule.getDb();
-    const repository = new sessionModule.ConversationSessionRepository();
-    const before = repository.ensureConversation(${JSON.stringify(input.conversationId)}).lastSequence;
-    const result = recoveryModule.repairInterruptedConversation(${JSON.stringify(input.conversationId)}, { repository });
-    const after = repository.ensureConversation(${JSON.stringify(input.conversationId)}).lastSequence;
-    if (result.status !== 'blocked_active_owner' || result.events.length !== 0 || before !== after) {
-      throw new Error('活动持有者期间发生了冷修复写入');
-    }
-    process.stdout.write('SESSION_ACTIVE_OWNER_BLOCKED\\n');
-    dbModule.closeDb();
-  `;
-}
-
-/** 构造恢复后取得新 fencing token 并保持写入租约的进程。 */
-function createNewLeaseHolderWorkerSource(input) {
-  return `
-    const [dbModule, sessionModule] = await Promise.all([
-      import(${JSON.stringify(serverUrl('db.ts'))}),
-      import(${JSON.stringify(serverUrl('infrastructure/persistence/conversation-session-repository.ts'))}),
-    ]);
-    dbModule.getDb();
-    const repository = new sessionModule.ConversationSessionRepository();
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, 'new-fence-owner', 8000);
-    process.stdout.write('SESSION_NEW_OWNER_READY ' + lease.ownerFence + '\\n');
-    await new Promise((resolve) => setTimeout(resolve, 8000));
-    dbModule.closeDb();
   `;
 }
 
@@ -606,9 +459,8 @@ function createDeniedWriteWorkerSource(input) {
     conversations.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Write denied recovery', routingMode: 'manual' });
     const repository = new sessionModule.ConversationSessionRepository(db);
     const state = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 2000);
     const writer = new writerModule.ConversationSessionRunWriter(repository,
-      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-write-denied', lease, state.lastSequence);
+      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-write-denied', state.lastSequence);
     writer.startUserTurn('message-write-denied', '尝试越界写入', new Date().toISOString());
     writer.recordModelMessage(1, [{ role: 'assistant', content: null, tool_calls: [{
       id: ${JSON.stringify(input.callId)}, type: 'function',
@@ -699,9 +551,8 @@ function createColdApprovalWorkerSource(input) {
     conversations.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Cold approval recovery', routingMode: 'manual' });
     const repository = new sessionModule.ConversationSessionRepository(db);
     const state = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 2000);
     const writer = new writerModule.ConversationSessionRunWriter(repository,
-      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-approval', lease, state.lastSequence);
+      ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-approval', state.lastSequence);
     writer.startUserTurn('message-approval', '请批准写入', new Date().toISOString());
     writer.recordModelMessage(1, [{ role: 'assistant', content: null, tool_calls: [{
       id: ${JSON.stringify(input.callId)}, type: 'function',
@@ -776,10 +627,9 @@ function createSucceededToolWorkerSource(input) {
     conversations.create({ id: ${JSON.stringify(input.conversationId)}, title: 'Ledger success recovery', routingMode: 'manual' });
     const repository = new sessionModule.ConversationSessionRepository(db);
     const initialState = repository.ensureConversation(${JSON.stringify(input.conversationId)});
-    const lease = repository.claimOwner(${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 2000);
     const writer = new writerModule.ConversationSessionRunWriter(repository,
       ${JSON.stringify(input.conversationId)}, ${JSON.stringify(input.runId)}, 'turn-success-probe',
-      lease, initialState.lastSequence);
+      initialState.lastSequence);
     writer.startUserTurn('message-success-probe', '追加一行', new Date().toISOString());
     writer.recordModelMessage(1, [{ role: 'assistant', content: null, tool_calls: [{
       id: ${JSON.stringify(input.callId)}, type: 'function',
@@ -957,11 +807,6 @@ function createRecoveryWorkerSource(input) {
     }) + '\\n');
     dbModule.closeDb();
   `;
-}
-
-/** 等待进程退出前给出简短延迟，确保 DB lease 已经过期。 */
-function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 runCrashRecoveryProbe().catch((error) => {

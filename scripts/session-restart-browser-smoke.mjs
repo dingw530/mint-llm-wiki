@@ -177,13 +177,11 @@ async function seedInterruptedConversation(fixture, modelPort) {
 
   const repository = new sessionModule.ConversationSessionRepository(database);
   const initial = repository.ensureConversation(fixture.conversationId);
-  const lease = repository.claimOwner(fixture.conversationId, fixture.originRunId, 5_000);
   const writer = new writerModule.ConversationSessionRunWriter(
     repository,
     fixture.conversationId,
     fixture.originRunId,
     'origin-turn',
-    lease,
     initial.lastSequence,
   );
   const createdAt = new Date().toISOString();

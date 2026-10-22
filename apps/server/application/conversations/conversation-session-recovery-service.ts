@@ -1,19 +1,12 @@
-import { randomUUID } from 'node:crypto';
 import { planSessionRecovery, type RecoveryLedgerStatus, type SessionEvent } from '@mint/session';
-import {
-  ConversationSessionRepository,
-  ConversationSessionRepositoryError,
-  type ConversationSessionLease,
-} from '../../infrastructure/persistence/conversation-session-repository.js';
+import { agentRunRegistry } from '../../agent-runtime/agent-run.js';
+import { ConversationSessionRepository } from '../../infrastructure/persistence/conversation-session-repository.js';
 import {
   toolInvocationRepository,
   type ToolInvocationRepository,
 } from '../../infrastructure/persistence/tool-invocation-repository.js';
 
-const RECOVERY_OWNER_TTL_MS = 60_000;
-
-export type ConversationSessionRecoveryStatus =
-  'repaired' | 'nothing_to_repair' | 'blocked_active_owner';
+export type ConversationSessionRecoveryStatus = 'repaired' | 'nothing_to_repair' | 'active_run';
 
 export interface ConversationSessionRecoveryResult {
   readonly status: ConversationSessionRecoveryStatus;
@@ -24,14 +17,13 @@ export interface ConversationSessionRecoveryResult {
 export interface ConversationSessionRecoveryOptions {
   readonly repository?: ConversationSessionRepository;
   readonly invocations?: Pick<ToolInvocationRepository, 'get'>;
-  readonly lease?: ConversationSessionLease;
   readonly now?: string;
 }
 
 /**
- * 在会话所有权下修复所有未关闭的历史运行；只追加合成结果，不调用工具。
+ * 从 Session 日志修复所有未关闭的历史运行；只追加合成结果，不调用工具。
  * @param conversationId 待修复会话标识。
- * @param options 可注入的会话仓库、Ledger 读取器和调用方租约。
+ * @param options 可注入的会话仓库、Ledger 读取器和恢复时间。
  * @returns 修复结果、最新序号和追加的事件。
  */
 export function repairInterruptedConversation(
@@ -42,32 +34,31 @@ export function repairInterruptedConversation(
   const invocations = options.invocations ?? toolInvocationRepository;
   const now = options.now ?? new Date().toISOString();
   repository.ensureConversation(conversationId, now);
-  let lease = options.lease;
-  const ownsLease = lease === undefined;
-  if (!lease) {
-    try {
-      lease = repository.claimOwner(conversationId, randomUUID(), RECOVERY_OWNER_TTL_MS, now);
-    } catch (error) {
-      if (
-        error instanceof ConversationSessionRepositoryError &&
-        error.code === 'SESSION_OWNER_ACTIVE'
-      ) {
-        return {
-          status: 'blocked_active_owner',
-          lastSequence: repository.ensureConversation(conversationId, now).lastSequence,
-          events: [],
-        };
-      }
-      throw error;
-    }
+  if (agentRunRegistry.getByConversation(conversationId)) {
+    return {
+      status: 'active_run',
+      lastSequence: repository.ensureConversation(conversationId, now).lastSequence,
+      events: [],
+    };
   }
-
-  try {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const state = repository.ensureConversation(conversationId, now);
     const original = repository.readAll(conversationId);
     const additions = buildRecoveryEvents(conversationId, original, invocations, now);
     if (additions.length > 0) {
-      repository.appendBatch(conversationId, state.lastSequence, lease.ownerFence, additions, now);
+      try {
+        repository.appendBatch(conversationId, state.lastSequence, additions, now);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'SESSION_SEQUENCE_CONFLICT' &&
+          attempt < 2
+        ) {
+          continue;
+        }
+        throw error;
+      }
     }
     const updated = repository.ensureConversation(conversationId, now);
     return {
@@ -75,9 +66,8 @@ export function repairInterruptedConversation(
       lastSequence: updated.lastSequence,
       events: additions,
     };
-  } finally {
-    if (ownsLease && lease) repository.releaseOwner(lease);
   }
+  throw new Error('Session recovery could not commit after concurrent updates');
 }
 
 /** 按运行顺序生成幂等恢复结果、过期审批和中断边界。 */
@@ -92,7 +82,6 @@ function buildRecoveryEvents(
   for (const runId of collectRunIds(events)) {
     const runEvents = workingEvents.filter((event) => event.runId === runId);
     const plan = planSessionRecovery(workingEvents, runId, {
-      hasActiveOwner: false,
       readLedgerStatus: (targetRunId, callId) => readLedgerStatus(invocations, targetRunId, callId),
       now,
     });

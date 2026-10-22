@@ -56,14 +56,14 @@ flowchart TD
 
 新增迁移，最终编号由实施时的 migrations 列表确定：
 
-- `conversation_session_state`：conversation_id、schema_version、last_seq、generation、history_completeness、owner_id、owner_fence、lease_expires_at、updated_at。
+- `conversation_session_state`：conversation_id、schema_version、last_seq、generation、history_completeness、tail_incomplete、updated_at。数据库不保存 writer owner、租约期限或 fencing token。
 - `conversation_session_events`：conversation_id、event_id、seq、run_id、turn_id、round、call_id、type、created_at、elapsed_ms、schema_version、payload_json。
 - 约束：UNIQUE(conversation_id, seq)、UNIQUE(conversation_id, event_id)；修复事件确定性 eventId；会话删除级联。索引至少覆盖 conversation_id + seq 和 run_id。
 - 安全预览由显式字段白名单产生：类型、工具名、状态、时间、callId、来源与完整性；不可把原始命令或正文 substring 当作“安全摘要”。
 - Session 语义事件以 JSON 明文保存，避免每次读取都对整条轨迹解密。迁移 36 在事务中读取旧密文、解密并验证 JSON，再写入新列；任一条失败则整次迁移回滚。迁移后读取只解析 JSON，不访问加密密钥。API 密钥、凭据和独立工具 Ledger 的加密不受此决定影响。
-- 存储契约为宿主 SessionRepository：appendBatch(expectedSeq, ownerFence, events)、readThrough(highWatermark)、readAfter(cursor)、readDetail(eventId)、claimOwner、repairTail。SQLite 事务属于适配器，不放入 session 包。
+- 存储契约为宿主 SessionRepository：appendBatch(expectedSeq, events)、readThrough(highWatermark)、readAfter(cursor)、readDetail(eventId)、repairTail。SQLite 事务属于适配器，不放入 session 包。
 
-启用新日志时事务性导入既有真实 messages，使用由旧 messageId 生成的稳定 eventId；保存一次性导入边界与 legacy_partial。已有 AgentRun 事实可展示为历史摘要，但不得伪造工具正文或执行结果。若仍有旧进程运行，禁止升级该会话的写入所有权。
+启用新日志时事务性导入既有真实 messages，使用由旧 messageId 生成的稳定 eventId；保存一次性导入边界与 legacy_partial。已有 AgentRun 事实可展示为历史摘要，但不得伪造工具正文或执行结果。
 
 messages 是兼容读模型。用户消息、最终回答与恢复回答通过同一宿主事务更新语义事件和 messages 投影，使用稳定 messageId 去重。模型历史统一从 Session 派生，不从 messages 再叠加同一批已导入事件。压缩历史的旧行为必须转入有效视图，不能继续独立改写消息表造成真源冲突。
 
@@ -94,7 +94,7 @@ request_context 记录该次请求实际使用的上下文贡献及有序消息�
 
 实施覆盖 ReAct、普通 stream 工具分支、审批继续、取消和重新生成。接入点在宿主执行协调层，而非仅监听 UI SSE。
 
-1. 用户提交：获取会话写入所有权，原子追加用户消息与兼容投影。
+1. 用户提交：在单个 SQLite 事务中原子追加用户消息与兼容投影；追加使用 Session 序号比较并交换。
 2. 模型请求：提交前序上下文/结果事件，再发起请求。
 3. 模型返回：组装完成后追加 assistant_message，再开始任一工具分派。
 4. 完成 lookup、validate、authorize、policy 和 approval。拒绝或审批等待记录各自结果，不写成已执行。
@@ -107,9 +107,9 @@ request_context 记录该次请求实际使用的上下文贡献及有序消息�
 
 ## DS-005：冷恢复、活运行与修复幂等
 
-在会话互斥入口获取 DB ownerFence。所有写入均校验最新 fencing token。采用有期限所有权：TTL 与 heartbeat 间隔配置化，TTL 必须大于多次 heartbeat 周期；活审批暂停继续维护所有权。无法确认旧持有者失活时显示恢复待定，拒绝并行执行，允许只读历史浏览。旧持有者 lease 失效后禁止新模型和工具分派；已在外部执行的工具仍按未知结果处理。
+活动运行由进程内 AgentRunRegistry 和 ConversationScopeLock 识别。同进程读取轨迹或聊天历史时，若该会话仍有活动运行，则只读已提交的 Session 前缀，不执行冷修复。进程重启后，运行注册表自然为空，冷恢复扫描持久 Session 事件并重建中断边界与工具结果。数据库不使用 writer lease、heartbeat 或 fencing token。
 
-纯 repairPlan 读取有效前缀并生成计划，宿主在 expectedSeq + fence 事务内追加：
+纯 repairPlan 读取有效前缀并生成计划，宿主在 expectedSeq 事务内追加。并发追加若读到相同序号，仅首个事务成功；后续写入得到 sequence conflict 并回滚整批，恢复服务重新读取最新 Session 后重算计划：
 
 - 有 assistant 请求、无分派：只有新版本检查点路径可证明未进入执行时补 TOOL_NOT_STARTED。
 - 有分派无 tool_result：补 TOOL_OUTCOME_UNKNOWN；包含 ledgerStatus、原 run/call ID、外部状态未核实提示。Ledger success 也不能补造真实结果。
@@ -134,7 +134,7 @@ request_context 记录该次请求实际使用的上下文贡献及有序消息�
 
 ## DS-007：轨迹 API、HTTP/IPC 与游标
 
-API-001：GET `/conversations/:id/trajectory`，参数 afterSeq（非负整数，默认 0）、pageSize（默认 100，上限 500）、可选 throughSeq。读取前在会话租约下尝试冷修复；活动持有者时不修复。返回 generation、highWatermark、nextAfterSeq、hasMore、historyCompleteness、tailIncomplete、逐事件安全 metadata、可合并的 entries 和 runs 摘要。分页以事件 seq 为游标，固定 throughSeq 避免页间漂移。
+API-001：GET `/conversations/:id/trajectory`，参数 afterSeq（非负整数，默认 0）、pageSize（默认 100，上限 500）、可选 throughSeq。读取前检查进程内活动运行；无活动运行时按 Session 冷修复。返回 generation、highWatermark、nextAfterSeq、hasMore、historyCompleteness、tailIncomplete、逐事件安全 metadata、可合并的 entries 和 runs 摘要。分页以事件 seq 为游标，固定 throughSeq 避免页间漂移。
 
 API-002：GET `/conversations/:id/trajectory/events/:eventId`，显式展开详情。返回 `{ eventId, availability, historyCompleteness, payload?, errorCode?, message? }`；跨会话不暴露目标存在性，JSON 损坏时以 unavailable 和稳定诊断返回，不使用空文本冒充有效结果。
 
@@ -218,13 +218,17 @@ React / ReactDOM 使用项目兼容的 peerDependencies；构建不打包另一�
 - 轨迹页提供“返回对话继续”入口；恢复卡片是中断事实提示，继续新对话不调用旧 retry API。活运行期间发送规则保持现有单运行保护。
 - 新旧运行关系在列表分段展示；既有顶部简版 DecisionTrace 可保留为当前运行概览，完整记录只在新面板中维护一个投影来源。
 
+### 紧凑密度补充
+
+轨迹面板按 DeepSeek 截图收紧垂直占用：缩小标题区和泳道区的上下留白，将事件行高控制在约 36px，降低标签与状态文字字号，并让列表在相同视口内显示更多事件。保留状态辨识、点击目标和窄屏布局；本次仅调整样式，不改变轨迹数据和详情加载行为。
+
 ## DS-010：迁移、发布、边界与验证
 
 增加两个 workspaces、构建顺序和 Electron bundle 白名单；更新相关 TS 引用与依赖锁文件，但不趁机改其他包。新增 API 实施时按 add-endpoint 技能走完整注册。
 
 分期启用：先把完整语义写入与模型历史投影在同一新模式下接入，再开放统一恢复与轨迹页签。任一会话激活新日志后不得因关开关回到旧 messages 重建路径；可关闭 UI 入口，但不能绕过日志继续写。老会话仅一次性导入，无法迁移时旧记录只读并明确报错。迁移前按现有规则备份 DB 与密钥；此方案不包含自动降级 DB。
 
-验证要覆盖真实 SQLite 故障、独立进程 SIGKILL、重新启动后的普通发送、两个持有者 fencing、正常审批/取消、HTTP/SSE/IPC 游标，以及独立组件宿主与 Web/Electron 产物加载。浏览器 mock 场景证明控件交互，不代替真实崩溃证据。
+验证要覆盖真实 SQLite 故障、独立进程 SIGKILL、重新启动后的普通发送、同进程活动运行保护、并发序号冲突回滚、正常审批/取消、HTTP/SSE/IPC 游标，以及独立组件宿主与 Web/Electron 产物加载。浏览器 mock 场景证明控件交互，不代替真实崩溃证据。
 
 ## 验收证据矩阵
 
@@ -254,3 +258,11 @@ React / ReactDOM 使用项目兼容的 peerDependencies；构建不打包另一�
 高风险集中于同库事务组织、审批活运行识别、当前 history 压缩方式、模型 reasoning 兼容和前端隐私。所有风险由对应 AC 探针约束，不能用静态类型检查替代。
 第三期才考虑逐 token/节流尾部快照和新的大工件治理；本期必须先让模型可见结果在现有存储中可持久重建。
 所有技术名称为方案契约，具体文件可在实施中调整，但须记录偏差；本轮没有实现或行为通过证据。
+
+### 后续架构议题：AgentRun 与 Session 的职责收敛（待评估）
+
+Session 已成为聊天历史、轨迹和冷恢复的权威持久记录。AgentRun 仍由进程内对象和 Registry 协调活动运行，包括实时事件订阅、审批暂停与继续、取消，以及活动运行识别；这些职责不能仅由重启后的 Session 重建替代。
+
+待评估的重叠在持久恢复职责：AgentRun 仍维护部分生命周期事件、recoverable-run 查询和 `continue / retry / abandon` 动作记录；Session 已记录完整语义事件，并能修复中断运行。需要判断是否把显式恢复动作及兼容旧运行记录的职责迁入 Session，再精简 AgentRun 的独立持久事件存储。
+
+当前不决定删除 AgentRun，也不新增本期 AC 或 TP。评估时先保留 AgentRun 的进程内活动协调职责；若移除其持久恢复职责，须验证旧运行兼容、恢复动作幂等、活审批续跑和新旧运行关联。源码入口见 `apps/server/agent-runtime/agent-run.ts`、`apps/server/agent-runtime/agent-run-persistence.ts`、`apps/server/application/agent-runtime/agent-run-recovery-service.ts`、`apps/server/application/conversations/conversation-session-recovery-service.ts` 与 `apps/server/application/conversations/session-run-writer.ts`。追踪记录见 `traceability.md` 的“后续架构议题”。

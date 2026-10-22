@@ -1,4 +1,10 @@
 .mint-agent-trace {
+  --mint-agent-ui-space-1: 4px;
+  --mint-agent-ui-space-half: 2px;
+  --mint-agent-ui-space-2: 8px;
+  --mint-agent-ui-space-3: 12px;
+  --mint-agent-ui-space-4: 16px;
+  --mint-agent-ui-row-height: 36px;
   --mint-agent-ui-border: var(--border-subtle, #e6e8eb);
   --mint-agent-ui-muted: var(--text-secondary, #74808c);
   --mint-agent-ui-ink: var(--text-primary, #20262d);
@@ -21,10 +27,10 @@
   color: var(--mint-agent-ui-ink);
   background: var(--mint-agent-ui-surface);
   border: 1px solid var(--mint-agent-ui-border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg, 12px);
   display: flex;
   flex-direction: column;
-  min-height: 320px;
+  min-height: 280px;
   overflow: hidden;
 }
 .mint-agent-trace__header,
@@ -32,31 +38,33 @@
   align-items: center;
   display: flex;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: var(--mint-agent-ui-space-3) var(--mint-agent-ui-space-4);
 }
 .mint-agent-trace__header {
   border-bottom: 1px solid var(--mint-agent-ui-border);
 }
 .mint-agent-trace__header h2 {
-  font-size: 18px;
-  margin: 2px 0 0;
+  font-size: 16px;
+  line-height: 1.35;
+  margin: var(--mint-agent-ui-space-1) 0 0;
 }
 .mint-agent-trace__eyebrow {
   color: var(--mint-agent-ui-muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.35;
   margin: 0;
 }
 .mint-agent-trace__run-count {
   color: var(--mint-agent-ui-muted);
   display: inline-block;
   font-size: 11px;
-  margin-top: 5px;
+  margin-top: var(--mint-agent-ui-space-1);
 }
 .mint-agent-trace__modes {
   background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 72%);
-  border-radius: 10px;
+  border-radius: var(--radius-md, 8px);
   display: flex;
-  padding: 3px;
+  padding: var(--mint-agent-ui-space-half);
 }
 .mint-agent-trace button {
   color: inherit;
@@ -66,9 +74,11 @@
 .mint-agent-trace__detail-head button {
   background: transparent;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 4px);
   cursor: pointer;
-  padding: 7px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: var(--mint-agent-ui-space-1) var(--mint-agent-ui-space-2);
 }
 .mint-agent-trace__modes button.is-active {
   background: var(--mint-agent-ui-surface);
@@ -77,32 +87,32 @@
 .mint-agent-trace__notice {
   background: var(--mint-agent-ui-warning-surface);
   color: var(--mint-agent-ui-warning-ink);
-  margin: 12px 20px 0;
-  padding: 9px 12px;
-  border-radius: 8px;
+  margin: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-4) 0;
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-3);
+  border-radius: var(--radius-md, 8px);
 }
 .mint-agent-trace__overview {
   border-bottom: 1px solid var(--mint-agent-ui-border);
-  padding: 12px 20px;
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-4);
 }
 .mint-agent-trace__lane {
   align-items: center;
   color: var(--mint-agent-ui-muted);
   display: grid;
-  font-size: 12px;
-  grid-template-columns: 44px 1fr;
-  height: 22px;
+  font-size: 11px;
+  grid-template-columns: 40px 1fr;
+  height: 18px;
 }
 .mint-agent-trace__lane > div {
   background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 55%);
-  height: 8px;
+  height: 6px;
   position: relative;
 }
 .mint-agent-trace__tick {
   border: 0;
   border-radius: 2px;
   cursor: pointer;
-  height: 8px;
+  height: 6px;
   position: absolute;
   top: 0;
   width: 10px;
@@ -123,30 +133,33 @@
   align-items: center;
   color: var(--mint-agent-ui-muted);
   display: flex;
-  gap: 12px;
-  padding: 12px 20px;
+  font-size: 11px;
+  gap: var(--mint-agent-ui-space-2);
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-4);
 }
 .mint-agent-trace__search input {
   background: transparent;
   border: 1px solid var(--mint-agent-ui-border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm, 4px);
   color: var(--mint-agent-ui-ink);
   flex: 1;
   min-width: 0;
-  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: var(--mint-agent-ui-space-1) var(--mint-agent-ui-space-2);
 }
 .mint-agent-trace__body {
   display: grid;
   flex: 1;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 34%);
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 32%);
   min-height: 160px;
 }
 .mint-agent-trace__list {
   list-style: none;
   margin: 0;
-  max-height: 420px;
+  max-height: 480px;
   overflow: auto;
-  padding: 0 12px;
+  padding: 0 var(--mint-agent-ui-space-2);
 }
 .mint-agent-trace__row {
   align-items: center;
@@ -155,9 +168,9 @@
   border-bottom: 1px solid var(--mint-agent-ui-border);
   cursor: pointer;
   display: flex;
-  gap: 10px;
-  min-height: 46px;
-  padding: 8px;
+  gap: var(--mint-agent-ui-space-2);
+  min-height: var(--mint-agent-ui-row-height);
+  padding: var(--mint-agent-ui-space-1) var(--mint-agent-ui-space-2);
   text-align: left;
   width: 100%;
 }
@@ -166,9 +179,10 @@
   background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 70%);
 }
 .mint-agent-trace__badge {
-  border-radius: 6px;
-  font-size: 11px;
-  padding: 4px 6px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 10px;
+  line-height: 1.35;
+  padding: var(--mint-agent-ui-space-half) var(--mint-agent-ui-space-1);
 }
 .mint-agent-trace__badge--input {
   background: var(--mint-agent-ui-input-badge-bg);
@@ -195,7 +209,7 @@
 .mint-agent-trace__status,
 .mint-agent-trace time {
   color: var(--mint-agent-ui-muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 .mint-agent-trace__status--outcome_unknown {
   color: var(--mint-agent-ui-unknown);
@@ -205,28 +219,30 @@
   background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 80%);
   border-left: 1px solid var(--mint-agent-ui-border);
   min-width: 0;
-  padding: 0 14px 14px;
+  padding: 0 var(--mint-agent-ui-space-3) var(--mint-agent-ui-space-3);
 }
 .mint-agent-trace__detail p {
   color: var(--mint-agent-ui-muted);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 .mint-agent-trace__detail pre {
-  font-size: 11px;
-  max-height: 300px;
+  font-size: 10px;
+  line-height: 1.45;
+  max-height: 280px;
   overflow: auto;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 .mint-agent-trace__empty {
   color: var(--mint-agent-ui-muted);
-  padding: 20px;
+  padding: var(--mint-agent-ui-space-3);
 }
 .mint-agent-trace__round {
   color: var(--mint-agent-ui-muted);
   font-size: 11px;
-  padding: 10px 8px 4px;
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-1);
 }
 .mint-agent-trace__more {
   align-self: center;
@@ -234,7 +250,8 @@
   border: 0;
   color: var(--mint-agent-ui-muted);
   cursor: pointer;
-  padding: 12px;
+  font-size: 12px;
+  padding: var(--mint-agent-ui-space-2);
 }
 @media (max-width: 720px) {
   .mint-agent-trace__body {

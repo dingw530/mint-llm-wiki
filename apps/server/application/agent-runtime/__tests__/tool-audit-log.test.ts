@@ -213,7 +213,6 @@ describe('tool audit logging', () => {
       recordToolResult: vi.fn(),
       recordApproval: vi.fn(),
       recordRunTerminal: vi.fn(),
-      startHeartbeat: vi.fn(),
       pauseForApproval: vi.fn(),
       close: vi.fn(),
     } as unknown as SessionRecordingPort;
@@ -258,13 +257,11 @@ describe('tool audit logging', () => {
     database.prepare('INSERT INTO conversations (id) VALUES (?)').run(conversationId);
     const sessions = new ConversationSessionRepository(database);
     const state = sessions.ensureConversation(conversationId);
-    const lease = sessions.claimOwner(conversationId, runId, 60_000);
     const writer = new ConversationSessionRunWriter(
       sessions,
       conversationId,
       runId,
       'turn-dispatch-barrier',
-      lease,
       state.lastSequence,
     );
     writer.recordModelMessage(1, [
@@ -328,16 +325,27 @@ describe('tool audit logging', () => {
     database.prepare('INSERT INTO conversations (id) VALUES (?)').run(conversationId);
     const sessions = new ConversationSessionRepository(database);
     const state = sessions.ensureConversation(conversationId);
-    const lease = sessions.claimOwner(conversationId, runId, 60_000);
-    sessions.releaseOwner(lease);
     const writer = new ConversationSessionRunWriter(
       sessions,
       conversationId,
       runId,
       'turn-dispatch-rollback',
-      lease,
       state.lastSequence,
     );
+    sessions.appendBatch(conversationId, state.lastSequence, [
+      {
+        schemaVersion: 1,
+        conversationId,
+        eventId: 'competing-session-event',
+        seq: 1,
+        runId,
+        turnId: 'other-turn',
+        createdAt: new Date().toISOString(),
+        type: 'user_message',
+        messageId: 'other-message',
+        content: 'concurrent append',
+      },
+    ]);
     const registry = new ToolRegistry();
     registry.register(new AuditFixtureTool(() => (toolExecutions += 1)));
     const invocations = new ToolInvocationRepository(database);
@@ -364,7 +372,7 @@ describe('tool audit logging', () => {
     expect(result.success).toBe(false);
     expect(toolExecutions).toBe(0);
     expect(invocations.get(runId, callId)).toBeUndefined();
-    expect(sessions.readAll(conversationId)).toEqual([]);
+    expect(sessions.readAll(conversationId)).toHaveLength(1);
     writer.close();
   });
 });

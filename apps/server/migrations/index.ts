@@ -983,9 +983,6 @@ const migrations: Migration[] = [
           '  last_seq INTEGER NOT NULL DEFAULT 0 CHECK(last_seq >= 0),',
           "  history_completeness TEXT NOT NULL CHECK(history_completeness IN ('complete', 'legacy_partial')),",
           '  tail_incomplete INTEGER NOT NULL DEFAULT 0 CHECK(tail_incomplete IN (0, 1)),',
-          '  owner_id TEXT,',
-          '  owner_fence INTEGER NOT NULL DEFAULT 0 CHECK(owner_fence >= 0),',
-          '  lease_expires_at TEXT,',
           '  created_at TEXT NOT NULL,',
           '  updated_at TEXT NOT NULL,',
           '  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE',
@@ -1093,6 +1090,23 @@ const migrations: Migration[] = [
           CREATE INDEX idx_conversation_session_events_call
             ON conversation_session_events(conversation_id, run_id, call_id, seq);
         `);
+      }).immediate();
+    },
+  },
+  {
+    id: 37,
+    name: 'remove-conversation-session-writer-lease',
+    up: (db) => {
+      db.transaction(() => {
+        const columns = db.prepare('PRAGMA table_info(conversation_session_state)').all() as Array<{
+          name: string;
+        }>;
+        const existing = new Set(columns.map((column) => column.name));
+        for (const column of ['owner_id', 'owner_fence', 'lease_expires_at']) {
+          if (existing.has(column)) {
+            db.exec(`ALTER TABLE conversation_session_state DROP COLUMN ${column}`);
+          }
+        }
       }).immediate();
     },
   },

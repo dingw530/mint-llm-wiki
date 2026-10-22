@@ -59,13 +59,11 @@ describe('session runtime integration', () => {
       const targetPath = path.join(resources.temporaryDirectory, 'result.txt');
       const repository = new ConversationSessionRepository(resources.database);
       const initial = repository.ensureConversation(conversationId);
-      const lease = repository.claimOwner(conversationId, runId, 30_000);
       const writer = new ConversationSessionRunWriter(
         repository,
         conversationId,
         runId,
         'session-runtime-turn',
-        lease,
         initial.lastSequence,
       );
       writer.startUserTurn('session-runtime-user', '请写入测试内容', new Date().toISOString());

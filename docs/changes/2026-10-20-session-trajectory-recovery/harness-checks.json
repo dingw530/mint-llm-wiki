@@ -186,8 +186,9 @@
       "repair_idempotence",
       "no_auto_replay",
       "no_live_repair",
-      "single_conversation_owner",
-      "fencing"
+      "session_reconstruction",
+      "sequence_cas",
+      "atomic_append"
     ]
   },
   {
@@ -237,8 +238,9 @@
       "repair_idempotence",
       "no_auto_replay",
       "no_live_repair",
-      "single_conversation_owner",
-      "fencing",
+      "session_reconstruction",
+      "sequence_cas",
+      "atomic_append",
       "unified_history",
       "successor_link",
       "assistant_projection_once",

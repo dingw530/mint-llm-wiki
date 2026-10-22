@@ -53,8 +53,9 @@ export interface SessionRecordingPort {
     readonly reason?: string;
   }): SessionEvent;
   recordRunTerminal(outcome: 'completed' | 'failed' | 'cancelled'): SessionEvent;
-  recordInterrupted(reason?: 'process_exit' | 'lease_expired' | 'unknown'): SessionEvent;
-  startHeartbeat(): void;
+  recordInterrupted(
+    reason?: 'process_exit' | 'approval_expired' | 'lease_expired' | 'unknown',
+  ): SessionEvent;
   pauseForApproval(callId: string, ttlMs: number): void;
   close(): void;
 }

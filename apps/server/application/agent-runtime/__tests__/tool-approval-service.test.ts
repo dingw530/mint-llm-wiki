@@ -91,7 +91,6 @@ function createSessionRecorder(): SessionRecordingPort {
     recordToolResult: vi.fn(),
     recordApproval: vi.fn(),
     recordRunTerminal: vi.fn(),
-    startHeartbeat: vi.fn(),
     pauseForApproval: vi.fn(),
     close: vi.fn(),
   } as unknown as SessionRecordingPort;

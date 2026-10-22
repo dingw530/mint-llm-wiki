@@ -1,10 +1,8 @@
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runMigrations } from '../../../migrations/index.js';
-import {
-  ConversationSessionRepository,
-  type ConversationSessionRepositoryError,
-} from '../../../infrastructure/persistence/conversation-session-repository.js';
+import { AgentRun, agentRunRegistry } from '../../../agent-runtime/agent-run.js';
+import { ConversationSessionRepository } from '../../../infrastructure/persistence/conversation-session-repository.js';
 import { repairInterruptedConversation } from '../conversation-session-recovery-service.js';
 
 const now = '2026-10-20T00:00:00.000Z';
@@ -34,6 +32,7 @@ describe('repairInterruptedConversation', () => {
   afterEach(() => {
     database.close();
     vi.unstubAllEnvs();
+    agentRunRegistry.clear();
   });
 
   it('repairs an unknown dispatched call without replaying it and is idempotent', () => {
@@ -85,18 +84,19 @@ describe('repairInterruptedConversation', () => {
     expect(result.events[1]).toMatchObject({ status: 'expired', callId: 'call-1' });
   });
 
-  it('does not repair while another process still owns the conversation lease', () => {
+  it('does not repair an active in-process run', () => {
     appendInterruptedToolRun(repository, 'run-1', true, false);
-    const owner = repository.claimOwner('conversation-1', 'live-owner', 60_000, now);
+    agentRunRegistry.register(
+      new AgentRun({ runId: 'live-run', conversationId: 'conversation-1' }),
+    );
 
     const result = repairInterruptedConversation('conversation-1', {
       repository,
       now: '2026-10-20T00:00:01.000Z',
     });
 
-    expect(result).toMatchObject({ status: 'blocked_active_owner', events: [] });
+    expect(result).toMatchObject({ status: 'active_run', events: [] });
     expect(repository.readAll('conversation-1')).toHaveLength(4);
-    expect(repository.releaseOwner(owner)).toBe(true);
   });
 });
 
@@ -108,7 +108,6 @@ function appendInterruptedToolRun(
 ): void {
   const conversationId = 'conversation-1';
   const state = repository.ensureConversation(conversationId, now);
-  const lease = repository.claimOwner(conversationId, 'seed-' + runId, 60_000, now);
   const toolCall = {
     id: 'call-1',
     type: 'function',
@@ -157,14 +156,7 @@ function appendInterruptedToolRun(
         ]
       : []),
   ];
-  repository.appendBatch(
-    conversationId,
-    state.lastSequence,
-    lease.ownerFence,
-    events,
-    '2026-10-20T00:00:01.000Z',
-  );
-  repository.releaseOwner(lease);
+  repository.appendBatch(conversationId, state.lastSequence, events, '2026-10-20T00:00:01.000Z');
 }
 
 function base(conversationId: string, runId: string, seq: number) {

@@ -34,28 +34,15 @@ vi.mock('../../../infrastructure/persistence/conversation-session-repository.js'
     return {
       ensureConversation: vi.fn(() => ({ lastSequence })),
       withTransaction: vi.fn((operation: () => unknown) => operation()),
-      claimOwner: vi.fn((conversationId: string, ownerId: string) => ({
-        conversationId,
-        ownerId,
-        ownerFence: 1,
-        expiresAt: '2026-10-21T00:05:00.000Z',
-      })),
       readAll: vi.fn(() => events),
       appendBatch: vi.fn(
-        (
-          _conversationId: string,
-          expectedLastSequence: number,
-          _fence: number,
-          batch: unknown[],
-        ) => {
+        (_conversationId: string, expectedLastSequence: number, batch: unknown[]) => {
           events.push(...batch);
           lastSequence = expectedLastSequence + batch.length;
           sessionMockState.lastEvents = [...events];
           return { lastSequence };
         },
       ),
-      renewOwner: vi.fn((lease: unknown) => lease),
-      releaseOwner: vi.fn(() => true),
     };
   }),
 }));

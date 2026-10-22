@@ -58,13 +58,13 @@
 - BR-004：没有分派凭据只在所有执行路径都具备执行前持久化屏障时才能判为 TOOL_NOT_STARTED；其他无法证明的历史统一按未知处理。
 - BR-005：已分派无持久结果为 TOOL_OUTCOME_UNKNOWN。Ledger succeeded 不能伪造模型结果，也不能据此重新执行工具；只允许核对或继续新请求。
 - BR-006：已有真实结果按原文恢复；修复仅追加合成结果与中断边界，使用确定性身份防重复，不修改旧结果，不调用工具。
-- BR-007：冷修复只能发生在会话无有效执行持有者时；活动运行和活审批暂停不修复。存储所有权和 fencing 防止新旧进程同时写。
+- BR-007：冷修复以持久 Session 事件为输入；同一进程内可从 AgentRunRegistry 识别活动运行并跳过修复。进程重启后没有活动运行，按 Session 日志重建中断状态；数据库不保存写入租约或 fencing token。
 - BR-008：普通新消息先准备会话和修复旧尾部，再在该完整历史后追加新用户消息。无需用户提供 runId 或 callId。继续对话不构成对旧工具的直接重放授权。
 - BR-009：新运行重新应用当前模型、工具可用性、路径权限及审批策略。过往批准、路径能力和旧配置不会自动成为新执行授权。
 - BR-010：实际提供给模型的工具结果和上下文替换要持久化。原始外部大输出与模型可见内容分别标识；不能用易过期工件引用替代唯一可重建的模型可见文本。
 - BR-011：对话页与轨迹页来自同一日志投影。旧 messages 表是兼容投影，最终回答及恢复回答须恰好投影一次。
 - BR-012：默认预览只返回安全元数据，不直接展示敏感命令、文件正文或完整参数；用户明确展开详情时校验会话归属。内容按不可信文本渲染。
-- BR-013：同一会话普通用户消息可在旧轮被安全关闭后继续。活运行或跨进程所有权尚未确认时阻止新执行并给出状态提示；不因只读轨迹浏览中断运行。
+- BR-013：同一进程内由 ConversationScopeLock 阻止同一会话并发执行；Session 追加使用 lastSequence 比较并交换，冲突整批回滚。跨进程不维护写入所有权租约；不因只读轨迹浏览中断当前进程内的运行。
 - BR-014：旧会话只导入真实持久消息和可证实的状态。无法还原的历史明确标注“历史轨迹不完整”，不补造。
 - BR-015：搜索与类型过滤仅针对授权加载的预览；完整详情按需取回，不因搜索扫描或解密全部敏感正文。展示“在已加载轨迹中搜索”。
 - BR-016：流式未提交尾部允许丢失，界面标注“中断时部分流式内容未保存”；不得将未保存尾部伪装为完整历史。
@@ -94,7 +94,7 @@
 | AC-003 | 每条工具执行路径在正文产生副作用前持久提交分派凭据和 Ledger 占位；提交失败不执行。                                        | high   | intent_before_effect, atomic_dispatch_claim, fail_closed                            | integration, process-smoke | session-storage, session-crash                                                     |
 | AC-004 | 实际模型可见工具结果在下一次模型请求前已持久化；Ledger 成功而结果缺失时仍禁止盲目重放。                                   | high   | result_before_next_model, success_without_result_no_replay                          | integration, process-smoke | session-runtime, session-crash                                                     |
 | AC-005 | 冷恢复区分未分派、结果未知和已有结果，持久追加幂等修复，不自动执行旧工具。                                                | high   | not_started_proven, unknown_not_failure, repair_idempotence, no_auto_replay         | integration, process-smoke | session-recovery, session-crash                                                    |
-| AC-006 | 活动或暂停审批的活运行不被冷修复；会话写入独占并校验 fencing，旧持有者不能继续提交。                                      | high   | no_live_repair, single_conversation_owner, fencing                                  | integration, process-smoke | session-recovery, session-crash                                                    |
+| AC-006 | 同进程活动运行不被冷修复；进程重启后仅凭持久 Session 重建中断状态；追加按 lastSequence 比较并交换，冲突时整批回滚。       | high   | no_live_repair, session_reconstruction, sequence_cas, atomic_append                 | integration, process-smoke | session-recovery, session-crash                                                    |
 | AC-007 | 普通新消息和恢复按钮使用同一历史构建入口，保留前序已完成调用与结果，保存新回答并关联 successor run。                      | high   | unified_history, successor_link, assistant_projection_once, no_history_loss         | integration, process-smoke | session-runtime, session-crash                                                     |
 | AC-008 | 摘要和上下文替换可重建当前有效历史；恢复使用当前授权与适配器规则，不伪造 reasoning 或沿用失效审批。                       | high   | active_view_replay, current_authorization, no_reasoning_fabrication                 | integration                | session-runtime                                                                    |
 | AC-009 | 旧会话仅导入真实消息并标记轨迹不完整；重复导入不重复，不补造历史调用、参数或结果。                                        | medium | legacy_partial_marked, no_fabricated_events, seed_idempotence                       | integration                | session-storage                                                                    |
@@ -105,7 +105,7 @@
 | AC-014 | 轨迹面板支持时长、轮次、调用视图、搜索、类型过滤、总览定位及展开参数和结果，未知结果明确区别于执行失败。                  | medium | search_and_filter, selection_links_row, details_exact, unknown_distinct             | integration, browser       | session-api, browser-ac                                                            |
 | AC-015 | 强退重启或刷新后，已提交轨迹及新旧运行关联仍可查看；未持久化的流式尾部和旧记录缺口有明确说明。                            | high   | restart_same_trajectory, successor_visible, no_duplicate_rows, partial_tail_marked  | process-smoke, browser     | session-crash, browser-ac, session-restart-browser                                 |
 | AC-016 | 中断修复后用户可直接发送新问题；模型先获得原调用和未知结果再决定核对，输入草稿在切换轨迹页签时保留。                      | high   | repair_before_new_turn, no_automatic_retry, draft_preserved                         | integration, browser       | session-runtime, browser-ac, session-restart-browser                               |
-| AC-017 | 删除会话清除所属事件与载荷；关闭时停止接纳、排空已提交写入并释放所有权，不再由后台任务访问已关闭存储。                    | high   | conversation_cascade, no_new_work, drain, no_background_access_after_close          | integration, process-smoke | session-storage, session-crash                                                     |
+| AC-017 | 删除会话清除所属事件与载荷；关闭时停止接纳、排空已提交写入，不再由后台任务访问已关闭存储。                                | high   | conversation_cascade, no_new_work, drain, no_background_access_after_close          | integration, process-smoke | session-storage, session-crash                                                     |
 | AC-018 | ReAct、普通 stream 工具路径、审批继续、重新生成及取消均遵守统一记录规则，两个新包在 Web 和 Electron 构建中可加载。        | high   | react_stream_parity, approval_and_abort_preserved, web_electron_load                | integration, process-smoke | session-runtime, session-packages                                                  |
 | AC-019 | 刷新或重启后聊天正文、推理和工具调用均从 Session 投影；删除兼容 messages 投影后聊天仍可重建，A2UI 按稳定 messageId 关联。 | high   | session_authoritative, chat_projection_complete, a2ui_linked, no_duplicate_messages | integration, browser       | session-authoritative-history, session-chat-ui-projection, session-restart-browser |
 | AC-020 | 迁移一次性解密既有事件到 payload_json；迁移后新写入和读取均不依赖加解密，旧事件内容和顺序保持一致。                       | high   | legacy_payload_preserved, plaintext_json, migration_atomic, no_read_decrypt         | integration                | session-storage, session-authoritative-history                                     |

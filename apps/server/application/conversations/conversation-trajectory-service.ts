@@ -10,6 +10,7 @@ import { findById } from '../../domains/conversations/index.js';
 import { ConversationSessionRepository } from '../../infrastructure/persistence/conversation-session-repository.js';
 import type { HttpError } from '../../types.js';
 import { repairInterruptedConversation } from './conversation-session-recovery-service.js';
+import { isConversationScopeBusy } from './conversation-scope-lock.js';
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 500;
@@ -50,7 +51,9 @@ export function getConversationTrajectory(
   requireConversation(conversationId);
   validateCursor(afterSeq, pageSize, throughSeq);
   const repository = new ConversationSessionRepository();
-  repairInterruptedConversation(conversationId, { repository });
+  if (!isConversationScopeBusy(conversationId)) {
+    repairInterruptedConversation(conversationId, { repository });
+  }
   const page = repository.readPage(conversationId, afterSeq, pageSize, throughSeq);
   const allEvents = repository
     .readAll(conversationId)

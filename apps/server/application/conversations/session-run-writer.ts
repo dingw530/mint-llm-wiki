@@ -12,20 +12,13 @@ import type {
   SessionToolDispatchRecord,
   SessionToolResultRecord,
 } from '../../agent-runtime/tooling/runtime-context.js';
-import type {
-  ConversationSessionLease,
-  ConversationSessionRepository,
-} from '../../infrastructure/persistence/conversation-session-repository.js';
-
-const SESSION_OWNER_TTL_MS = 300_000;
-const SESSION_OWNER_RENEW_INTERVAL_MS = 60_000;
+import type { ConversationSessionRepository } from '../../infrastructure/persistence/conversation-session-repository.js';
 
 /** 为一个对话轮次分配 session 序号并写入持久轨迹。 */
 export class ConversationSessionRunWriter implements SessionRecordingPort {
   private lastSequence: number;
   private currentRound = 1;
   private readonly dispatches = new Map<string, SessionEvent>();
-  private ownerHeartbeat: ReturnType<typeof setInterval> | undefined;
   private readonly approvalExpiries = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pendingApprovals = new Map<
     string,
@@ -38,7 +31,6 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
     private readonly conversationId: string,
     private readonly runId: string,
     private readonly turnId: string,
-    private readonly lease: ConversationSessionLease,
     lastSequence: number,
   ) {
     this.lastSequence = lastSequence;
@@ -55,13 +47,7 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
     const events = drafts.map((draft, index) =>
       sessionEventAtSequence(draft, this.lastSequence + index + 1),
     );
-    const state = this.repository.appendBatch(
-      this.conversationId,
-      this.lastSequence,
-      this.lease.ownerFence,
-      events,
-      now,
-    );
+    const state = this.repository.appendBatch(this.conversationId, this.lastSequence, events, now);
     this.lastSequence = state.lastSequence;
     for (const event of events) {
       if (event.type === 'tool_dispatch_committed') {
@@ -273,23 +259,7 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
   }
 
   /**
-   * 为活跃运行或待审批运行定期续租。
-   * @returns 无返回值。
-   */
-  startHeartbeat(): void {
-    if (this.closed || this.ownerHeartbeat) return;
-    this.ownerHeartbeat = setInterval(() => {
-      if (this.closed) return;
-      try {
-        this.repository.renewOwner(this.lease, SESSION_OWNER_TTL_MS);
-      } catch (error) {
-        console.error('续租会话写入权失败：', error);
-      }
-    }, SESSION_OWNER_RENEW_INTERVAL_MS);
-  }
-
-  /**
-   * 为待审批运行设置过期边界；过期后关闭未完成轮次并释放租约。
+   * 为待审批运行设置过期边界；过期后关闭未完成轮次。
    * @param callId 待审批工具调用标识。
    * @param ttlMs 审批请求的有效时长。
    * @returns 无返回值。
@@ -297,7 +267,7 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
   pauseForApproval(callId: string, ttlMs: number): void {
     if (this.closed || !this.pendingApprovals.has(callId)) return;
     if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) {
-      throw new Error('审批租约时长无效');
+      throw new Error('审批有效期无效');
     }
     const previousExpiry = this.approvalExpiries.get(callId);
     if (previousExpiry) clearTimeout(previousExpiry);
@@ -306,7 +276,7 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
       if (!pending || this.closed) return;
       this.recordApproval({ ...pending, status: 'expired' });
       if (this.pendingApprovals.size === 0) {
-        this.recordInterrupted('lease_expired');
+        this.recordInterrupted('approval_expired');
         this.close();
       }
     }, ttlMs);
@@ -314,17 +284,14 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
   }
 
   /**
-   * 清理续租定时器并释放会话写入租约。
+   * 清理待审批过期定时器并关闭记录器。
    * @returns 无返回值。
    */
   close(): void {
     if (this.closed) return;
     this.closed = true;
-    if (this.ownerHeartbeat) clearInterval(this.ownerHeartbeat);
     for (const expiry of this.approvalExpiries.values()) clearTimeout(expiry);
     this.approvalExpiries.clear();
-    this.ownerHeartbeat = undefined;
-    this.repository.releaseOwner(this.lease);
   }
 
   /**
@@ -348,7 +315,7 @@ export class ConversationSessionRunWriter implements SessionRecordingPort {
    * @returns 已提交中断事件。
    */
   recordInterrupted(
-    reason: 'process_exit' | 'lease_expired' | 'unknown' = 'unknown',
+    reason: 'process_exit' | 'approval_expired' | 'lease_expired' | 'unknown' = 'unknown',
   ): SessionEvent {
     return this.record([
       {

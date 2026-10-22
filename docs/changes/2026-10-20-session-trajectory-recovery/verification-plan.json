@@ -48,9 +48,9 @@
     },
     {
       "id": "AC-006",
-      "statement": "活动或暂停审批的活运行不被冷修复；会话写入独占并校验 fencing，旧持有者不能继续提交。",
+      "statement": "同进程活动运行不被冷修复；重启后从持久 Session 重建中断状态；追加按 lastSequence 比较并交换，冲突整批回滚。",
       "risk": "high",
-      "invariants": ["no_live_repair", "single_conversation_owner", "fencing"],
+      "invariants": ["no_live_repair", "session_reconstruction", "sequence_cas", "atomic_append"],
       "requiredEvidence": ["integration", "process-smoke"],
       "probes": ["session-recovery", "session-crash"]
     },

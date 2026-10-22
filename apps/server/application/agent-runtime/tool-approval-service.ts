@@ -116,7 +116,7 @@ function recordApprovalToolResult(
 }
 
 /**
- * 写入运行终态并释放已不再等待审批的会话租约。
+ * 写入运行终态并关闭已不再等待审批的会话记录器。
  * @param recorder Session 语义事件记录端口。
  * @param run 当前持久 Agent 运行。
  * @returns 无返回值。

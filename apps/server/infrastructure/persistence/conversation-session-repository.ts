@@ -10,8 +10,6 @@ import {
 import { getDb } from '../../db.js';
 
 const MAX_PAGE_SIZE = 500;
-const MIN_LEASE_TTL_MS = 1_000;
-const MAX_LEASE_TTL_MS = 300_000;
 
 /** 持久会话历史完整性状态。 */
 export type SessionHistoryCompleteness = 'complete' | 'legacy_partial';
@@ -24,9 +22,6 @@ export interface ConversationSessionState {
   readonly lastSequence: number;
   readonly historyCompleteness: SessionHistoryCompleteness;
   readonly tailIncomplete: boolean;
-  readonly ownerId?: string;
-  readonly ownerFence: number;
-  readonly leaseExpiresAt?: string;
 }
 
 /** 一次有序轨迹页及读取时确定的水位。 */
@@ -38,22 +33,9 @@ export interface ConversationSessionPage {
   readonly events: readonly SessionEvent[];
 }
 
-/** 一次会话写入租约及其 fencing token。 */
-export interface ConversationSessionLease {
-  readonly conversationId: string;
-  readonly ownerId: string;
-  readonly ownerFence: number;
-  readonly expiresAt: string;
-}
-
 /** 轨迹仓库可以返回的安全、可判定错误码。 */
 export type ConversationSessionErrorCode =
-  | 'SESSION_NOT_FOUND'
-  | 'SESSION_OWNER_ACTIVE'
-  | 'SESSION_OWNER_REQUIRED'
-  | 'SESSION_OWNER_STALE'
-  | 'SESSION_SEQUENCE_CONFLICT'
-  | 'SESSION_INVALID_PAGE';
+  'SESSION_NOT_FOUND' | 'SESSION_SEQUENCE_CONFLICT' | 'SESSION_INVALID_PAGE';
 
 /** 带稳定错误码的会话存储异常。 */
 export class ConversationSessionRepositoryError extends Error {
@@ -73,9 +55,6 @@ interface StateRow {
   last_seq: number;
   history_completeness: SessionHistoryCompleteness;
   tail_incomplete: number;
-  owner_id: string | null;
-  owner_fence: number;
-  lease_expires_at: string | null;
 }
 
 interface EventRow {
@@ -141,8 +120,8 @@ export class ConversationSessionRepository {
         [
           'INSERT INTO conversation_session_state',
           '(conversation_id, schema_version, generation, last_seq, history_completeness,',
-          'tail_incomplete, owner_fence, created_at, updated_at)',
-          "VALUES (?, ?, ?, 0, 'complete', 0, 0, ?, ?)",
+          'tail_incomplete, created_at, updated_at)',
+          "VALUES (?, ?, ?, 0, 'complete', 0, ?, ?)",
         ].join(' '),
       ).run(conversationId, SESSION_EVENT_SCHEMA_VERSION, randomUUID(), now, now);
       const legacy = this.readLegacyMessages(db, conversationId);
@@ -283,10 +262,9 @@ export class ConversationSessionRepository {
   }
 
   /**
-   * 在同一 SQLite 事务内追加一个与当前所有权 fencing 匹配的连续事件批次。
+   * 按期望序号在同一 SQLite 事务内追加连续事件；序号冲突时整批回滚。
    * @param conversationId 会话标识。
    * @param expectedLastSequence 写入方读到的最后序号。
-   * @param ownerFence 当前写入租约的 fencing token。
    * @param events 要追加的连续事件。
    * @param now 当前 ISO 时间。
    * @returns 提交后的会话状态。
@@ -294,173 +272,72 @@ export class ConversationSessionRepository {
   appendBatch(
     conversationId: string,
     expectedLastSequence: number,
-    ownerFence: number,
     events: readonly SessionEvent[],
     now = new Date().toISOString(),
   ): ConversationSessionState {
     requireNonNegativeInteger(expectedLastSequence, 'expectedLastSequence');
-    requireNonNegativeInteger(ownerFence, 'ownerFence');
     if (events.length === 0) return this.ensureConversation(conversationId, now);
     const batch = validateSessionEventBatch(events, expectedLastSequence + 1);
     if (batch.some((event) => event.conversationId !== conversationId)) {
       throw new Error('Session event belongs to a different conversation');
     }
     const db = this.getDatabase();
-    const committed = db.transaction(() => {
-      const state = this.readStateRow(db, conversationId);
-      if (!state) throw sessionNotFound();
-      if (state.last_seq !== expectedLastSequence) {
-        throw new ConversationSessionRepositoryError(
-          'Session event sequence changed before append',
-          'SESSION_SEQUENCE_CONFLICT',
-        );
-      }
-      assertCurrentOwner(state, ownerFence, now);
-      const insert = db.prepare(
-        [
-          'INSERT INTO conversation_session_events',
-          '(conversation_id, event_id, seq, schema_version, run_id, turn_id,',
-          'event_type, round, call_id, created_at, payload_json)',
-          'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        ].join(' '),
-      );
-      for (const event of batch) {
-        insert.run(
-          event.conversationId,
-          event.eventId,
-          event.seq,
-          event.schemaVersion,
-          event.runId,
-          event.turnId,
-          event.type,
-          'round' in event ? event.round : null,
-          'callId' in event ? event.callId : null,
-          event.createdAt,
-          JSON.stringify(event),
-        );
-      }
-      const nextSequence = batch.at(-1)?.seq ?? expectedLastSequence;
-      const tailIncomplete =
-        state.tail_incomplete === 1 || batch.some((event) => event.type === 'turn_interrupted');
-      const update = db
-        .prepare(
+    const committed = db
+      .transaction(() => {
+        const state = this.readStateRow(db, conversationId);
+        if (!state) throw sessionNotFound();
+        if (state.last_seq !== expectedLastSequence) {
+          throw new ConversationSessionRepositoryError(
+            'Session event sequence changed before append',
+            'SESSION_SEQUENCE_CONFLICT',
+          );
+        }
+        const insert = db.prepare(
           [
-            'UPDATE conversation_session_state SET last_seq = ?, tail_incomplete = ?, updated_at = ?',
-            'WHERE conversation_id = ? AND last_seq = ? AND owner_fence = ?',
+            'INSERT INTO conversation_session_events',
+            '(conversation_id, event_id, seq, schema_version, run_id, turn_id,',
+            'event_type, round, call_id, created_at, payload_json)',
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           ].join(' '),
-        )
-        .run(
-          nextSequence,
-          tailIncomplete ? 1 : 0,
-          now,
-          conversationId,
-          expectedLastSequence,
-          ownerFence,
         );
-      if (update.changes !== 1) {
-        throw new ConversationSessionRepositoryError(
-          'Session state changed before append completed',
-          'SESSION_SEQUENCE_CONFLICT',
-        );
-      }
-      const updated = this.readStateRow(db, conversationId);
-      if (!updated) throw new Error('Session state disappeared during append');
-      return updated;
-    })();
+        for (const event of batch) {
+          insert.run(
+            event.conversationId,
+            event.eventId,
+            event.seq,
+            event.schemaVersion,
+            event.runId,
+            event.turnId,
+            event.type,
+            'round' in event ? event.round : null,
+            'callId' in event ? event.callId : null,
+            event.createdAt,
+            JSON.stringify(event),
+          );
+        }
+        const nextSequence = batch.at(-1)?.seq ?? expectedLastSequence;
+        const tailIncomplete =
+          state.tail_incomplete === 1 || batch.some((event) => event.type === 'turn_interrupted');
+        const update = db
+          .prepare(
+            [
+              'UPDATE conversation_session_state SET last_seq = ?, tail_incomplete = ?, updated_at = ?',
+              'WHERE conversation_id = ? AND last_seq = ?',
+            ].join(' '),
+          )
+          .run(nextSequence, tailIncomplete ? 1 : 0, now, conversationId, expectedLastSequence);
+        if (update.changes !== 1) {
+          throw new ConversationSessionRepositoryError(
+            'Session state changed before append completed',
+            'SESSION_SEQUENCE_CONFLICT',
+          );
+        }
+        const updated = this.readStateRow(db, conversationId);
+        if (!updated) throw new Error('Session state disappeared during append');
+        return updated;
+      })
+      .immediate();
     return toState(committed);
-  }
-
-  /**
-   * 认领会话写入权；未过期的其他持有者会收到冲突。
-   * @param conversationId 会话标识。
-   * @param ownerId 当前进程标识。
-   * @param ttlMs 租约期限。
-   * @param now 当前 ISO 时间。
-   * @returns 已认领租约。
-   */
-  claimOwner(
-    conversationId: string,
-    ownerId: string,
-    ttlMs: number,
-    now = new Date().toISOString(),
-  ): ConversationSessionLease {
-    requireText(ownerId, 'ownerId');
-    validateLease(ttlMs, now);
-    this.ensureConversation(conversationId, now);
-    const db = this.getDatabase();
-    const row = db.transaction(() => {
-      const state = this.readStateRow(db, conversationId);
-      if (!state) throw sessionNotFound();
-      const expiresAt = toExpiry(now, ttlMs);
-      if (state.owner_id && state.lease_expires_at && state.lease_expires_at > now) {
-        if (state.owner_id !== ownerId) throw activeOwnerConflict();
-        db.prepare(
-          [
-            'UPDATE conversation_session_state SET lease_expires_at = ?, updated_at = ?',
-            'WHERE conversation_id = ? AND owner_id = ? AND owner_fence = ?',
-          ].join(' '),
-        ).run(expiresAt, now, conversationId, ownerId, state.owner_fence);
-        return { ...state, lease_expires_at: expiresAt };
-      }
-      const ownerFence = state.owner_fence + 1;
-      db.prepare(
-        [
-          'UPDATE conversation_session_state',
-          'SET owner_id = ?, owner_fence = ?, lease_expires_at = ?, updated_at = ?',
-          'WHERE conversation_id = ?',
-        ].join(' '),
-      ).run(ownerId, ownerFence, expiresAt, now, conversationId);
-      const claimed = this.readStateRow(db, conversationId);
-      if (!claimed) throw new Error('Session state disappeared during ownership claim');
-      return claimed;
-    })();
-    return toLease(row);
-  }
-
-  /**
-   * 刷新仍有效的租约；过期或 fencing 已改变时拒绝续租。
-   * @param lease 当前写入租约。
-   * @param ttlMs 新租约期限。
-   * @param now 当前 ISO 时间。
-   * @returns 刷新后的租约。
-   */
-  renewOwner(
-    lease: ConversationSessionLease,
-    ttlMs: number,
-    now = new Date().toISOString(),
-  ): ConversationSessionLease {
-    validateLease(ttlMs, now);
-    const expiresAt = toExpiry(now, ttlMs);
-    const result = this.getDatabase()
-      .prepare(
-        [
-          'UPDATE conversation_session_state SET lease_expires_at = ?, updated_at = ?',
-          'WHERE conversation_id = ? AND owner_id = ? AND owner_fence = ?',
-          'AND lease_expires_at > ?',
-        ].join(' '),
-      )
-      .run(expiresAt, now, lease.conversationId, lease.ownerId, lease.ownerFence, now);
-    if (result.changes !== 1) throw staleOwnerError();
-    return { ...lease, expiresAt };
-  }
-
-  /**
-   * 释放当前租约但保留递增的 fencing token。
-   * @param lease 当前写入租约。
-   * @param now 当前 ISO 时间。
-   * @returns 是否成功释放。
-   */
-  releaseOwner(lease: ConversationSessionLease, now = new Date().toISOString()): boolean {
-    const result = this.getDatabase()
-      .prepare(
-        [
-          'UPDATE conversation_session_state',
-          'SET owner_id = NULL, lease_expires_at = NULL, updated_at = ?',
-          'WHERE conversation_id = ? AND owner_id = ? AND owner_fence = ?',
-        ].join(' '),
-      )
-      .run(now, lease.conversationId, lease.ownerId, lease.ownerFence);
-    return result.changes === 1;
   }
 
   /**
@@ -604,24 +481,6 @@ function toState(row: StateRow): ConversationSessionState {
     lastSequence: row.last_seq,
     historyCompleteness: row.history_completeness,
     tailIncomplete: row.tail_incomplete === 1,
-    ...(row.owner_id ? { ownerId: row.owner_id } : {}),
-    ownerFence: row.owner_fence,
-    ...(row.lease_expires_at ? { leaseExpiresAt: row.lease_expires_at } : {}),
-  };
-}
-
-/**
- * 将已解析的数据库行映射为租约。
- * @param row 会话状态行。
- * @returns 活动租约。
- */
-function toLease(row: StateRow): ConversationSessionLease {
-  if (!row.owner_id || !row.lease_expires_at) throw new Error('Session ownership is not active');
-  return {
-    conversationId: row.conversation_id,
-    ownerId: row.owner_id,
-    ownerFence: row.owner_fence,
-    expiresAt: row.lease_expires_at,
   };
 }
 
@@ -691,9 +550,6 @@ function parseStateRow(value: unknown): StateRow {
     last_seq: readNumber(row, 'last_seq'),
     history_completeness: completeness,
     tail_incomplete: readNumber(row, 'tail_incomplete'),
-    owner_id: readNullableString(row, 'owner_id'),
-    owner_fence: readNumber(row, 'owner_fence'),
-    lease_expires_at: readNullableString(row, 'lease_expires_at'),
   };
 }
 
@@ -859,28 +715,6 @@ function validatePage(afterSequence: number, pageSize: number, throughSequence?:
 }
 
 /**
- * 验证 fencing token 仍对应未过期的会话所有者。
- * @param state 当前数据库状态。
- * @param ownerFence 写入方持有的 token。
- * @param now 当前 ISO 时间。
- */
-function assertCurrentOwner(state: StateRow, ownerFence: number, now: string): void {
-  if (!state.owner_id) {
-    throw new ConversationSessionRepositoryError(
-      'Session append requires an active owner',
-      'SESSION_OWNER_REQUIRED',
-    );
-  }
-  if (
-    state.owner_fence !== ownerFence ||
-    !state.lease_expires_at ||
-    state.lease_expires_at <= now
-  ) {
-    throw staleOwnerError();
-  }
-}
-
-/**
  * 创建轨迹分页参数异常。
  * @param message 安全、可显示的诊断。
  * @returns 带稳定错误码的分页异常。
@@ -890,66 +724,11 @@ function invalidPageError(message: string): ConversationSessionRepositoryError {
 }
 
 /**
- * 创建活跃会话持有者冲突错误。
- * @returns 可判定的 owner 冲突异常。
- */
-function activeOwnerConflict(): ConversationSessionRepositoryError {
-  return new ConversationSessionRepositoryError(
-    'Conversation already has an active writer',
-    'SESSION_OWNER_ACTIVE',
-  );
-}
-
-/**
- * 创建过期或失效 fencing 错误。
- * @returns 可判定的 stale owner 异常。
- */
-function staleOwnerError(): ConversationSessionRepositoryError {
-  return new ConversationSessionRepositoryError(
-    'Conversation writer lease expired or was fenced',
-    'SESSION_OWNER_STALE',
-  );
-}
-
-/**
  * 创建会话缺失错误。
  * @returns 可判定的 missing session 异常。
  */
 function sessionNotFound(): ConversationSessionRepositoryError {
   return new ConversationSessionRepositoryError('Session state was not found', 'SESSION_NOT_FOUND');
-}
-
-/**
- * 验证租约期限和当前 ISO 时间。
- * @param ttlMs 租约毫秒数。
- * @param now ISO 时间。
- */
-function validateLease(ttlMs: number, now: string): void {
-  if (!Number.isSafeInteger(ttlMs) || ttlMs < MIN_LEASE_TTL_MS || ttlMs > MAX_LEASE_TTL_MS) {
-    throw new Error('Session lease TTL is outside the supported range');
-  }
-  validateIsoTime(now);
-}
-
-/**
- * 验证时间戳为可进行字典序比较的标准 UTC ISO 表示。
- * @param value 时间字符串。
- */
-function validateIsoTime(value: string): void {
-  const timestamp = Date.parse(value);
-  if (!Number.isFinite(timestamp) || new Date(timestamp).toISOString() !== value) {
-    throw new Error('Session timestamp must use canonical UTC ISO format');
-  }
-}
-
-/**
- * 计算租约过期时间。
- * @param now 当前 ISO 时间。
- * @param ttlMs 租约毫秒数。
- * @returns 过期 ISO 时间。
- */
-function toExpiry(now: string, ttlMs: number): string {
-  return new Date(Date.parse(now) + ttlMs).toISOString();
 }
 
 /** 将旧版 ReAct 双层写入产生的完全重复模型响应折叠为空事件。 */

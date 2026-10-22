@@ -9,7 +9,7 @@ import { validateSessionEvents } from './validation.js';
 export type RecoveryLedgerStatus = SessionRecoveryResultEvent['ledgerStatus'];
 
 /** 冷恢复计划的执行状态。 */
-export type RecoveryPlanStatus = 'ready' | 'nothing_to_repair' | 'blocked_active_owner';
+export type RecoveryPlanStatus = 'ready' | 'nothing_to_repair';
 
 /** 本次恢复需要宿主持久追加的事件。 */
 export interface SessionRecoveryPlan {
@@ -25,26 +25,18 @@ export type RecoveryLedgerReader = (runId: string, callId: string) => RecoveryLe
  * 为中断运行规划未知或尚未分派的工具结果；本函数不写库、不执行工具。
  * @param events 当前会话的完整、已验证事件前缀。
  * @param runId 要检查的原运行标识。
- * @param options 当前所有权与账本读取器。
+ * @param options 账本读取器和恢复时间。
  * @returns 带 CAS 序号的追加计划。
  */
 export function planSessionRecovery(
   events: readonly SessionEvent[],
   runId: string,
   options: {
-    readonly hasActiveOwner: boolean;
     readonly readLedgerStatus: RecoveryLedgerReader;
     readonly now: string;
   },
 ): SessionRecoveryPlan {
   const validated = validateSessionEvents(events);
-  if (options.hasActiveOwner) {
-    return {
-      status: 'blocked_active_owner',
-      expectedLastSequence: lastSequence(validated),
-      events: [],
-    };
-  }
   const runEvents = validated.filter((event) => event.runId === runId);
   const existing = new Set(
     runEvents

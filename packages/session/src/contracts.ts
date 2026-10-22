@@ -117,7 +117,7 @@ export interface SessionRunTerminalEvent extends SessionEventBase {
 /** 关闭因进程退出而未完成的轮次。 */
 export interface SessionTurnInterruptedEvent extends SessionEventBase {
   readonly type: 'turn_interrupted';
-  readonly reason: 'process_exit' | 'lease_expired' | 'unknown';
+  readonly reason: 'process_exit' | 'approval_expired' | 'lease_expired' | 'unknown';
 }
 
 /** 完整、版本化、按会话序号排列的持久事件联合类型。 */

@@ -76,13 +76,16 @@ describe('runMigrations', () => {
       id: number;
     }[];
     expect(appliedIds.map(({ id }) => id)).toEqual(
-      Array.from({ length: 36 }, (_, index) => index + 1),
+      Array.from({ length: 37 }, (_, index) => index + 1),
     );
     expect(db.prepare('SELECT name FROM _migrations WHERE id = 35').get()).toEqual({
       name: 'add-conversation-session-events',
     });
     expect(db.prepare('SELECT name FROM _migrations WHERE id = 36').get()).toEqual({
       name: 'store-conversation-session-events-as-json',
+    });
+    expect(db.prepare('SELECT name FROM _migrations WHERE id = 37').get()).toEqual({
+      name: 'remove-conversation-session-writer-lease',
     });
     expect(warningLog).toHaveBeenCalledWith(
       '[db/migration] Skipped compatible: #1 add-reasoning-to-messages: duplicate column name: reasoning',
@@ -95,7 +98,12 @@ describe('runMigrations', () => {
     db.exec(`
       CREATE TABLE _migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL DEFAULT (datetime('now')));
       CREATE TABLE conversations (id TEXT PRIMARY KEY);
-      CREATE TABLE conversation_session_state (conversation_id TEXT PRIMARY KEY);
+      CREATE TABLE conversation_session_state (
+        conversation_id TEXT PRIMARY KEY,
+        owner_id TEXT,
+        owner_fence INTEGER NOT NULL DEFAULT 0 CHECK(owner_fence >= 0),
+        lease_expires_at TEXT
+      );
       CREATE TABLE conversation_session_events (
         conversation_id TEXT NOT NULL, event_id TEXT NOT NULL, seq INTEGER NOT NULL,
         schema_version INTEGER NOT NULL, run_id TEXT NOT NULL, turn_id TEXT NOT NULL,
@@ -164,5 +172,12 @@ describe('runMigrations', () => {
     expect(db.prepare('SELECT count(*) AS count FROM conversation_session_events').get()).toEqual({
       count: 1,
     });
+    expect(db.prepare('PRAGMA table_info(conversation_session_state)').all()).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'owner_id' }),
+        expect.objectContaining({ name: 'owner_fence' }),
+        expect.objectContaining({ name: 'lease_expires_at' }),
+      ]),
+    );
   });
 });

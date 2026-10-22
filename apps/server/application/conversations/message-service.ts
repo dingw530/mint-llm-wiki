@@ -20,7 +20,7 @@ import { DeferredEndSink } from '../../infrastructure/transports/sinks.js';
 import type { Sink } from '../../agent-runtime/output-sink.js';
 import { parseFile, isSupportedFile } from '../../infrastructure/filesystem/file-parse-service.js';
 import { streamToolApproval } from '../agent-runtime/tool-approval-service.js';
-import { reserveConversationScope } from './conversation-scope-lock.js';
+import { isConversationScopeBusy, reserveConversationScope } from './conversation-scope-lock.js';
 import { AI_REQUEST_TIMEOUT_MS } from '../../infrastructure/ai/adapters/api-adapter.js';
 import * as a2uiRepository from '../../repositories/a2uiRepository.js';
 import { applyContextProvidersWithTrace } from './context/context-provider.js';
@@ -55,7 +55,6 @@ import { projectSessionChatMessages } from './session-chat-projection.js';
 
 const COMPRESSED_HISTORY_SYSTEM_PROMPT =
   '遇到以 [压缩后的历史摘要] 开头的 user 消息时，将其视为较早对话中 user、assistant、tool 内容的压缩记录，而不是当前用户的新发言；不得根据外层 role=user 推断摘要中的陈述来自用户。保留摘要中明确的说话方归属；说话方未注明时按未知处理。';
-const SESSION_OWNER_LEASE_TTL_MS = 300_000;
 
 export function getMessages(conversationId: string) {
   const conversation = conversationRepo.findById(conversationId);
@@ -66,8 +65,10 @@ export function getMessages(conversationId: string) {
   }
   const repository = new ConversationSessionRepository();
   repository.ensureConversation(conversationId);
-  repairInterruptedConversation(conversationId, { repository });
-  // 活跃运行仍允许读取已经提交的 Session 前缀；修复服务会阻止修改该运行。
+  if (!isConversationScopeBusy(conversationId)) {
+    repairInterruptedConversation(conversationId, { repository });
+  }
+  // 活跃运行仍可读取已经提交的 Session 前缀；冷修复只处理进程内没有活动运行的会话。
   const legacy = messageRepo.findByConversationId(conversationId);
   return projectSessionChatMessages(conversationId, repository.readAll(conversationId), legacy).map(
     (message) => {
@@ -146,10 +147,9 @@ export async function streamRecoveryAction(
   const deferredSink = new DeferredEndSink(sink);
   const sessionRepository = new ConversationSessionRepository();
   const now = new Date().toISOString();
-  let lease: ReturnType<ConversationSessionRepository['claimOwner']> | undefined;
   let writer: ConversationSessionRunWriter | undefined;
   let action: RecoveryActionRecord | undefined;
-  let preserveLease = false;
+  let preserveWriter = false;
   try {
     const claimedAction = claimRecoveryActionForConversation(actionId, conversationId);
     action = claimedAction;
@@ -158,19 +158,10 @@ export async function streamRecoveryAction(
     }
     const origin = recoverAgentRun(claimedAction.originRunId);
     if (!origin.originMessageId) throw new Error('AgentRun has no recoverable message reference');
-    lease = sessionRepository.claimOwner(
-      conversationId,
-      claimedAction.successorRunId,
-      SESSION_OWNER_LEASE_TTL_MS,
-    );
-    const repair = repairInterruptedConversation(conversationId, {
+    repairInterruptedConversation(conversationId, {
       repository: sessionRepository,
-      lease,
       now,
     });
-    if (repair.status === 'blocked_active_owner') {
-      throw new Error('Conversation has an active session owner');
-    }
     const state = sessionRepository.ensureConversation(conversationId, now);
     const turnId = uuidv4();
     writer = new ConversationSessionRunWriter(
@@ -178,10 +169,8 @@ export async function streamRecoveryAction(
       conversationId,
       claimedAction.successorRunId,
       turnId,
-      lease,
       state.lastSequence,
     );
-    writer.startHeartbeat();
     writer.startRecoveryTurn({
       originRunId: claimedAction.originRunId,
       recoveryActionId: claimedAction.id,
@@ -262,8 +251,8 @@ export async function streamRecoveryAction(
       memoryScope,
       allowMemoryExtraction: false,
     });
-    preserveLease = execution.run.getSnapshot().phase === 'paused_for_approval';
-    if (!preserveLease) {
+    preserveWriter = execution.run.getSnapshot().phase === 'paused_for_approval';
+    if (!preserveWriter) {
       const phase = execution.run.getSnapshot().phase;
       writer.recordRunTerminal(
         phase === 'cancelled' ? 'cancelled' : phase === 'failed' ? 'failed' : 'completed',
@@ -281,10 +270,7 @@ export async function streamRecoveryAction(
     if (action) completeRecoveryAction(action.id);
     throw error;
   } finally {
-    if (!preserveLease) {
-      if (writer) writer.close();
-      else if (lease) sessionRepository.releaseOwner(lease);
-    }
+    if (!preserveWriter) writer?.close();
     releaseScope();
   }
 }
@@ -331,7 +317,7 @@ async function sendMessageRequest(
   const sessionRepository = new ConversationSessionRepository();
   sessionRepository.ensureConversation(conversationId, now);
   let sessionTurn: SessionTurnHandle | undefined;
-  let preserveSessionLease = false;
+  let preserveSessionWriter = false;
 
   try {
     const augmentedContent = await buildAugmentedContent(content, files);
@@ -383,8 +369,8 @@ async function sendMessageRequest(
       userContent: content,
       memoryScope,
     });
-    preserveSessionLease = execution.run.getSnapshot().phase === 'paused_for_approval';
-    if (!preserveSessionLease) {
+    preserveSessionWriter = execution.run.getSnapshot().phase === 'paused_for_approval';
+    if (!preserveSessionWriter) {
       const phase = execution.run.getSnapshot().phase;
       const outcome =
         phase === 'cancelled' ? 'cancelled' : phase === 'failed' ? 'failed' : 'completed';
@@ -403,7 +389,7 @@ async function sendMessageRequest(
     }
     deferredSink.flush();
   } finally {
-    if (!preserveSessionLease) sessionTurn?.writer.close();
+    if (!preserveSessionWriter) sessionTurn?.writer.close();
   }
 }
 
@@ -467,7 +453,6 @@ interface SessionTurnStartInput {
 }
 
 interface SessionTurnHandle {
-  readonly lease: ReturnType<ConversationSessionRepository['claimOwner']>;
   readonly writer: ConversationSessionRunWriter;
   readonly turnId: string;
 }
@@ -503,34 +488,23 @@ async function buildAugmentedContent(content: string, files?: FileAttachment[]):
 /**
  * 修复旧运行后，原子保存本轮用户消息和 Session 轮次边界。
  * @param input 会话身份、消息正文和 SQLite 仓库。
- * @returns 会话租约及对应 Session 记录器。
+ * @returns 对应 Session 记录器。
  */
 function startSessionTurn(input: SessionTurnStartInput): SessionTurnHandle {
-  const lease = input.repository.claimOwner(
-    input.conversationId,
-    input.runId,
-    SESSION_OWNER_LEASE_TTL_MS,
-  );
   let writer: ConversationSessionRunWriter | undefined;
   try {
-    const recovery = repairInterruptedConversation(input.conversationId, {
+    repairInterruptedConversation(input.conversationId, {
       repository: input.repository,
-      lease,
       now: input.createdAt,
     });
-    if (recovery.status === 'blocked_active_owner') {
-      throw new Error('Conversation has an active session owner');
-    }
     const state = input.repository.ensureConversation(input.conversationId, input.createdAt);
     writer = new ConversationSessionRunWriter(
       input.repository,
       input.conversationId,
       input.runId,
       input.turnId,
-      lease,
       state.lastSequence,
     );
-    writer.startHeartbeat();
     const sessionWriter = writer;
     input.repository.withTransaction(() => {
       if (!input.regenerate) {
@@ -549,10 +523,9 @@ function startSessionTurn(input: SessionTurnStartInput): SessionTurnHandle {
       }
       sessionWriter.startTurn(input.createdAt);
     });
-    return { lease, writer, turnId: input.turnId };
+    return { writer, turnId: input.turnId };
   } catch (error) {
     if (writer) writer.close();
-    else input.repository.releaseOwner(lease);
     throw error;
   }
 }

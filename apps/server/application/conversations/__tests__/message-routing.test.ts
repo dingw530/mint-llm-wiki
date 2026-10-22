@@ -23,25 +23,12 @@ function mockSessionPersistence(): void {
     ConversationSessionRepository: vi.fn().mockImplementation(() => ({
       ensureConversation: vi.fn(() => ({ generation: 'routing-test', lastSequence: 0 })),
       withTransaction: vi.fn((operation: () => unknown) => operation()),
-      claimOwner: vi.fn((conversationId: string, ownerId: string) => ({
-        conversationId,
-        ownerId,
-        ownerFence: 1,
-        expiresAt: '2026-10-21T00:05:00.000Z',
-      })),
       readAll: vi.fn(() => []),
       appendBatch: vi.fn(
-        (
-          _conversationId: string,
-          expectedLastSequence: number,
-          _fence: number,
-          batch: unknown[],
-        ) => ({
+        (_conversationId: string, expectedLastSequence: number, batch: unknown[]) => ({
           lastSequence: expectedLastSequence + batch.length,
         }),
       ),
-      renewOwner: vi.fn((lease: unknown) => lease),
-      releaseOwner: vi.fn(() => true),
     })),
   }));
   vi.doMock('../conversation-session-recovery-service.js', () => ({
@@ -53,7 +40,6 @@ function mockSessionPersistence(): void {
   }));
   vi.doMock('../session-run-writer.js', () => ({
     ConversationSessionRunWriter: vi.fn().mockImplementation(() => ({
-      startHeartbeat: vi.fn(),
       startUserTurn: vi.fn(),
       startTurn: vi.fn(),
       recordContextSnapshot: vi.fn(),
