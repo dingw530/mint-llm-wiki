@@ -29,7 +29,6 @@ export interface ToolCatalogDependencies {
 
 const GLOBAL_TOOL_NAMES = [
   'http_fetch',
-  'invoke_skill',
   'bash',
   'invoke_agent',
   'get_tool_invocation',

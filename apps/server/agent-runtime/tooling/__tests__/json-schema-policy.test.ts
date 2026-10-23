@@ -9,7 +9,6 @@ import { ReadFileTool } from '../../../application/tools/wiki/read-wiki-file-too
 import { WriteFileTool } from '../../../application/tools/wiki/write-wiki-file-tool.js';
 import { InvokeAgentTool } from '../../../application/tools/agents/invoke-agent-tool.js';
 import { KnowledgeGraphTool } from '../../../application/tools/knowledge-graph/knowledge-graph-tool.js';
-import { SkillTool } from '../../../application/tools/skills/skill-tool.js';
 import { WikiIngestTool } from '../../../application/tools/wiki/wiki-ingest-tool.js';
 import { WikiMergeTool } from '../../../application/tools/wiki/wiki-merge-tool.js';
 import { WikiLintTool } from '../../../application/tools/wiki/wiki-lint-tool.js';
@@ -95,7 +94,6 @@ describe('tool JSON Schema policy', () => {
       new WriteFileTool(),
       new InvokeAgentTool(),
       new KnowledgeGraphTool(),
-      new SkillTool(),
       new WikiIngestTool(),
       new WikiMergeTool(),
       new WikiLintTool(),
