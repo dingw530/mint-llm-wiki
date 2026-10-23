@@ -11,6 +11,7 @@
     "build": "vite build",
     "typecheck": "npm run build -w @mint/session && npm run build -w @mint/agent-ui && node ../../scripts/with-node-version.cjs tsc --noEmit",
     "preview": "vite preview",
+    "pretest": "npm run build -w @mint/session && npm run build -w @mint/agent-ui",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "lint": "eslint . --config ../../eslint.config.mjs"
