@@ -10,6 +10,7 @@ import WikiPanel from './WikiPanel';
 import BashSecurityPanel from './BashSecurityPanel';
 import ExperimentalPanel from './ExperimentalPanel';
 import AboutPanel from './AboutPanel';
+import NetworkProxyPanel from './NetworkProxyPanel';
 import { createEmptyJevFormState, createJevFormState, toJevSettingsInput } from './jevForm';
 import type { JevFormState } from './jevForm';
 import type { VisibleSettings } from '@/types';
@@ -45,6 +46,11 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
   const [chromaApiKey, setChromaApiKey] = useState('');
   const [chromaApiKeyMasked, setChromaApiKeyMasked] = useState('');
   const [jev, setJev] = useState<JevFormState>(createEmptyJevFormState);
+  const [networkProxyEnabled, setNetworkProxyEnabled] = useState(false);
+  const [networkProxyConfigured, setNetworkProxyConfigured] = useState(false);
+  const [networkProxyUrl, setNetworkProxyUrl] = useState('');
+  const [networkProxyNoProxy, setNetworkProxyNoProxy] = useState('localhost,127.0.0.1,::1');
+  const [networkProxyClearUrl, setNetworkProxyClearUrl] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: string; message: string } | null>(null);
 
@@ -67,6 +73,10 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         setChromaUrl(data.chromaUrl || 'http://127.0.0.1:8000');
         setChromaApiKeyMasked(data.chromaApiKeyMasked || '');
         setJev(createJevFormState(data));
+        setNetworkProxyEnabled(data.networkProxyEnabled ?? false);
+        setNetworkProxyConfigured(data.networkProxyConfigured ?? false);
+        setNetworkProxyUrl(data.networkProxyUrl || '');
+        setNetworkProxyNoProxy(data.networkProxyNoProxy || 'localhost,127.0.0.1,::1');
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -141,7 +151,17 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         chromaUrl: chromaUrl.trim(),
         ...(chromaApiKey ? { chromaApiKey } : {}),
         ...toJevSettingsInput(jev),
+        networkProxyEnabled,
+        networkProxyNoProxy,
+        ...(networkProxyUrl.trim() ? { networkProxyUrl: networkProxyUrl.trim() } : {}),
+        networkProxyClearUrl,
       });
+      if (networkProxyUrl.trim()) setNetworkProxyConfigured(true);
+      if (networkProxyClearUrl) {
+        setNetworkProxyConfigured(false);
+        setNetworkProxyUrl('');
+      }
+      setNetworkProxyClearUrl(false);
       showToast('success', '设置已保存');
     } catch (err) {
       showToast('error', `Failed to save: ${(err as Error).message}`);
@@ -152,6 +172,7 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
 
   const tabs = [
     { id: 'general', label: '通用设置', icon: 'gear' as const },
+    { id: 'network', label: '网络代理', icon: 'network' as const },
     { id: 'endpoints', label: '模型端点', icon: 'server' as const },
     { id: 'mcp', label: 'MCP 服务', icon: 'plugin' as const },
     { id: 'agents', label: 'Agent 管理', icon: 'agent' as const },
@@ -164,6 +185,16 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
   ];
 
   const tabIcon: Record<string, React.ReactNode> = {
+    network: (
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M12 2a3 3 0 100 6 3 3 0 000-6zM5 16a3 3 0 100 6 3 3 0 000-6zm14 0a3 3 0 100 6 3 3 0 000-6zM11 8l-4 8m6-8l4 8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+      </svg>
+    ),
     gear: (
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.611 3.611 0 0112 15.6z" />
@@ -277,6 +308,22 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
                 setToolMaxRetries={setToolMaxRetries}
                 showReactSteps={showReactSteps}
                 setShowReactSteps={setShowReactSteps}
+              />
+            )}
+            {activeTab === 'network' && (
+              <NetworkProxyPanel
+                enabled={networkProxyEnabled}
+                setEnabled={setNetworkProxyEnabled}
+                configured={networkProxyConfigured}
+                proxyUrl={networkProxyUrl}
+                setProxyUrl={setNetworkProxyUrl}
+                noProxy={networkProxyNoProxy}
+                setNoProxy={setNetworkProxyNoProxy}
+                clearUrl={networkProxyClearUrl}
+                setClearUrl={(clear) => {
+                  setNetworkProxyClearUrl(clear);
+                  if (clear) setNetworkProxyEnabled(false);
+                }}
               />
             )}
             {activeTab === 'mcp' && <McpServersPanel onToast={showToast} />}

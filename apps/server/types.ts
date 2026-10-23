@@ -124,6 +124,10 @@ export interface SettingsInput {
   jevMemoryGateThreshold?: number;
   jevRerankEnabled?: boolean;
   jevWikiIdentityEnabled?: boolean;
+  networkProxyEnabled?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
+  networkProxyClearUrl?: boolean;
 }
 
 // AI 代理内部使用的设置（apiKey 已解密）
@@ -188,6 +192,10 @@ export interface VisibleSettings {
   embeddingModel: string;
   embeddingDimensions: number;
   vectorStore: 'sqlite' | 'chroma';
+  networkProxyEnabled?: boolean;
+  networkProxyConfigured?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
   chromaUrl: string;
   chromaApiKeyMasked: string;
   jevApiUrl: string;

@@ -163,6 +163,10 @@ export interface VisibleSettings {
   embeddingModel: string;
   embeddingDimensions: number;
   vectorStore: 'sqlite' | 'chroma';
+  networkProxyEnabled?: boolean;
+  networkProxyConfigured?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
   chromaUrl: string;
   chromaApiKeyMasked: string;
   jevApiUrl: string;
@@ -206,6 +210,10 @@ export interface SettingsInput {
   jevMemoryGateThreshold?: number;
   jevRerankEnabled?: boolean;
   jevWikiIdentityEnabled?: boolean;
+  networkProxyEnabled?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
+  networkProxyClearUrl?: boolean;
 }
 
 // ── SSE 流类型 ──

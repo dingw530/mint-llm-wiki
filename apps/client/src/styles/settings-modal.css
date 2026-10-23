@@ -169,6 +169,25 @@
   font-size: 17px;
 }
 
+.network-proxy-panel {
+  max-width: 680px;
+}
+
+.network-proxy-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 9px;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.network-proxy-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .about-panel {
   display: grid;
   gap: 22px;
