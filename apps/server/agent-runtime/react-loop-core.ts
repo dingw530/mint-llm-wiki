@@ -28,6 +28,8 @@ import {
   type AgentStatusSnapshot,
 } from './agent-status.js';
 import type { RuntimeContext } from './tooling/runtime-context.js';
+import { toStoredSessionMessage } from './session-message-adapter.js';
+import { copyJsonValue } from '@mint/session';
 
 // ── 编辑距离相似度（用于循环检测） ──
 function levenshteinSimilarity(a: string, b: string): number {
@@ -77,6 +79,9 @@ interface ToolExecutionResult {
   assistantMsg: HistoryMessage;
   toolMsg: HistoryMessage;
   succeeded: boolean;
+  outcomeUnknown?: boolean;
+  dispatchCommitted?: boolean;
+  diagnosticError?: string;
   approvalRequired?: { approvalId?: string; reason: string };
   rawResult?: unknown;
 }
@@ -233,6 +238,29 @@ async function prepareRoundContext(
   });
 }
 
+/** 持久化上下文预算触发的完整历史替换。 */
+function recordHistoryReplacement(
+  runtimeContext: RuntimeContext | undefined,
+  round: number,
+  messages: readonly HistoryMessage[],
+): void {
+  runtimeContext?.sessionRecorder?.recordContextSnapshot({
+    round,
+    scope: 'history',
+    operation: 'replace',
+    source: 'context-window',
+    messages: messages.map(toStoredSessionMessage),
+  });
+}
+
+/** 比较上下文准备前后的模型历史是否发生变化。 */
+function modelHistoryChanged(
+  before: readonly HistoryMessage[],
+  after: readonly HistoryMessage[],
+): boolean {
+  return JSON.stringify(before) !== JSON.stringify(after);
+}
+
 interface ToolCallExecutionContext {
   runId: string;
   round: number;
@@ -277,6 +305,9 @@ async function executeOneToolCall(
     assistantMsg: execution.assistantMsg,
     toolMsg: execution.toolMsg,
     succeeded: execution.succeeded,
+    outcomeUnknown: execution.outcomeUnknown,
+    dispatchCommitted: execution.dispatchCommitted,
+    diagnosticError: execution.diagnosticError,
     approvalRequired: execution.approvalRequired,
     rawResult: execution.rawResult,
   };
@@ -391,10 +422,16 @@ async function executeToolCallWithRetries(
       signal: context.signal,
       approvalContext: {
         runId: context.events.runId,
+        ...(context.runtimeContext?.recoveryActionId
+          ? { recoveryActionId: context.runtimeContext.recoveryActionId }
+          : {}),
         messages: cloneMessages(context.currentMessages),
         settings: context.settings,
         agent: context.agent,
         reasoning: result.reasoning,
+        ...(context.runtimeContext?.sessionRecorder
+          ? { sessionRecorder: context.runtimeContext.sessionRecorder }
+          : {}),
       },
       runtimeContext: context.runtimeContext,
     },
@@ -587,6 +624,12 @@ function prepareRoundMessages(
 async function executeModelRound(input: ModelRoundInput): Promise<ModelRoundOutput | undefined> {
   let answerStreamedThisRound = false;
   try {
+    input.runtimeContext?.sessionRecorder?.recordToolCatalog(
+      input.round,
+      (input.tools ?? []).map((tool) => copyJsonValue(tool)),
+    );
+    const roundRuntimeContext = input.runtimeContext ? { ...input.runtimeContext } : undefined;
+    if (roundRuntimeContext) delete roundRuntimeContext.sessionRecorder;
     const result = await input.ports.withRoundContext(input.run, input.round, () =>
       input.ports.executeRound({
         messages: input.messages,
@@ -594,7 +637,7 @@ async function executeModelRound(input: ModelRoundInput): Promise<ModelRoundOutp
         tools: input.tools,
         adapter: input.adapter,
         signal: input.signal,
-        runtimeContext: input.runtimeContext,
+        runtimeContext: roundRuntimeContext,
         label: input.label,
         emitEvent: (event: ReactEventPayload) => {
           if ((event.type === 'answer' || event.type === 'thought') && event.content) {
@@ -614,6 +657,18 @@ async function executeModelRound(input: ModelRoundInput): Promise<ModelRoundOutp
           } as ReactEventPayload);
         },
       }),
+    );
+    input.runtimeContext?.sessionRecorder?.recordModelMessage(
+      input.round,
+      [
+        toStoredSessionMessage({
+          role: 'assistant',
+          content: result.content,
+          reasoning: result.reasoning,
+          ...(result.toolCalls ? { tool_calls: result.toolCalls } : {}),
+        }),
+      ],
+      !result.toolCalls ? input.runtimeContext?.assistantMessageId : undefined,
     );
     return { result, answerStreamedThisRound };
   } catch (error) {
@@ -671,6 +726,8 @@ function appendToolResultsToContext(
   runId: string,
   round: number,
   currentMessages: HistoryMessage[],
+  runtimeContext?: RuntimeContext,
+  cancelled = false,
 ): void {
   toolResults
     .sort((left, right) => left.index - right.index)
@@ -695,6 +752,21 @@ function appendToolResultsToContext(
       }
       if (uiResult.contextResult) toolResult.toolMsg.content = uiResult.contextResult;
       currentMessages.push(toolResult.assistantMsg, toolResult.toolMsg);
+      const status = toolResult.outcomeUnknown
+        ? 'outcome_unknown'
+        : toolResult.succeeded
+          ? 'success'
+          : cancelled
+            ? 'cancelled'
+            : 'failed';
+      // 在 Artifact 和 UI 转换后保存模型实际可见的结果。
+      // 记录失败时中止后续模型轮次，避免模型读取未落盘状态。
+      runtimeContext?.sessionRecorder?.recordToolResult({
+        callId: toolCall.id,
+        toolName: toolCall.function.name,
+        status,
+        message: toStoredSessionMessage(toolResult.toolMsg),
+      });
     });
 }
 
@@ -787,7 +859,7 @@ function createMintModelPort(
         context.state.forceFinalAnswer = true;
         context.state.budgetExhausted = true;
       }
-      context.execution.currentMessages = await prepareRoundContext(
+      const preparedMessages = await prepareRoundContext(
         [...messages],
         context.prepared.adapter,
         context.settings,
@@ -796,6 +868,13 @@ function createMintModelPort(
         context.ports,
         signal,
       );
+      if (
+        context.runtimeContext?.sessionRecorder &&
+        modelHistoryChanged(messages, preparedMessages)
+      ) {
+        recordHistoryReplacement(context.runtimeContext, step, preparedMessages);
+      }
+      context.execution.currentMessages = preparedMessages;
       const isLast = context.state.forceFinalAnswer || step === maxRounds;
       const isAnswerRound = isLast || context.state.toolCount > 0;
       context.execution.currentMessages = prepareRoundMessages(
@@ -901,6 +980,9 @@ function createMintToolExecutor(
           ports: context.ports,
         },
       );
+      if (!toolResult.succeeded && toolResult.outcomeUnknown) {
+        context.state.forceFinalAnswer = true;
+      }
       if (toolResult.approvalRequired) {
         context.state.awaitingApproval = true;
         return { messages: [], status: 'paused' as const };
@@ -967,6 +1049,7 @@ export async function executeReactRun(
     tools: prepared.tools.map(toMintFrameworkTool),
     signal,
     resolveTools: async () => {
+      if (context.state.forceFinalAnswer || context.executionPolicy?.maxToolCalls === 0) return [];
       prepared.tools = await ports.getToolDefinitions(agent);
       return prepared.tools.map(toMintFrameworkTool);
     },
@@ -987,6 +1070,8 @@ export async function executeReactRun(
         context.runId,
         step,
         context.execution.currentMessages,
+        context.runtimeContext,
+        context.signal?.aborted === true,
       );
       const mintCalls = calls.map((call) => ({
         id: call.id,

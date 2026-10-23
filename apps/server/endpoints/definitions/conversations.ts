@@ -4,6 +4,31 @@ import type { Request, Response } from 'express';
 import type { EndpointDescriptor } from '../types.js';
 import { ResSink } from '../../infrastructure/transports/sinks.js';
 import * as memorySpaceService from '../../application/memory/memory-space-service.js';
+import {
+  getConversationTrajectory,
+  getConversationTrajectoryEvent,
+  streamConversationTrajectory,
+} from '../../application/conversations/conversation-trajectory-service.js';
+
+/** 将轨迹分页查询参数转换为有界整数。 */
+function trajectoryInteger(value: unknown, fallback: number, name: string): number {
+  if (value === undefined || value === null || value === '') return fallback;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 0) throw httpError(400, `Invalid ${name}`);
+  return parsed;
+}
+
+/** 读取一页会话轨迹，并保持 IPC 与 HTTP 使用相同的参数语义。 */
+function readConversationTrajectory(conversationId: string, query?: Record<string, unknown>) {
+  return getConversationTrajectory(
+    conversationId,
+    trajectoryInteger(query?.afterSeq, 0, 'afterSeq'),
+    trajectoryInteger(query?.pageSize, 100, 'pageSize'),
+    query?.throughSeq === undefined
+      ? undefined
+      : trajectoryInteger(query.throughSeq, 0, 'throughSeq'),
+  );
+}
 
 /** 延迟加载摄入事件流，避免生成 endpoint manifest 时初始化摄入服务。 */
 async function streamIngestionEvents(
@@ -77,6 +102,42 @@ async function streamRecoveryAction(
 }
 
 export const conversationsEndpoints: EndpointDescriptor[] = [
+  {
+    id: 'conversations:getTrajectory',
+    method: 'GET',
+    path: '/:id/trajectory',
+    preloadMethod: 'getConversationTrajectory',
+    service: readConversationTrajectory,
+    args: [
+      { from: 'path', name: 'id' },
+      { from: 'query', optional: true },
+    ],
+    result: 'direct',
+  },
+  {
+    id: 'conversations:getTrajectoryEvent',
+    method: 'GET',
+    path: '/:id/trajectory/events/:eventId',
+    preloadMethod: 'getConversationTrajectoryEvent',
+    service: getConversationTrajectoryEvent,
+    args: [
+      { from: 'path', name: 'id' },
+      { from: 'path', name: 'eventId' },
+    ],
+    result: 'direct',
+  },
+  {
+    id: 'conversations:streamTrajectory',
+    method: 'GET',
+    path: '/:id/trajectory/events',
+    service: streamConversationTrajectory,
+    args: [
+      { from: 'path', name: 'id' },
+      { from: 'query', optional: true },
+    ],
+    async: true,
+    stream: true,
+  },
   {
     id: 'conversations:getMemorySpace',
     method: 'GET',

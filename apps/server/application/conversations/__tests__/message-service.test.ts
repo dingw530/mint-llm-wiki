@@ -1,5 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+const sessionMockState = vi.hoisted(() => ({
+  initialEvents: [] as unknown[],
+  lastEvents: [] as unknown[],
+}));
+
 vi.mock('../../../domains/conversations/index.js', () => ({
   findById: vi.fn(),
   updateTimestamp: vi.fn(),
@@ -10,6 +15,7 @@ vi.mock('../../../repositories/messageRepository.js', () => ({
   create: vi.fn(),
   createWithMemoryScope: vi.fn(),
   getHistory: vi.fn(),
+  getHistoryThroughMessageId: vi.fn(),
   updateConversationTimestamp: vi.fn(),
 }));
 
@@ -19,6 +25,26 @@ vi.mock('../../../infrastructure/persistence/memory-scope-repository.js', () => 
     spaceId: null,
     bindingRevision: 1,
   })),
+}));
+
+vi.mock('../../../infrastructure/persistence/conversation-session-repository.js', () => ({
+  ConversationSessionRepository: vi.fn().mockImplementation(() => {
+    const events = [...sessionMockState.initialEvents];
+    let lastSequence = events.length;
+    return {
+      ensureConversation: vi.fn(() => ({ lastSequence })),
+      withTransaction: vi.fn((operation: () => unknown) => operation()),
+      readAll: vi.fn(() => events),
+      appendBatch: vi.fn(
+        (_conversationId: string, expectedLastSequence: number, batch: unknown[]) => {
+          events.push(...batch);
+          lastSequence = expectedLastSequence + batch.length;
+          sessionMockState.lastEvents = [...events];
+          return { lastSequence };
+        },
+      ),
+    };
+  }),
 }));
 
 vi.mock('../../../repositories/a2uiRepository.js', () => ({
@@ -106,6 +132,14 @@ vi.mock('../../../bootstrap/agent-runtime.js', () => ({
   getToolDefinitions: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock('../../agent-runtime/agent-run-recovery-service.js', () => ({
+  buildToolRecoveryMessages: vi.fn(),
+  claimRecoveryAction: vi.fn(),
+  claimRecoveryActionForConversation: vi.fn(),
+  completeRecoveryAction: vi.fn(),
+  recoverAgentRun: vi.fn(),
+}));
+
 import * as conversationRepo from '../../../domains/conversations/index.js';
 import * as messageRepo from '../../../repositories/messageRepository.js';
 import * as a2uiRepository from '../../../repositories/a2uiRepository.js';
@@ -118,12 +152,26 @@ import { routingService } from '../../../bootstrap/routing.js';
 import { streamChat } from '../ai-proxy.js';
 import { runAgentChat as reactChat } from '../../../bootstrap/agent-runtime.js';
 import { getToolDefinitions } from '../../../bootstrap/agent-runtime.js';
+import {
+  buildToolRecoveryMessages,
+  claimRecoveryAction,
+  claimRecoveryActionForConversation,
+  completeRecoveryAction,
+  recoverAgentRun,
+} from '../../agent-runtime/agent-run-recovery-service.js';
 import { agentRunRegistry } from '../../../agent-runtime/agent-run.js';
-import { sendMessage, getMessages } from '../message-service.js';
+import {
+  sendMessage,
+  getMessages,
+  streamRecoveryAction,
+  selectRegenerationHistory,
+} from '../message-service.js';
 
 describe('messageService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionMockState.initialEvents = [];
+    sessionMockState.lastEvents = [];
     agentRunRegistry.clear();
     vi.mocked(agentService.findById).mockReturnValue(undefined);
 
@@ -137,6 +185,7 @@ describe('messageService', () => {
       updatedAt: '',
     });
     vi.mocked(messageRepo.getHistory).mockReturnValue([]);
+    vi.mocked(messageRepo.getHistoryThroughMessageId).mockReturnValue([]);
     vi.mocked(settingsService.getAiSettings).mockReturnValue({
       apiUrl: 'https://api.test.com',
       apiKey: 'sk-key',
@@ -160,6 +209,144 @@ describe('messageService', () => {
     vi.mocked(a2uiRepository.createUiBlock).mockImplementation(() => undefined);
   });
 
+  it('replaces a plain assistant answer but refuses to repeat a tool-backed request', () => {
+    const prefix = [{ role: 'user' as const, content: 'write report' }];
+    expect(
+      selectRegenerationHistory([...prefix, { role: 'assistant', content: 'old answer' }]).map(
+        (message) => message.role,
+      ),
+    ).toEqual(['user']);
+
+    try {
+      selectRegenerationHistory([
+        ...prefix,
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            { id: 'call-1', type: 'function', function: { name: 'write_file', arguments: '{}' } },
+          ],
+        },
+        { role: 'tool', tool_call_id: 'call-1', content: 'success' },
+      ]);
+      throw new Error('expected regeneration to be rejected');
+    } catch (error) {
+      expect(error).toMatchObject({ status: 409 });
+    }
+  });
+
+  it('streams a recovery successor from Session history and records its origin action', async () => {
+    const recoveredMessages: HistoryMessage[] = [
+      {
+        role: 'assistant',
+        content: '',
+        tool_calls: [
+          {
+            id: 'origin-call',
+            type: 'function',
+            function: {
+              name: 'write_file',
+              arguments: '{"path":"report.md","content":"full text"}',
+            },
+          },
+        ],
+      },
+      {
+        role: 'tool',
+        tool_call_id: 'origin-call',
+        content: '{"originalRunId":"origin-run","errorCode":"OUTCOME_UNKNOWN"}',
+      },
+    ];
+    vi.mocked(claimRecoveryActionForConversation).mockReturnValue({
+      id: 'recovery-action',
+      originRunId: 'origin-run',
+      conversationId: 'conv-1',
+      action: 'retry',
+      idempotencyKey: 'recovery-key',
+      successorRunId: 'successor-run',
+      status: 'started',
+    });
+    sessionMockState.initialEvents = [
+      {
+        schemaVersion: 1,
+        conversationId: 'conv-1',
+        eventId: 'legacy-origin-message',
+        seq: 1,
+        runId: 'legacy-run',
+        turnId: 'legacy-turn',
+        createdAt: '2026-10-20T00:00:00.000Z',
+        type: 'user_message',
+        messageId: 'origin-message',
+        content: 'write the report',
+      },
+    ];
+    vi.mocked(recoverAgentRun).mockReturnValue({
+      runId: 'origin-run',
+      conversationId: 'conv-1',
+      originMessageId: 'origin-message',
+      agentId: 'general',
+      executionMode: 'react',
+      phase: 'running',
+      sequence: 3,
+      round: 1,
+      toolCalls: [
+        { callId: 'origin-call', toolName: 'write_file', status: 'tool_outcome_unknown' },
+      ],
+      terminal: false,
+      recovery: 'interrupted',
+      unknownToolCalls: ['origin-call'],
+    });
+    vi.mocked(buildToolRecoveryMessages).mockReturnValue(recoveredMessages);
+    vi.mocked(getToolDefinitions).mockResolvedValueOnce([
+      {
+        type: 'function',
+        function: { name: 'write_file', description: 'write a file', parameters: {} },
+      },
+    ]);
+    vi.mocked(reactChat).mockResolvedValueOnce({
+      content: 'checked state',
+      reasoning: '',
+      toolCalls: null,
+    });
+    const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
+
+    await streamRecoveryAction('conv-1', 'recovery-action', sink);
+
+    const requestMessages = vi.mocked(reactChat).mock.calls.at(-1)?.[0] ?? [];
+    const restoredCallIndex = requestMessages.findIndex(
+      (message) => message.role === 'assistant' && message.tool_calls?.[0]?.id === 'origin-call',
+    );
+    const recoveredResultIndex = requestMessages.findIndex(
+      (message) => message.role === 'tool' && message.tool_call_id === 'origin-call',
+    );
+    expect(requestMessages[0]?.role).toBe('system');
+    expect(requestMessages[1]?.content).toContain('用户已明确确认');
+    expect(requestMessages[2]).toMatchObject({ role: 'user', content: 'write the report' });
+    expect(requestMessages[restoredCallIndex]?.tool_calls?.[0]).toMatchObject({
+      id: 'origin-call',
+      function: { arguments: '{"path":"report.md","content":"full text"}' },
+    });
+    expect(requestMessages[recoveredResultIndex]).toMatchObject({
+      role: 'tool',
+      tool_call_id: 'origin-call',
+    });
+    expect(recoveredResultIndex).toBeGreaterThan(restoredCallIndex);
+    expect(buildToolRecoveryMessages).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: 'origin-run' }),
+    );
+    expect(claimRecoveryActionForConversation).toHaveBeenCalledWith('recovery-action', 'conv-1');
+    expect(completeRecoveryAction).toHaveBeenCalledWith('recovery-action');
+    expect(sessionMockState.lastEvents).toContainEqual(
+      expect.objectContaining({
+        type: 'turn_started',
+        runId: 'successor-run',
+        originRunId: 'origin-run',
+        recoveryActionId: 'recovery-action',
+        recoveryAction: 'retry',
+      }),
+    );
+  });
+
   describe('sendMessage', () => {
     it('throws 404 for non-existent conversation', async () => {
       vi.mocked(conversationRepo.findById).mockReturnValue(null);
@@ -181,7 +368,78 @@ describe('messageService', () => {
         'general',
         'conv-1',
         expect.anything(),
+        expect.objectContaining({ sessionRecorder: expect.any(Object) }),
       );
+    });
+
+    it('repairs the previous tool call before adding the next user message to model history', async () => {
+      const conversationId = 'conv-1';
+      const runId = 'interrupted-run';
+      const turnId = 'interrupted-turn';
+      const eventBase = (eventId: string, seq: number) => ({
+        schemaVersion: 1 as const,
+        conversationId,
+        eventId,
+        seq,
+        runId,
+        turnId,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      });
+      sessionMockState.initialEvents = [
+        { ...eventBase('turn-started', 1), type: 'turn_started' },
+        {
+          ...eventBase('old-user', 2),
+          type: 'user_message',
+          messageId: 'old-user-message',
+          content: 'write a report',
+        },
+        {
+          ...eventBase('model-tool-call', 3),
+          type: 'model_message',
+          round: 1,
+          messages: [
+            {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call-1',
+                  type: 'function',
+                  function: { name: 'write_file', arguments: '{"path":"report.md"}' },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          ...eventBase('dispatch-1', 4),
+          type: 'tool_dispatch_committed',
+          round: 1,
+          callId: 'call-1',
+          toolName: 'write_file',
+          argumentsJson: '{"path":"report.md"}',
+          retrySafety: 'never',
+        },
+      ];
+      const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
+
+      await sendMessage(conversationId, 'continue after the crash', sink);
+
+      const modelMessages = vi.mocked(streamChat).mock.calls[0][0];
+      const restoredCallIndex = modelMessages.findIndex(
+        (message) => message.role === 'assistant' && message.tool_calls?.[0]?.id === 'call-1',
+      );
+      const recoveryResultIndex = modelMessages.findIndex(
+        (message) => message.role === 'tool' && message.tool_call_id === 'call-1',
+      );
+      const newUserIndex = modelMessages.findIndex(
+        (message) => message.role === 'user' && message.content === 'continue after the crash',
+      );
+
+      expect(restoredCallIndex).toBeGreaterThanOrEqual(0);
+      expect(recoveryResultIndex).toBeGreaterThan(restoredCallIndex);
+      expect(modelMessages[recoveryResultIndex]?.content).toContain('outcome is unknown');
+      expect(newUserIndex).toBeGreaterThan(recoveryResultIndex);
     });
 
     it('adds scoped Bash cleanup guidance for Wiki lint handling', async () => {
@@ -213,6 +471,20 @@ describe('messageService', () => {
     });
 
     it('does not re-save user message on regenerate', async () => {
+      sessionMockState.initialEvents = [
+        {
+          schemaVersion: 1,
+          conversationId: 'conv-1',
+          eventId: 'existing-user',
+          seq: 1,
+          runId: 'existing-run',
+          turnId: 'existing-turn',
+          createdAt: '2026-10-20T00:00:00.000Z',
+          type: 'user_message',
+          messageId: 'existing-message',
+          content: 'hello',
+        },
+      ];
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
       await sendMessage('conv-1', 'hello', sink, undefined, true);
       expect(messageRepo.create).toHaveBeenCalledTimes(1); // only AI response
@@ -311,7 +583,7 @@ describe('messageService', () => {
           skipped: {},
         },
       });
-      vi.mocked(messageRepo.getHistory).mockReturnValue([{ role: 'user', content: 'hi' }]);
+      vi.mocked(messageRepo.getHistory).mockReturnValue([]);
       const sink = { write: vi.fn(), end: vi.fn(), writableEnded: false, headersSent: false };
       await sendMessage('conv-1', 'hi', sink);
       expect(memoryService.prepareMemoryContext).toHaveBeenCalled();
@@ -362,7 +634,7 @@ describe('messageService', () => {
           skipped: {},
         },
       });
-      vi.mocked(messageRepo.getHistory).mockReturnValue([{ role: 'user', content: 'hi' }]);
+      vi.mocked(messageRepo.getHistory).mockReturnValue([]);
       vi.mocked(getToolDefinitions).mockResolvedValueOnce([
         {
           type: 'function',
@@ -570,6 +842,33 @@ describe('messageService', () => {
 
   describe('getMessages', () => {
     it('returns messages for existing conversation', () => {
+      sessionMockState.initialEvents = [
+        {
+          schemaVersion: 1,
+          conversationId: 'conv-1',
+          eventId: 'session-user-1',
+          seq: 1,
+          runId: 'run-1',
+          turnId: 'turn-1',
+          createdAt: '2026-10-21T00:00:00.000Z',
+          type: 'user_message',
+          messageId: 'm1',
+          content: 'hi',
+        },
+        {
+          schemaVersion: 1,
+          conversationId: 'conv-1',
+          eventId: 'session-assistant-1',
+          seq: 2,
+          runId: 'run-1',
+          turnId: 'turn-1',
+          createdAt: '2026-10-21T00:00:01.000Z',
+          type: 'model_message',
+          round: 1,
+          messageId: 'assistant-1',
+          messages: [{ role: 'assistant', content: 'hello' }],
+        },
+      ];
       vi.mocked(messageRepo.findByConversationId).mockReturnValue([
         {
           id: 'm1',
@@ -579,9 +878,57 @@ describe('messageService', () => {
           createdAt: '',
           reasoning: null,
         },
+        {
+          id: 'assistant-1',
+          conversationId: 'conv-1',
+          role: 'assistant',
+          content: 'hello',
+          createdAt: '2026-10-21T00:00:01.000Z',
+          reasoning: null,
+        },
       ]);
       const msgs = getMessages('conv-1');
-      expect(msgs).toHaveLength(1);
+      expect(msgs).toHaveLength(2);
+      expect(msgs[1]).toMatchObject({ id: 'assistant-1', content: 'hello' });
+      expect(a2uiRepository.findUiBlocksByMessageId).toHaveBeenCalledWith('assistant-1');
+    });
+
+    it('places recovered A2UI sources after the complete displayed answer', () => {
+      const answer = '正文末尾展开。';
+      sessionMockState.initialEvents = [
+        {
+          schemaVersion: 1,
+          conversationId: 'conv-1',
+          eventId: 'session-assistant-final',
+          seq: 1,
+          runId: 'run-1',
+          turnId: 'turn-1',
+          createdAt: '2026-10-21T00:00:01.000Z',
+          type: 'model_message',
+          round: 1,
+          messageId: 'assistant-final',
+          messages: [{ role: 'assistant', content: answer }],
+        },
+      ];
+      vi.mocked(messageRepo.findByConversationId).mockReturnValue([]);
+      vi.mocked(a2uiRepository.findUiBlocksByMessageId).mockReturnValue([
+        {
+          id: 'source-1',
+          messageId: 'assistant-final',
+          blockIndex: 0,
+          textOffset: answer.length - 3,
+          kind: 'wiki_source_reference',
+          version: 1,
+          data: { refId: 'C1' },
+          createdAt: '2026-10-21T00:00:01.000Z',
+          updatedAt: '2026-10-21T00:00:01.000Z',
+        },
+      ]);
+
+      const [message] = getMessages('conv-1');
+
+      expect(message?.content).toBe(answer);
+      expect(message?.uiBlocks?.[0]?.textOffset).toBe(answer.length);
     });
 
     it('throws 404 for non-existent conversation', () => {

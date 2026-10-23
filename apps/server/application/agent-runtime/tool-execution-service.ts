@@ -6,7 +6,11 @@ import type {
 import type { ApprovalResumeContext } from '../../agent-runtime/tooling/tool-round-contracts.js';
 import type { RuntimeContext } from '../../agent-runtime/tooling/runtime-context.js';
 import type { ToolCall } from '../../types.js';
-import { getApprovalScopePath, toolApprovalStore } from './tooling/tool-approval-store.js';
+import {
+  getApprovalScopePath,
+  toolApprovalStore,
+  TOOL_APPROVAL_TTL_MS,
+} from './tooling/tool-approval-store.js';
 import { toolExecutor } from './tooling/tool-executor.js';
 import type { ExecutionResult, ToolExecutor } from './tooling/tool-executor.js';
 import { toolRegistry } from './tooling/tool-registry.js';
@@ -63,6 +67,7 @@ export class ToolExecutionService {
     const runId = options.runId || randomUUID();
     const callId = toolCall.id || randomUUID();
     const invocationId = createInvocationId(runId, callId);
+    let dispatchCommitted = false;
     if (!this.registry.has(name)) {
       try {
         this.auditSink.record({
@@ -89,14 +94,34 @@ export class ToolExecutionService {
         errorCode: 'UNKNOWN_TOOL',
         retryable: false,
         duration: 0,
+        dispatchCommitted,
       };
     }
 
-    const stableToolCall = toolCall.id ? toolCall : { ...toolCall, id: callId };
+    const stableToolCall = { ...toolCall, id: callId, function: { ...toolCall.function } };
     const invocation: ToolInvocationControl = {
       invocationId,
       claim: ({ toolName, inputHash, retrySafety }) =>
-        this.invocations.begin({ runId, callId, invocationId, toolName, inputHash, retrySafety }),
+        this.invocations.beginWithClaim(
+          {
+            runId,
+            callId,
+            invocationId,
+            toolName,
+            inputHash,
+            retrySafety,
+            argumentsJson: stableToolCall.function.arguments,
+          },
+          () => {
+            options.runtimeContext?.sessionRecorder?.recordToolDispatch({
+              callId,
+              toolName,
+              argumentsJson: stableToolCall.function.arguments,
+              retrySafety,
+            });
+            dispatchCommitted = true;
+          },
+        ),
       finish: ({ status, retryable, errorCode }) =>
         this.invocations.finish({ runId, callId, status, retryable, errorCode }),
     };
@@ -123,16 +148,25 @@ export class ToolExecutionService {
         options.approvalGranted === undefined
           ? this.approvals.isGranted(conversationId, stableToolCall)
           : options.approvalGranted,
-      requestApproval: ({ reason }) =>
-        this.approvals.create({
+      requestApproval: ({ reason }) => {
+        options.runtimeContext?.sessionRecorder?.recordApproval({
+          callId,
+          toolName: name,
+          status: 'requested',
+          reason,
+        });
+        options.runtimeContext?.sessionRecorder?.pauseForApproval(callId, TOOL_APPROVAL_TTL_MS);
+        return this.approvals.create({
           conversationId,
           toolCall: stableToolCall,
           reason,
           resume: options.approvalContext,
           scopePath: this.getScopePath(stableToolCall),
-        }),
+        });
+      },
     };
-    return this.executor.executeFromToolCall(stableToolCall, context);
+    const result = await this.executor.executeFromToolCall(stableToolCall, context);
+    return { ...result, dispatchCommitted };
   }
 
   /** Returns tool data on success and a structured error on failure. */

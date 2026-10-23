@@ -164,16 +164,36 @@ describe('wikiIngestionService', () => {
         summary: 'done',
       });
 
+      const jevSettings = {
+        apiUrl: 'https://typesafe.example/v1/systemone',
+        apiKey: 'test-key',
+        model: 'jev-test',
+        timeoutMs: 1000,
+        routingEnabled: false,
+        routingMinConfidence: 0.5,
+        routingBypassOnKeyword: true,
+        memoryEnabled: false,
+        memoryGateThreshold: 0.4,
+        wikiIdentityEnabled: true,
+      };
       const result = await wikiIngestionService.ingestWikiSource(
         { wikiPath: tmpDir } as AiSettings,
         tmpDir,
         {
           sourceText: 'success',
           sourceTitle: 'success',
+          jevSettings,
           archivedFiles: [{ name: 'success.md', existingRelativePath: staged }],
         },
       );
 
+      expect(compileSource).toHaveBeenCalledWith(
+        expect.anything(),
+        tmpDir,
+        'success',
+        expect.any(String),
+        expect.objectContaining({ jevSettings }),
+      );
       expect(result.sourceFile).toMatch(/^sources\//);
       expect(fs.existsSync(path.join(tmpDir, result.sourceFile))).toBe(true);
       expect(fs.existsSync(path.join(tmpDir, staged))).toBe(false);

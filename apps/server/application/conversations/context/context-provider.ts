@@ -33,6 +33,13 @@ export interface ContextProvider {
   provide(input: ContextProviderInput): ContextContribution | undefined;
 }
 
+/** 已组装的模型请求消息及其可持久重建的上下文贡献。 */
+export interface ContextProviderAssembly {
+  readonly messages: HistoryMessage[];
+  readonly systemMessage?: HistoryMessage;
+  readonly userContributions: readonly ContextContribution[];
+}
+
 /** Clone message envelopes so context assembly never mutates conversation history. */
 function cloneMessages(messages: HistoryMessage[]): HistoryMessage[] {
   return messages.map((message) => ({
@@ -139,17 +146,38 @@ export function applyContextProviders(
   input: ContextProviderInput,
   providers: readonly ContextProvider[] = DEFAULT_CONTEXT_PROVIDERS,
 ): HistoryMessage[] {
+  return applyContextProvidersWithTrace(messages, input, providers).messages;
+}
+
+/**
+ * 组装上下文并同时返回系统前缀和锚定用户输入的增量。
+ * @param messages 当前请求基础历史。
+ * @param input 当前用户输入和检索预算。
+ * @param providers 可替换上下文源。
+ * @returns 模型消息及可写入语义日志的上下文来源。
+ */
+export function applyContextProvidersWithTrace(
+  messages: HistoryMessage[],
+  input: ContextProviderInput,
+  providers: readonly ContextProvider[] = DEFAULT_CONTEXT_PROVIDERS,
+): ContextProviderAssembly {
   assertUniqueProviderIds(providers);
   const contributions = collectContributions(providers, input, messages);
-  const assembled = cloneMessages(messages);
+  const baseMessages = cloneMessages(messages);
   const systemContributions = contributions.filter(
     (contribution) => contribution.placement === 'system',
   );
   const userContributions = contributions.filter(
     (contribution) => contribution.placement === 'before-latest-user',
   );
-  return applyBeforeLatestUserContributions(
-    applySystemContributions(assembled, systemContributions),
+  const assembled = applyBeforeLatestUserContributions(
+    applySystemContributions(baseMessages, systemContributions),
     userContributions,
   );
+  const systemMessage = assembled.find((message) => message.role === 'system');
+  return {
+    messages: assembled,
+    ...(systemMessage ? { systemMessage } : {}),
+    userContributions,
+  };
 }

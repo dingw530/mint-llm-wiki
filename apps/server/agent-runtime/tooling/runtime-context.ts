@@ -1,4 +1,64 @@
 import type { JevSettings } from '../../types.js';
+import type {
+  JsonValue,
+  SessionEvent,
+  SessionEventDraft,
+  SessionStoredModelMessage,
+  SessionToolStatus,
+} from '@mint/session';
+
+/** 本轮语义日志需要记录的已授权工具分派事实。 */
+export interface SessionToolDispatchRecord {
+  readonly callId: string;
+  readonly toolName: string;
+  readonly argumentsJson: string;
+  readonly retrySafety: 'safe' | 'idempotency_key' | 'never';
+}
+
+/** 本轮语义日志需要记录的模型可见工具结果。 */
+export interface SessionToolResultRecord {
+  readonly callId: string;
+  readonly toolName: string;
+  readonly status: Extract<
+    SessionToolStatus,
+    'success' | 'failed' | 'cancelled' | 'outcome_unknown'
+  >;
+  readonly durationMs?: number;
+  readonly message: SessionStoredModelMessage;
+}
+
+/** 对 ReAct、普通 stream 与工具执行边界提供的可选会话记录 Port。 */
+export interface SessionRecordingPort {
+  record(events: readonly SessionEventDraft[]): readonly SessionEvent[];
+  recordModelMessage(
+    round: number,
+    messages: readonly SessionStoredModelMessage[],
+    messageId?: string,
+  ): SessionEvent;
+  recordToolCatalog(round: number, tools: readonly JsonValue[]): SessionEvent;
+  recordContextSnapshot(input: {
+    round: number;
+    scope: 'system' | 'anchor' | 'runtime' | 'history';
+    operation: 'append' | 'replace' | 'clear';
+    source: string;
+    anchorMessageId?: string;
+    messages: readonly SessionStoredModelMessage[];
+  }): SessionEvent;
+  recordToolDispatch(input: SessionToolDispatchRecord): SessionEvent;
+  recordToolResult(input: SessionToolResultRecord): SessionEvent;
+  recordApproval(input: {
+    readonly callId: string;
+    readonly toolName: string;
+    readonly status: 'requested' | 'approved' | 'denied' | 'expired';
+    readonly reason?: string;
+  }): SessionEvent;
+  recordRunTerminal(outcome: 'completed' | 'failed' | 'cancelled'): SessionEvent;
+  recordInterrupted(
+    reason?: 'process_exit' | 'approval_expired' | 'lease_expired' | 'unknown',
+  ): SessionEvent;
+  pauseForApproval(callId: string, ttlMs: number): void;
+  close(): void;
+}
 
 /** Disabled feature fallback used when an execution does not inject Jev settings. */
 export const DISABLED_JEV_SETTINGS: JevSettings = {
@@ -29,6 +89,9 @@ export type FeatureConfigInput = Record<
 /** 一次执行共享的运行时能力上下文。 */
 export interface RuntimeContext {
   readonly features: ReadonlyMap<string, FeatureConfig>;
+  readonly sessionRecorder?: SessionRecordingPort;
+  readonly assistantMessageId?: string;
+  readonly recoveryActionId?: string;
   getFeature(id: string): FeatureConfig | undefined;
   getJevSettings(): JevSettings;
 }
@@ -36,6 +99,9 @@ export interface RuntimeContext {
 interface RuntimeContextInput {
   features?: FeatureConfigInput;
   fallbackJev?: JevSettings;
+  sessionRecorder?: SessionRecordingPort;
+  assistantMessageId?: string;
+  recoveryActionId?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -96,6 +162,9 @@ export function createRuntimeContext(input: RuntimeContextInput = {}): RuntimeCo
   const fallbackJev = input.fallbackJev ?? DISABLED_JEV_SETTINGS;
   return {
     features: readonlyFeatures,
+    ...(input.sessionRecorder ? { sessionRecorder: input.sessionRecorder } : {}),
+    ...(input.assistantMessageId ? { assistantMessageId: input.assistantMessageId } : {}),
+    ...(input.recoveryActionId ? { recoveryActionId: input.recoveryActionId } : {}),
     getFeature: (id) => readonlyFeatures.get(id),
     getJevSettings: () => readJevSettings(readonlyFeatures.get('jev'), fallbackJev),
   };

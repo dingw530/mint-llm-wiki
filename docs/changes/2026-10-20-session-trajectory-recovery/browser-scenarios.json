@@ -1,0 +1,848 @@
+{
+  "scenarios": [
+    {
+      "id": "trace-tabs-overview-details",
+      "acceptanceCriteria": ["AC-010", "AC-013", "AC-014"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/conversations/trace-conversation/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": connected\n\n"
+          },
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": {
+              "agents": [
+                {
+                  "id": "general",
+                  "name": "通用助手",
+                  "label": "通用助手",
+                  "available": true
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "showReactSteps": true,
+              "routingMode": "manual",
+              "onboardingCompleted": true
+            }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": [
+                {
+                  "id": "trace-fixture-model",
+                  "name": "验收模型",
+                  "apiUrl": "https://fixture.invalid/v1",
+                  "apiKeyMasked": "fixture",
+                  "modelId": "fixture-model",
+                  "apiType": "openai",
+                  "isActive": true,
+                  "verifiedAt": "2026-10-20T13:30:00.000Z",
+                  "sortOrder": 0,
+                  "createdAt": "2026-10-20T13:30:00.000Z",
+                  "updatedAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "trace-conversation",
+                  "title": "轨迹恢复验收",
+                  "type": "chat",
+                  "routingMode": "manual",
+                  "lockedAgent": null,
+                  "createdAt": "2026-10-20T13:30:00.000Z",
+                  "updatedAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/messages",
+            "method": "GET",
+            "body": {
+              "messages": [
+                {
+                  "id": "user-old",
+                  "conversationId": "trace-conversation",
+                  "role": "user",
+                  "content": "请分段写入测试文件",
+                  "createdAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events*afterSeq=*",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": ready 3\n\n"
+          },
+          {
+            "pattern": "**/api/conversations/*/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": []
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/messages",
+            "method": "POST",
+            "contentType": "text/event-stream",
+            "body": "data: {\"type\":\"run_started\",\"runId\":\"run-new\",\"conversationId\":\"trace-conversation\",\"sequence\":1,\"state\":\"running\"}\n\ndata: {\"type\":\"answer\",\"runId\":\"run-new\",\"sequence\":2,\"content\":\"已进入新的核对运行\"}\n\ndata: {\"type\":\"run_completed\",\"runId\":\"run-new\",\"sequence\":3,\"state\":\"completed\",\"content\":\"已进入新的核对运行\",\"reasoning\":\"\"}\n\ndata: [DONE]\n\n"
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory*",
+            "method": "GET",
+            "body": {
+              "generation": "session-generation-1",
+              "highWatermark": 3,
+              "nextAfterSeq": 3,
+              "hasMore": false,
+              "historyCompleteness": "complete",
+              "tailIncomplete": false,
+              "entries": [
+                {
+                  "id": "tool-event-1",
+                  "eventIds": ["dispatch-1", "result-1"],
+                  "seq": 2,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "status": "outcome_unknown",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "detailEventIds": ["dispatch-1", "result-1"],
+                  "synthetic": true
+                }
+              ],
+              "events": [
+                {
+                  "eventId": "dispatch-1",
+                  "seq": 2,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "type": "tool_dispatch_committed",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "status": "running",
+                  "detailAvailable": true,
+                  "synthetic": false,
+                  "relatedIds": ["call-1"]
+                },
+                {
+                  "eventId": "result-1",
+                  "seq": 3,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "type": "recovery_result",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "status": "outcome_unknown",
+                  "detailAvailable": true,
+                  "synthetic": true,
+                  "relatedIds": ["call-1"]
+                }
+              ],
+              "runs": [
+                {
+                  "runId": "run-trace",
+                  "status": "interrupted",
+                  "originRunId": null,
+                  "turnId": "turn-trace",
+                  "startedAt": "2026-10-20T13:30:00.000Z",
+                  "endedAt": "2026-10-20T13:30:02.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events/dispatch-1",
+            "method": "GET",
+            "body": {
+              "eventId": "dispatch-1",
+              "availability": "available",
+              "historyCompleteness": "complete",
+              "payload": {
+                "schemaVersion": 1,
+                "conversationId": "trace-conversation",
+                "eventId": "dispatch-1",
+                "seq": 2,
+                "runId": "run-trace",
+                "turnId": "turn-trace",
+                "createdAt": "2026-10-20T13:30:02.000Z",
+                "type": "tool_dispatch_committed",
+                "round": 1,
+                "callId": "call-1",
+                "toolName": "write_file",
+                "argumentsJson": "{\"path\":\"fixture.txt\",\"content\":\"fixture detail text\"}",
+                "retrySafety": "never"
+              }
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events/result-1",
+            "method": "GET",
+            "body": {
+              "eventId": "result-1",
+              "availability": "available",
+              "historyCompleteness": "complete",
+              "payload": {
+                "schemaVersion": 1,
+                "conversationId": "trace-conversation",
+                "eventId": "result-1",
+                "seq": 3,
+                "runId": "run-trace",
+                "turnId": "turn-trace",
+                "createdAt": "2026-10-20T13:30:02.000Z",
+                "type": "recovery_result",
+                "round": 1,
+                "callId": "call-1",
+                "toolName": "write_file",
+                "status": "outcome_unknown",
+                "ledgerStatus": "outcome_unknown",
+                "synthetic": true,
+                "message": {
+                  "role": "tool",
+                  "tool_call_id": "call-1",
+                  "content": "TOOL_OUTCOME_UNKNOWN"
+                }
+              }
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": ready 3\n\n"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": {
+            "role": "tab",
+            "name": "轨迹"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "完整轨迹"
+        },
+        {
+          "action": "assertText",
+          "text": "结果未知"
+        },
+        {
+          "action": "assertNotText",
+          "text": "fixture detail text"
+        },
+        {
+          "action": "click",
+          "target": {
+            "testId": "trace-row-tool-event-1"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "fixture detail text"
+        },
+        {
+          "action": "assertRequests"
+        }
+      ],
+      "assertRequests": [
+        {
+          "contains": "/trajectory?afterSeq=0",
+          "method": "GET"
+        },
+        {
+          "contains": "/trajectory/events/dispatch-1",
+          "method": "GET"
+        },
+        {
+          "contains": "/trajectory/events/result-1",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "id": "trace-tabs-preserve-draft",
+      "acceptanceCriteria": ["AC-013", "AC-014"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/conversations/trace-conversation/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": connected\n\n"
+          },
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": {
+              "agents": [
+                {
+                  "id": "general",
+                  "name": "通用助手",
+                  "label": "通用助手",
+                  "available": true
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "showReactSteps": true,
+              "routingMode": "manual",
+              "onboardingCompleted": true
+            }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": [
+                {
+                  "id": "trace-fixture-model",
+                  "name": "验收模型",
+                  "apiUrl": "https://fixture.invalid/v1",
+                  "apiKeyMasked": "fixture",
+                  "modelId": "fixture-model",
+                  "apiType": "openai",
+                  "isActive": true,
+                  "verifiedAt": "2026-10-20T13:30:00.000Z",
+                  "sortOrder": 0,
+                  "createdAt": "2026-10-20T13:30:00.000Z",
+                  "updatedAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "trace-conversation",
+                  "title": "轨迹恢复验收",
+                  "type": "chat",
+                  "routingMode": "manual",
+                  "lockedAgent": null,
+                  "createdAt": "2026-10-20T13:30:00.000Z",
+                  "updatedAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/messages",
+            "method": "GET",
+            "body": {
+              "messages": [
+                {
+                  "id": "user-old",
+                  "conversationId": "trace-conversation",
+                  "role": "user",
+                  "content": "请分段写入测试文件",
+                  "createdAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events*afterSeq=*",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": ready 3\n\n"
+          },
+          {
+            "pattern": "**/api/conversations/*/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": []
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/messages",
+            "method": "POST",
+            "contentType": "text/event-stream",
+            "body": "data: {\"type\":\"run_started\",\"runId\":\"run-new\",\"conversationId\":\"trace-conversation\",\"sequence\":1,\"state\":\"running\"}\n\ndata: {\"type\":\"answer\",\"runId\":\"run-new\",\"sequence\":2,\"content\":\"已进入新的核对运行\"}\n\ndata: {\"type\":\"run_completed\",\"runId\":\"run-new\",\"sequence\":3,\"state\":\"completed\",\"content\":\"已进入新的核对运行\",\"reasoning\":\"\"}\n\ndata: [DONE]\n\n"
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory*",
+            "method": "GET",
+            "body": {
+              "generation": "session-generation-1",
+              "highWatermark": 3,
+              "nextAfterSeq": 3,
+              "hasMore": false,
+              "historyCompleteness": "complete",
+              "tailIncomplete": false,
+              "entries": [
+                {
+                  "id": "tool-event-1",
+                  "eventIds": ["dispatch-1", "result-1"],
+                  "seq": 2,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "status": "outcome_unknown",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "detailEventIds": ["dispatch-1", "result-1"],
+                  "synthetic": true
+                }
+              ],
+              "events": [
+                {
+                  "eventId": "dispatch-1",
+                  "seq": 2,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "type": "tool_dispatch_committed",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "status": "running",
+                  "detailAvailable": true,
+                  "synthetic": false,
+                  "relatedIds": ["call-1"]
+                },
+                {
+                  "eventId": "result-1",
+                  "seq": 3,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "type": "recovery_result",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "status": "outcome_unknown",
+                  "detailAvailable": true,
+                  "synthetic": true,
+                  "relatedIds": ["call-1"]
+                }
+              ],
+              "runs": [
+                {
+                  "runId": "run-trace",
+                  "status": "interrupted",
+                  "originRunId": null,
+                  "turnId": "turn-trace",
+                  "startedAt": "2026-10-20T13:30:00.000Z",
+                  "endedAt": "2026-10-20T13:30:02.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events/dispatch-1",
+            "method": "GET",
+            "body": {
+              "eventId": "dispatch-1",
+              "availability": "available",
+              "historyCompleteness": "complete",
+              "payload": {
+                "schemaVersion": 1,
+                "conversationId": "trace-conversation",
+                "eventId": "dispatch-1",
+                "seq": 2,
+                "runId": "run-trace",
+                "turnId": "turn-trace",
+                "createdAt": "2026-10-20T13:30:02.000Z",
+                "type": "tool_dispatch_committed",
+                "round": 1,
+                "callId": "call-1",
+                "toolName": "write_file",
+                "argumentsJson": "{\"path\":\"fixture.txt\",\"content\":\"fixture detail text\"}",
+                "retrySafety": "never"
+              }
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events/result-1",
+            "method": "GET",
+            "body": {
+              "eventId": "result-1",
+              "availability": "available",
+              "historyCompleteness": "complete",
+              "payload": {
+                "schemaVersion": 1,
+                "conversationId": "trace-conversation",
+                "eventId": "result-1",
+                "seq": 3,
+                "runId": "run-trace",
+                "turnId": "turn-trace",
+                "createdAt": "2026-10-20T13:30:02.000Z",
+                "type": "recovery_result",
+                "round": 1,
+                "callId": "call-1",
+                "toolName": "write_file",
+                "status": "outcome_unknown",
+                "ledgerStatus": "outcome_unknown",
+                "synthetic": true,
+                "message": {
+                  "role": "tool",
+                  "tool_call_id": "call-1",
+                  "content": "TOOL_OUTCOME_UNKNOWN"
+                }
+              }
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": ready 3\n\n"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": {
+            "role": "tab",
+            "name": "轨迹"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "完整轨迹"
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "button",
+            "name": "调用"
+          }
+        },
+        {
+          "action": "fill",
+          "target": {
+            "label": "搜索轨迹"
+          },
+          "value": "write_file"
+        },
+        {
+          "action": "assertText",
+          "text": "write_file"
+        },
+        {
+          "action": "fill",
+          "target": {
+            "placeholder": "输入消息..."
+          },
+          "value": "页签切换草稿"
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "tab",
+            "name": "对话"
+          }
+        },
+        {
+          "action": "click",
+          "target": {
+            "role": "tab",
+            "name": "轨迹"
+          }
+        },
+        {
+          "action": "assertRequests"
+        }
+      ],
+      "assertRequests": [
+        {
+          "contains": "/trajectory?afterSeq=0",
+          "method": "GET"
+        }
+      ]
+    },
+    {
+      "id": "trace-legacy-and-unavailable",
+      "acceptanceCriteria": ["AC-010", "AC-015"],
+      "route": "/chat",
+      "ignoreConsoleErrors": ["frame-ancestors"],
+      "setup": {
+        "routes": [
+          {
+            "pattern": "**/api/conversations/trace-conversation/ingestion-events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": connected\n\n"
+          },
+          {
+            "pattern": "**/api/agents",
+            "method": "GET",
+            "body": {
+              "agents": [
+                {
+                  "id": "general",
+                  "name": "通用助手",
+                  "label": "通用助手",
+                  "available": true
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": {
+              "showReactSteps": true,
+              "routingMode": "manual",
+              "onboardingCompleted": true
+            }
+          },
+          {
+            "pattern": "**/api/endpoints",
+            "method": "GET",
+            "body": {
+              "endpoints": [
+                {
+                  "id": "trace-fixture-model",
+                  "name": "验收模型",
+                  "apiUrl": "https://fixture.invalid/v1",
+                  "apiKeyMasked": "fixture",
+                  "modelId": "fixture-model",
+                  "apiType": "openai",
+                  "isActive": true,
+                  "verifiedAt": "2026-10-20T13:30:00.000Z",
+                  "sortOrder": 0,
+                  "createdAt": "2026-10-20T13:30:00.000Z",
+                  "updatedAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations",
+            "method": "GET",
+            "body": {
+              "conversations": [
+                {
+                  "id": "trace-conversation",
+                  "title": "轨迹恢复验收",
+                  "type": "chat",
+                  "routingMode": "manual",
+                  "lockedAgent": null,
+                  "createdAt": "2026-10-20T13:30:00.000Z",
+                  "updatedAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/messages",
+            "method": "GET",
+            "body": {
+              "messages": [
+                {
+                  "id": "user-old",
+                  "conversationId": "trace-conversation",
+                  "role": "user",
+                  "content": "请分段写入测试文件",
+                  "createdAt": "2026-10-20T13:30:00.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events*afterSeq=*",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": ready 3\n\n"
+          },
+          {
+            "pattern": "**/api/conversations/*/agent-runs/recoverable",
+            "method": "GET",
+            "body": {
+              "runs": []
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/messages",
+            "method": "POST",
+            "contentType": "text/event-stream",
+            "body": "data: {\"type\":\"run_started\",\"runId\":\"run-new\",\"conversationId\":\"trace-conversation\",\"sequence\":1,\"state\":\"running\"}\n\ndata: {\"type\":\"answer\",\"runId\":\"run-new\",\"sequence\":2,\"content\":\"已进入新的核对运行\"}\n\ndata: {\"type\":\"run_completed\",\"runId\":\"run-new\",\"sequence\":3,\"state\":\"completed\",\"content\":\"已进入新的核对运行\",\"reasoning\":\"\"}\n\ndata: [DONE]\n\n"
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory*",
+            "method": "GET",
+            "body": {
+              "generation": "session-generation-1",
+              "highWatermark": 3,
+              "nextAfterSeq": 3,
+              "hasMore": false,
+              "historyCompleteness": "legacy_partial",
+              "tailIncomplete": false,
+              "entries": [
+                {
+                  "id": "tool-event-1",
+                  "eventIds": ["dispatch-1", "result-1"],
+                  "seq": 2,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "status": "outcome_unknown",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "detailEventIds": ["dispatch-1"],
+                  "synthetic": true
+                }
+              ],
+              "events": [
+                {
+                  "eventId": "dispatch-1",
+                  "seq": 2,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "type": "tool_dispatch_committed",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "status": "running",
+                  "detailAvailable": true,
+                  "synthetic": false,
+                  "relatedIds": ["call-1"]
+                },
+                {
+                  "eventId": "result-1",
+                  "seq": 3,
+                  "runId": "run-trace",
+                  "turnId": "turn-trace",
+                  "round": 1,
+                  "callId": "call-1",
+                  "type": "recovery_result",
+                  "lane": "tool",
+                  "kind": "tool",
+                  "label": "write_file",
+                  "createdAt": "2026-10-20T13:30:02.000Z",
+                  "status": "outcome_unknown",
+                  "detailAvailable": true,
+                  "synthetic": true,
+                  "relatedIds": ["call-1"]
+                }
+              ],
+              "runs": [
+                {
+                  "runId": "run-trace",
+                  "status": "interrupted",
+                  "originRunId": null,
+                  "turnId": "turn-trace",
+                  "startedAt": "2026-10-20T13:30:00.000Z",
+                  "endedAt": "2026-10-20T13:30:02.000Z"
+                }
+              ]
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events/**",
+            "method": "GET",
+            "status": 200,
+            "body": {
+              "eventId": "dispatch-1",
+              "availability": "unavailable",
+              "historyCompleteness": "legacy_partial",
+              "errorCode": "PAYLOAD_UNAVAILABLE",
+              "message": "原始详情不可读取"
+            }
+          },
+          {
+            "pattern": "**/api/conversations/trace-conversation/trajectory/events",
+            "method": "GET",
+            "contentType": "text/event-stream",
+            "body": ": ready 3\n\n"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "action": "click",
+          "target": {
+            "role": "tab",
+            "name": "轨迹"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "旧记录可能不完整"
+        },
+        {
+          "action": "click",
+          "target": {
+            "testId": "trace-row-tool-event-1"
+          }
+        },
+        {
+          "action": "waitFor",
+          "text": "原始详情不可读取"
+        },
+        {
+          "action": "assertRequests"
+        }
+      ],
+      "assertRequests": [
+        {
+          "contains": "/trajectory?afterSeq=0",
+          "method": "GET"
+        },
+        {
+          "contains": "/trajectory/events/dispatch-1",
+          "method": "GET"
+        }
+      ]
+    }
+  ]
+}

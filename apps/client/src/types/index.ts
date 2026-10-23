@@ -1,5 +1,12 @@
 // ── 通用类型 ──
 
+import type {
+  TraceEntry,
+  TraceEventDetail,
+  TraceEventMetadata,
+  TraceRunSummary,
+} from '@mint/session/trace';
+
 export interface Conversation {
   id: string;
   title: string;
@@ -156,6 +163,10 @@ export interface VisibleSettings {
   embeddingModel: string;
   embeddingDimensions: number;
   vectorStore: 'sqlite' | 'chroma';
+  networkProxyEnabled?: boolean;
+  networkProxyConfigured?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
   chromaUrl: string;
   chromaApiKeyMasked: string;
   jevApiUrl: string;
@@ -166,6 +177,7 @@ export interface VisibleSettings {
   jevMemoryEnabled: boolean;
   jevMemoryGateThreshold: number;
   jevRerankEnabled: boolean;
+  jevWikiIdentityEnabled?: boolean;
 }
 
 export interface SettingsInput {
@@ -197,6 +209,11 @@ export interface SettingsInput {
   jevMemoryEnabled?: boolean;
   jevMemoryGateThreshold?: number;
   jevRerankEnabled?: boolean;
+  jevWikiIdentityEnabled?: boolean;
+  networkProxyEnabled?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
+  networkProxyClearUrl?: boolean;
 }
 
 // ── SSE 流类型 ──
@@ -230,7 +247,7 @@ export interface ToolCallSegment {
   callId?: string;
   toolName: string;
   summary?: string;
-  status: 'running' | 'done' | 'error' | 'approval_required';
+  status: 'running' | 'done' | 'error' | 'outcome_unknown' | 'approval_required';
   arguments?: unknown;
   result?: string;
   error?: string;
@@ -328,6 +345,7 @@ export interface SendCallbacks {
   onAnswerReady?: (content: string) => void;
   onRunStarted?: (data: Record<string, unknown>) => void;
   onRoundStarted?: (data: Record<string, unknown>) => void;
+  onSubagentStatus?: (data: Record<string, unknown>) => void;
   onAgentStatus?: (data: Record<string, unknown>) => void;
   onLoopDetected?: (data: Record<string, unknown>) => void;
   onRunCompleted?: (data: Record<string, unknown>) => void;
@@ -355,6 +373,16 @@ export interface StreamReturn {
 // ── Electron IPC API 类型 ──
 
 export interface ElectronAPI {
+  getAppVersion: () => Promise<string>;
+  checkForUpdates: () => Promise<{
+    status: 'current' | 'available' | 'disabled' | 'error';
+    availableVersion?: string;
+    message?: string;
+  }>;
+  onUpdateDownloaded: (
+    callback: (update: { version: string; mode: 'local-test' | 'packaged' }) => void,
+  ) => () => void;
+  installDownloadedUpdate: () => Promise<{ success: boolean }>;
   isElectron: boolean;
   platform?: string;
 
@@ -406,6 +434,42 @@ export interface ElectronAPI {
       confirmation?: boolean;
     },
   ) => Promise<unknown>;
+  getConversationTrajectory: (
+    conversationId: string,
+    query?: { afterSeq?: number; pageSize?: number; throughSeq?: number },
+  ) => Promise<{
+    generation: string;
+    highWatermark: number;
+    nextAfterSeq: number;
+    hasMore: boolean;
+    historyCompleteness: 'complete' | 'legacy_partial';
+    tailIncomplete: boolean;
+    events: TraceEventMetadata[];
+    entries: TraceEntry[];
+    runs: TraceRunSummary[];
+  }>;
+  getConversationTrajectoryEvent: (
+    conversationId: string,
+    eventId: string,
+  ) => Promise<TraceEventDetail>;
+  subscribeConversationTrajectory: (
+    conversationId: string,
+    afterSeq: number,
+  ) => Promise<{ subscriptionId: string }>;
+  unsubscribeConversationTrajectory: (subscriptionId: string) => Promise<{ unsubscribed: boolean }>;
+  onConversationTrajectoryUpdate: (
+    subscriptionId: string,
+    callback: (update: {
+      cursor: number;
+      events: TraceEventMetadata[];
+      entries: TraceEntry[];
+      runs: TraceRunSummary[];
+    }) => void,
+  ) => () => void;
+  onConversationTrajectoryError: (
+    subscriptionId: string,
+    callback: (error: string) => void,
+  ) => () => void;
 
   // 消息
   getMessages: (convId: string) => Promise<{ messages: Message[] }>;

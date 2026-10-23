@@ -69,6 +69,56 @@ ToolExecutionService：runId/callId、approval store、invocation ledger、audit
 
 Generic runtime 的单次执行是生产 ToolExecutor 的内部依赖，不能作为新的 handler 调用入口。MCP、Bash、HTTP、Wiki 和 Knowledge Graph tool handlers 均留在 Mint。远端 `readOnlyHint` 不参与授权；approval、invocation state 和 audit 决策仍由 Mint adapter 提供。
 
+#### Tool Runtime 单次调用流程与宿主适配
+
+![Mint 工具执行流程：宿主适配与 Runtime 内核](../../assets/tool-runtime-mint-flow.png)
+
+```text
+模型返回 ToolCall
+  → ToolRoundEngine.executeToolCallWithRetry()
+      → ToolExecutionService.executeToolDetailed()
+          → 同步工具目录；确定 runId、callId、invocationId
+          → 建立 ToolContext：调用状态、审计、取消信号、审批回调
+          → ToolExecutor.executeFromToolCall()
+              → 解析 JSON arguments
+              → ToolExecutor.prepareExecution()
+                  → ToolRuntime.prepare(name, input, context)
+                      → 按名称查找工具
+                      → 检查工具启用状态
+                      → ToolHandler.validate 校验输入
+                      → checkPermission + evaluateToolPolicy 授权
+                  → 非 ready：返回失败、取消或待审批结果；不 claim、不执行工具
+              → ToolExecutor.claimInvocation()
+                  → invocation ledger 记录工具名、输入 hash、retrySafety
+              → ToolExecutor.runTool()
+                  → 注入 invocation idempotency key
+                  → ToolRuntime.execute(ready, { input, context, signal, timeoutMs })
+                      → 组合 AbortSignal 与 timeout
+                      → 调用 hooks.execute
+                      → ToolHandler.execute(input, { ...ToolContext, signal })
+                  → 更新 invocation 状态；根据 retrySafety 决定是否重试
+                  → 转换为 Mint ExecutionResult，并发出脱敏审计事件
+          → 按结果决定模型调用重试，并生成 assistant/tool 消息
+      → ReAct 后续轮次或结束
+```
+
+`@mint/tool-runtime` 负责通用工具查找、启用检查、输入校验回调、授权 gate、单次调用、取消和超时。它不创建调用身份，也不负责审批存储、invocation ledger、幂等键、重试策略、日志脱敏、审计 sink 或模型消息格式。Mint 的 `ToolRegistry` 继承通用 registry，并增加类别、OpenAI 工具定义和调用/结果摘要；`ToolExecutionService` 是应用层统一入口，创建调用身份并组装宿主上下文；`ToolExecutor` 把 `ToolHandler` 与 Mint 的权限策略、审计及结果类型适配到通用接口。
+
+Mint 有两层重试控制，职责不同：`ToolExecutor.runTool()` 只对可重试异常且 `retrySafety` 允许的 handler attempt 重试；`ToolRoundEngine.executeToolCallWithRetry()` 根据 `ExecutionResult.retryable` 和模型侧配置再次提交同一个 ToolCall。`@mint/tool-runtime.execute()` 本身始终只执行一次，不重试。
+
+审批不是 runtime 内部的等待状态。策略返回 `approval_required` 后，Mint 通过 `ToolContext.requestApproval` 创建一次性审批，并暂停关联的 AgentRun。用户批准后，`ToolApprovalService` 消费审批，再调用 `ToolRoundEngine.executeToolCallWithRetry()` 恢复原调用，传入 `approvalGranted`；流程会重新经过 `ToolExecutionService`、参数校验和权限/策略检查。用户拒绝时不调用工具。
+
+**实现边界：** 当前 `ToolRuntime.prepare()` 返回可变 `ready` 对象，且 `execute()` 允许用 options 替换 input/context。Mint 在授权和 invocation claim 之后向 input 注入幂等键，再用 `execute()` 的 input override 传入最终 handler。因此，当前公开契约没有保证授权输入与最终执行输入绑定一致。该问题是现状限制；修复方向是让执行只消费 preparation 中绑定的值，或对最终值重新校验并授权。文档不将其描述为已解决。
+
+#### 当前实现源码
+
+- 通用运行时与 registry：[`packages/tool-runtime/src/tool-runtime.ts`](../../../packages/tool-runtime/src/tool-runtime.ts)、[`packages/tool-runtime/src/tool-registry.ts`](../../../packages/tool-runtime/src/tool-registry.ts)。
+- Mint registry 扩展：[`apps/server/application/agent-runtime/tooling/tool-registry.ts`](../../../apps/server/application/agent-runtime/tooling/tool-registry.ts)。
+- ToolHandler 适配、授权、invocation claim、重试与结果映射：[`apps/server/application/agent-runtime/tooling/tool-executor.ts`](../../../apps/server/application/agent-runtime/tooling/tool-executor.ts)。
+- runId/callId、审批与审计上下文、统一应用入口：[`apps/server/application/agent-runtime/tool-execution-service.ts`](../../../apps/server/application/agent-runtime/tool-execution-service.ts)。
+- 模型 ToolCall 重试与消息格式：[`apps/server/application/agent-runtime/tool-round-engine.ts`](../../../apps/server/application/agent-runtime/tool-round-engine.ts)。
+- 审批消费与恢复：[`apps/server/application/agent-runtime/tool-approval-service.ts`](../../../apps/server/application/agent-runtime/tool-approval-service.ts)。
+
 #### DS-007：保留 Mint 安全与副作用治理
 
 ```text

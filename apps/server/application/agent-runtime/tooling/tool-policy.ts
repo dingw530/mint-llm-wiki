@@ -162,16 +162,13 @@ export function evaluateToolPolicy(input: PolicyInput): ToolPolicyDecision {
     if (action === 'query_nodes') return { action: 'allow' };
   }
 
-  // 按输入条件审批的工具（http_fetch / bash / knowledge_graph）已在上面各自的分支中返回决策，
-  // 不会走到这里。'conditional' 落到这里说明工具声明了条件却没有实现对应分支，
-  // 因此按最保守解释处理为需要审批，而不是靠一份硬编码的工具名名单来放行。
+  // 条件审批工具已在各自分支中返回决策；MCP 是否审批由 adapter 的显式元数据决定。
   if (
     metadata.approvalMode === 'always' ||
     metadata.approvalMode === 'conditional' ||
     (metadata.approvalMode === undefined && metadata.sideEffect !== 'none') ||
     metadata.requiresApproval ||
-    metadata.riskLevel === 'critical' ||
-    (metadata.source === 'mcp' && metadata.sideEffect === 'external')
+    metadata.riskLevel === 'critical'
   ) {
     return { action: 'approval_required', reason: '工具元数据要求审批' };
   }

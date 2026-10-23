@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { shouldCaptureLangfuseContent } from '../langfuse.js';
+import { safeLangfuseOutput, shouldCaptureLangfuseContent } from '../langfuse.js';
 
 const originalNodeEnv = process.env.NODE_ENV;
 const originalCaptureContent = process.env.MINT_LANGFUSE_CAPTURE_CONTENT;
@@ -32,5 +32,20 @@ describe('Langfuse content capture', () => {
     process.env.MINT_LANGFUSE_CAPTURE_CONTENT = 'true';
 
     expect(shouldCaptureLangfuseContent()).toBe(true);
+  });
+});
+
+describe('Langfuse tool output serialization', () => {
+  it('preserves valid JSON structure when truncating long string values', () => {
+    const output = safeLangfuseOutput(JSON.stringify({ content: 'x'.repeat(1_500), count: 3 }));
+
+    expect(output).toEqual({ content: `${'x'.repeat(1_000)}…`, count: 3 });
+    expect(JSON.parse(JSON.stringify(output))).toEqual(output);
+  });
+
+  it('continues to bound non-JSON text output', () => {
+    const output = safeLangfuseOutput('x'.repeat(1_500));
+
+    expect(output).toBe(`${'x'.repeat(1_000)}…`);
   });
 });

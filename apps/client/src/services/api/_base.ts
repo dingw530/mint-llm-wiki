@@ -165,6 +165,9 @@ export function parseSSEChunk(
       case 'round_started':
         callbacks.onRoundStarted?.(data);
         return;
+      case 'subagent_status':
+        callbacks.onSubagentStatus?.(data);
+        return;
       case 'agent_status':
         callbacks.onAgentStatus?.(data);
         return;

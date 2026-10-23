@@ -5,10 +5,11 @@ import McpServersPanel from './McpServersPanel';
 import AgentsPanel from './AgentsPanel';
 import MemoriesPanel from './MemoriesPanel';
 import EndpointsPanel from './EndpointsPanel';
-import SkillsPanel from './SkillsPanel';
 import WikiPanel from './WikiPanel';
 import BashSecurityPanel from './BashSecurityPanel';
 import ExperimentalPanel from './ExperimentalPanel';
+import AboutPanel from './AboutPanel';
+import NetworkProxyPanel from './NetworkProxyPanel';
 import { createEmptyJevFormState, createJevFormState, toJevSettingsInput } from './jevForm';
 import type { JevFormState } from './jevForm';
 import type { VisibleSettings } from '@/types';
@@ -44,6 +45,11 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
   const [chromaApiKey, setChromaApiKey] = useState('');
   const [chromaApiKeyMasked, setChromaApiKeyMasked] = useState('');
   const [jev, setJev] = useState<JevFormState>(createEmptyJevFormState);
+  const [networkProxyEnabled, setNetworkProxyEnabled] = useState(false);
+  const [networkProxyConfigured, setNetworkProxyConfigured] = useState(false);
+  const [networkProxyUrl, setNetworkProxyUrl] = useState('');
+  const [networkProxyNoProxy, setNetworkProxyNoProxy] = useState('localhost,127.0.0.1,::1');
+  const [networkProxyClearUrl, setNetworkProxyClearUrl] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ type: string; message: string } | null>(null);
 
@@ -66,6 +72,10 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         setChromaUrl(data.chromaUrl || 'http://127.0.0.1:8000');
         setChromaApiKeyMasked(data.chromaApiKeyMasked || '');
         setJev(createJevFormState(data));
+        setNetworkProxyEnabled(data.networkProxyEnabled ?? false);
+        setNetworkProxyConfigured(data.networkProxyConfigured ?? false);
+        setNetworkProxyUrl(data.networkProxyUrl || '');
+        setNetworkProxyNoProxy(data.networkProxyNoProxy || 'localhost,127.0.0.1,::1');
       })
       .catch((err) => {
         console.error('Failed to load settings:', err);
@@ -140,7 +150,17 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         chromaUrl: chromaUrl.trim(),
         ...(chromaApiKey ? { chromaApiKey } : {}),
         ...toJevSettingsInput(jev),
+        networkProxyEnabled,
+        networkProxyNoProxy,
+        ...(networkProxyUrl.trim() ? { networkProxyUrl: networkProxyUrl.trim() } : {}),
+        networkProxyClearUrl,
       });
+      if (networkProxyUrl.trim()) setNetworkProxyConfigured(true);
+      if (networkProxyClearUrl) {
+        setNetworkProxyConfigured(false);
+        setNetworkProxyUrl('');
+      }
+      setNetworkProxyClearUrl(false);
       showToast('success', '设置已保存');
     } catch (err) {
       showToast('error', `Failed to save: ${(err as Error).message}`);
@@ -151,17 +171,28 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
 
   const tabs = [
     { id: 'general', label: '通用设置', icon: 'gear' as const },
+    { id: 'network', label: '网络代理', icon: 'network' as const },
     { id: 'endpoints', label: '模型端点', icon: 'server' as const },
     { id: 'mcp', label: 'MCP 服务', icon: 'plugin' as const },
     { id: 'agents', label: 'Agent 管理', icon: 'agent' as const },
-    { id: 'skills', label: '技能', icon: 'skill' as const },
     { id: 'bash', label: 'Bash 安全', icon: 'bash' as const },
     { id: 'memories', label: '记忆', icon: 'memory' as const },
     { id: 'wiki', label: '知识库', icon: 'wiki' as const },
     { id: 'experimental', label: '实验性功能', icon: 'flask' as const },
+    { id: 'about', label: '关于', icon: 'info' as const },
   ];
 
   const tabIcon: Record<string, React.ReactNode> = {
+    network: (
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path
+          d="M12 2a3 3 0 100 6 3 3 0 000-6zM5 16a3 3 0 100 6 3 3 0 000-6zm14 0a3 3 0 100 6 3 3 0 000-6zM11 8l-4 8m6-8l4 8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        />
+      </svg>
+    ),
     gear: (
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.488.488 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.611 3.611 0 0112 15.6z" />
@@ -189,11 +220,6 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z" />
       </svg>
     ),
-    skill: (
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2L12 16.8 6 21.2l2.4-7.2-6-4.8h7.6z" />
-      </svg>
-    ),
     bash: (
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M4 3H3v18h1V3zm3 0v18h1V3H7zm4 0v18h1V3h-1zm4 0v18h2V3h-2zm5 0v18h1V3h-1z" />
@@ -207,6 +233,11 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
     flask: (
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M9 2h6v2h-1v5.17l4.53 7.55A3.5 3.5 0 0115.53 22H8.47a3.5 3.5 0 01-3-5.28L10 9.17V4H9V2zm3 8.28l-4.81 8.01A1.5 1.5 0 008.47 20h7.06a1.5 1.5 0 001.28-2.27L12 10.28zM8.8 16h6.4l1.2 2H7.6l1.2-2z" />
+      </svg>
+    ),
+    info: (
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
       </svg>
     ),
   };
@@ -272,9 +303,24 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
                 setShowReactSteps={setShowReactSteps}
               />
             )}
+            {activeTab === 'network' && (
+              <NetworkProxyPanel
+                enabled={networkProxyEnabled}
+                setEnabled={setNetworkProxyEnabled}
+                configured={networkProxyConfigured}
+                proxyUrl={networkProxyUrl}
+                setProxyUrl={setNetworkProxyUrl}
+                noProxy={networkProxyNoProxy}
+                setNoProxy={setNetworkProxyNoProxy}
+                clearUrl={networkProxyClearUrl}
+                setClearUrl={(clear) => {
+                  setNetworkProxyClearUrl(clear);
+                  if (clear) setNetworkProxyEnabled(false);
+                }}
+              />
+            )}
             {activeTab === 'mcp' && <McpServersPanel onToast={showToast} />}
             {activeTab === 'agents' && <AgentsPanel onToast={showToast} />}
-            {activeTab === 'skills' && <SkillsPanel onToast={showToast} />}
             {activeTab === 'bash' && <BashSecurityPanel onToast={showToast} />}
             {activeTab === 'memories' && <MemoriesPanel onToast={showToast} />}
             {activeTab === 'wiki' && (
@@ -306,14 +352,15 @@ export default function Settings({ onClose, theme, onThemeChange }: SettingsProp
                 onJevChange={(patch) => setJev((prev) => ({ ...prev, ...patch }))}
               />
             )}
+            {activeTab === 'about' && <AboutPanel />}
           </div>
         </div>
         {activeTab !== 'endpoints' &&
           activeTab !== 'mcp' &&
           activeTab !== 'agents' &&
-          activeTab !== 'skills' &&
           activeTab !== 'bash' &&
-          activeTab !== 'memories' && (
+          activeTab !== 'memories' &&
+          activeTab !== 'about' && (
             <div className="modal-actions">
               <button className="btn-secondary" onClick={onClose}>
                 取消

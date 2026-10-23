@@ -77,10 +77,21 @@ export type ReactEventPayload =
       status: 'success';
       summary?: string;
     }
-  /** 检测到重复工具调用，运行将转入最终回答阶段。 */
-  | { type: 'loop_detected'; state: 'finalizing'; round: number; message: string }
+  /** Publishes a delegated Agent's visible lifecycle without ending its parent run. */
+  | {
+      type: 'subagent_status';
+      childRunId: string;
+      agentId: string;
+      status: 'running' | 'awaiting_parent_action' | 'completed' | 'failed' | 'cancelled';
+      round?: number;
+      toolName?: string;
+      approvalId?: string;
+      reason?: string;
+    }
   /** 标记回答内容已经准备完成。 */
   | { type: 'answer_ready' }
+  /** Reports repeated tool-call patterns and the resulting forced final-answer transition. */
+  | { type: 'loop_detected'; state: 'finalizing'; round: number; message: string }
   /** 发送 A2UI 片段或组件消息。 */
   | { type: 'a2ui'; segmentId: string; surfaceId: string; message: A2uiMessage; round?: number }
   /** 标记运行成功结束，并携带最终回答、推理摘要和 token 估算。 */

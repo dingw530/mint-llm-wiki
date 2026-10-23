@@ -1,0 +1,68 @@
+{
+  "scenarios": [
+    {
+      "id": "settings-about-shows-version-and-update-action",
+      "acceptanceCriteria": ["AC-009"],
+      "route": "/chat",
+      "setup": {
+        "routes": [
+          { "pattern": "**/api/endpoints", "method": "GET", "body": { "endpoints": [] } },
+          { "pattern": "**/api/conversations", "method": "GET", "body": { "conversations": [] } },
+          { "pattern": "**/api/agents", "method": "GET", "body": { "agents": [] } },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": { "showReactSteps": true, "routingMode": "manual" }
+          }
+        ]
+      },
+      "markers": ["Mint", "输入消息..."],
+      "steps": [
+        { "action": "click", "target": { "role": "button", "name": "打开设置" } },
+        { "action": "waitFor", "target": { "role": "dialog", "name": "设置" }, "timeoutMs": 10000 },
+        { "action": "click", "target": { "role": "button", "name": "关于" } },
+        { "action": "assertText", "text": "当前版本" },
+        { "action": "assertText", "text": "软件更新" },
+        { "action": "waitFor", "text": "更新检查仅支持 Mint 桌面版。", "timeoutMs": 10000 }
+      ]
+    },
+    {
+      "id": "update-prompt-can-be-ignored-per-version",
+      "acceptanceCriteria": ["AC-003", "AC-007"],
+      "route": "/chat",
+      "setup": {
+        "routes": [
+          { "pattern": "**/api/endpoints", "method": "GET", "body": { "endpoints": [] } },
+          { "pattern": "**/api/conversations", "method": "GET", "body": { "conversations": [] } },
+          { "pattern": "**/api/agents", "method": "GET", "body": { "agents": [] } },
+          {
+            "pattern": "**/api/settings",
+            "method": "GET",
+            "body": { "showReactSteps": true, "routingMode": "manual" }
+          }
+        ]
+      },
+      "markers": ["Mint", "输入消息..."],
+      "steps": [
+        {
+          "action": "dispatchCustomEvent",
+          "name": "mint:update-downloaded",
+          "detail": { "version": "9.9.9", "mode": "local-test" }
+        },
+        {
+          "action": "waitFor",
+          "text": "Mint 9.9.9 本地测试更新已下载",
+          "timeoutMs": 10000
+        },
+        { "action": "click", "target": { "role": "button", "name": "忽略此版本" } },
+        { "action": "assertNotText", "text": "Mint 9.9.9 本地测试更新已下载" },
+        {
+          "action": "dispatchCustomEvent",
+          "name": "mint:update-downloaded",
+          "detail": { "version": "9.9.9", "mode": "local-test" }
+        },
+        { "action": "assertNotText", "text": "Mint 9.9.9 本地测试更新已下载" }
+      ]
+    }
+  ]
+}

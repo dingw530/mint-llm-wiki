@@ -219,6 +219,16 @@ export function updateNodeType(id: string, type: string): void {
   );
 }
 
+/** Update the canonical Wiki page path attached to a graph node. */
+export function updateNodeSourceFile(id: string, sourceFile: string): void {
+  const db = getDb();
+  db.prepare('UPDATE graph_nodes SET source_file = ?, updated_at = ? WHERE id = ?').run(
+    sourceFile,
+    new Date().toISOString(),
+    id,
+  );
+}
+
 export function createEdge(params: CreateEdgeParams): GraphEdge {
   if (!params.relation || !params.relation.trim()) {
     throw Object.assign(new Error('关系类型不能为空'), { status: 400 });

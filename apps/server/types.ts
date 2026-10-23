@@ -123,6 +123,11 @@ export interface SettingsInput {
   jevMemoryEnabled?: boolean;
   jevMemoryGateThreshold?: number;
   jevRerankEnabled?: boolean;
+  jevWikiIdentityEnabled?: boolean;
+  networkProxyEnabled?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
+  networkProxyClearUrl?: boolean;
 }
 
 // AI 代理内部使用的设置（apiKey 已解密）
@@ -162,6 +167,7 @@ export interface JevSettings {
   memoryEnabled: boolean;
   memoryGateThreshold: number;
   rerankEnabled?: boolean;
+  wikiIdentityEnabled?: boolean;
 }
 
 // 返回给前端的设置（apiKey 脱敏显示）
@@ -186,6 +192,10 @@ export interface VisibleSettings {
   embeddingModel: string;
   embeddingDimensions: number;
   vectorStore: 'sqlite' | 'chroma';
+  networkProxyEnabled?: boolean;
+  networkProxyConfigured?: boolean;
+  networkProxyUrl?: string;
+  networkProxyNoProxy?: string;
   chromaUrl: string;
   chromaApiKeyMasked: string;
   jevApiUrl: string;
@@ -196,6 +206,7 @@ export interface VisibleSettings {
   jevMemoryEnabled: boolean;
   jevMemoryGateThreshold: number;
   jevRerankEnabled: boolean;
+  jevWikiIdentityEnabled?: boolean;
 }
 
 // ── Tool call 类型（兼容 OpenAI function calling 格式） ──

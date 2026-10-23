@@ -36,7 +36,7 @@ packages/
 
 - **Server 文件命名**：`apps/server/` 下的 TypeScript 文件统一使用 **kebab-case**，例如 `memory-service.ts`、`routing-policy.ts`、`memory-service.test.ts`。已迁移的 `apps/server/domains/` 与 `apps/server/infrastructure/` 统一执行此规范；其他现有未迁移模块暂不批量改名，后续迁移或新建文件时遵守此规范。符号名仍沿用既有 TypeScript 命名约定。
 
-- **注释规范**: 新增方法添加 JSDOC 注释，参数和返回值标注类型
+- **注释规范**: 新增方法添加 JSDOC 注释，参数和返回值标注类型；注释使用中文；涉及到复杂的调用链路时，对上游和下游进行说明
 - **避免硬编码**: 颜色/间距/字体使用 CSS custom properties（design tokens），后端常量抽取到对应模块
 - **前端结构**: feature-based 目录组织，按功能模块划分而非组件类型
 - **API 适配器**: 新增 AI 提供商时在 `apps/server/services/adapters/` 添加适配器，实现统一的 `AIAdapter` 接口
@@ -262,12 +262,12 @@ docs/
 
 This project is indexed by GitNexus as **mint-ai-chat** (14452 symbols, 27719 relationships, 727 execution flows).
 
-> Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).
+> Index stale? Run `npm run gitnexus -- analyze --index-only` from the project root. The project pins GitNexus CLI 1.6.12 in `package.json`.
 
 ## Always Do
 
-- **MUST run impact before editing.** Use `impact({target: "symbolName", direction: "upstream"})` or `node .gitnexus/run.cjs impact "symbolName" --direction upstream --repo .`; report callers, processes, and risk. Never substitute grep for graph analysis.
-- **MUST analyze graph changes before committing.** Use `detect_changes({scope: "all"})` (MCP) or `node .gitnexus/run.cjs detect-changes --scope all --repo .` (CLI fallback). `partial: true` or `truncated: true` is not a clean check — a zero means unseen, not unaffected; re-run it. For regression review: `detect_changes({scope: "compare", base_ref: "main"})` or `node .gitnexus/run.cjs detect-changes --scope compare --base-ref "main" --repo .`.
+- **MUST run impact before editing.** Use `impact({target: "symbolName", direction: "upstream"})` or `npm run gitnexus -- impact "symbolName" --direction upstream --repo .`; report callers, processes, and risk. Never substitute grep for graph analysis.
+- **MUST analyze graph changes before committing.** Use `detect_changes({scope: "all"})` (MCP) or `npm run gitnexus -- detect-changes --scope all --repo .` (CLI fallback). `partial: true` or `truncated: true` is not a clean check — a zero means unseen, not unaffected; re-run it. For regression review: `detect_changes({scope: "compare", base_ref: "main"})` or `npm run gitnexus -- detect-changes --scope compare --base-ref "main" --repo .`.
 - MUST warn on HIGH/CRITICAL `risk` pre-edit; never use `riskSharedAxes` to waive a HIGH/CRITICAL `risk` warning. Compare File/symbol: MCP File omits axes; Graph-RAG expands File.
 - **MUST treat `risk: UNKNOWN` as unresolved, not as low.** An empty caller set is not evidence the symbol is unused — it can also mean the callers are not resolvable by the index (plain-object property access, dynamic dispatch, cross-language calls). `impact` pairs `UNKNOWN` with a `riskNote` saying so. Confirm with a text search before treating the symbol as safe to change or delete; do not proceed on the strength of a zero.
 - **MUST use `query({search_query: "concept"})` for concepts/flows, `context({name: "symbolName"})` for a named symbol, or `impact` for blast radius, on read-only callers, dependencies, imports, or execution flow.** Graph first; text search only for empty/`UNKNOWN`/literals.

@@ -75,11 +75,24 @@ describe('API base helpers', () => {
       onTokenUsage: vi.fn(),
       onRoundStarted: vi.fn(),
       onAgentStatus: vi.fn(),
+      onSubagentStatus: vi.fn(),
       onLoopDetected: vi.fn(),
       onToolApprovalRequired: vi.fn(),
       onA2ui: vi.fn(),
     };
     const lastThought = { value: '' };
+    parseSSEChunk(
+      {
+        type: 'subagent_status',
+        runId: 'parent-run',
+        sequence: 3,
+        childRunId: 'child-run',
+        agentId: 'worker',
+        status: 'running',
+      },
+      callbacks,
+      lastThought,
+    );
     parseSSEChunk({ type: 'round_started', round: 2 }, callbacks, lastThought);
     parseSSEChunk({ type: 'agent_status', round: 2, toolCount: 1 }, callbacks, lastThought);
     parseSSEChunk({ type: 'thought', content: 'thinking' }, callbacks, lastThought);
@@ -118,6 +131,14 @@ describe('API base helpers', () => {
       type: 'agent_status',
       round: 2,
       toolCount: 1,
+    });
+    expect(callbacks.onSubagentStatus).toHaveBeenCalledWith({
+      type: 'subagent_status',
+      runId: 'parent-run',
+      sequence: 3,
+      childRunId: 'child-run',
+      agentId: 'worker',
+      status: 'running',
     });
     expect(callbacks.onLoopDetected).toHaveBeenCalledWith({
       type: 'loop_detected',

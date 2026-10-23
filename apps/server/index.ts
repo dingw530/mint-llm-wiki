@@ -4,6 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { createApp } from './app.js';
 import { ServerRuntime } from './runtime/serverRuntime.js';
 import { loadStartupConfig, type ListenMode, type RuntimeMode } from './runtime/startupConfig.js';
+import * as networkProxyService from './infrastructure/network/network-proxy-service.js';
 
 /** Resolve the listener host while retaining the legacy boundary-test API. */
 export function resolveListenHost(mode: string | undefined): string {
@@ -56,7 +57,9 @@ export async function startServerRuntime(
     throw new Error(`HTTP runtime already started in ${activeRuntimeMode} mode`);
   }
   if (!activeRuntime) {
-    activeRuntime = createRuntime(preferredPort, mode, listenMode);
+    const runtime = createRuntime(preferredPort, mode, listenMode);
+    networkProxyService.applyNetworkProxySettings();
+    activeRuntime = runtime;
     activeRuntimeMode = listenMode;
   }
   await activeRuntime.start();
@@ -67,9 +70,13 @@ export async function startServerRuntime(
 export async function shutdownServer(reason = 'shutdown'): Promise<void> {
   const runtime = activeRuntime;
   if (!runtime) return;
-  await runtime.shutdown(reason);
-  activeRuntime = undefined;
-  activeRuntimeMode = undefined;
+  try {
+    await runtime.shutdown(reason);
+  } finally {
+    await networkProxyService.closeNetworkProxyDispatcher();
+    activeRuntime = undefined;
+    activeRuntimeMode = undefined;
+  }
 }
 
 function isDirectEntryPoint(): boolean {

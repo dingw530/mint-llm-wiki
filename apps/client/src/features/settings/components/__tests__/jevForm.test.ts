@@ -12,6 +12,7 @@ describe('createJevFormState', () => {
     expect(form.routingEnabled).toBe(false);
     expect(form.memoryEnabled).toBe(false);
     expect(form.rerankEnabled).toBe(false);
+    expect(form.wikiIdentityEnabled).toBe(false);
     expect(form.apiUrl).toBe(DEFAULT_JEV_API_URL);
     expect(form.apiKey).toBe('');
   });
@@ -31,6 +32,7 @@ describe('createJevFormState', () => {
       jevMemoryEnabled: true,
       jevMemoryGateThreshold: 0.35,
       jevRerankEnabled: true,
+      jevWikiIdentityEnabled: true,
     });
 
     expect(form).toMatchObject({
@@ -41,6 +43,7 @@ describe('createJevFormState', () => {
       memoryEnabled: true,
       memoryGateThreshold: 0.35,
       rerankEnabled: true,
+      wikiIdentityEnabled: true,
     });
   });
 });
@@ -72,9 +75,11 @@ describe('toJevSettingsInput', () => {
       routingEnabled: true,
       memoryEnabled: false,
       rerankEnabled: true,
+      wikiIdentityEnabled: false,
     });
     expect(input.jevRoutingEnabled).toBe(true);
     expect(input.jevMemoryEnabled).toBe(false);
     expect(input.jevRerankEnabled).toBe(true);
+    expect(input.jevWikiIdentityEnabled).toBe(false);
   });
 });

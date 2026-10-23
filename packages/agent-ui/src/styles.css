@@ -1,0 +1,267 @@
+.mint-agent-trace {
+  --mint-agent-ui-space-1: 4px;
+  --mint-agent-ui-space-half: 2px;
+  --mint-agent-ui-space-2: 8px;
+  --mint-agent-ui-space-3: 12px;
+  --mint-agent-ui-space-4: 16px;
+  --mint-agent-ui-row-height: 36px;
+  --mint-agent-ui-border: var(--border-subtle, #e6e8eb);
+  --mint-agent-ui-muted: var(--text-secondary, #74808c);
+  --mint-agent-ui-ink: var(--text-primary, #20262d);
+  --mint-agent-ui-surface: var(--surface-primary, #fff);
+  --mint-agent-ui-input: #49b77d;
+  --mint-agent-ui-model: #7c8fe7;
+  --mint-agent-ui-tool: #e78e2e;
+  --mint-agent-ui-unknown: #de3e36;
+  --mint-agent-ui-warning-surface: #fff8e8;
+  --mint-agent-ui-warning-ink: #8b5a0a;
+  --mint-agent-ui-shadow: 0 1px 3px #0002;
+  --mint-agent-ui-input-badge-bg: #e8f7ef;
+  --mint-agent-ui-input-badge-ink: #358c5b;
+  --mint-agent-ui-model-badge-bg: #edf0ff;
+  --mint-agent-ui-model-badge-ink: #596ec5;
+  --mint-agent-ui-tool-badge-bg: #fff1dd;
+  --mint-agent-ui-tool-badge-ink: #a66516;
+  --mint-agent-ui-state-badge-bg: #f1f2f4;
+  --mint-agent-ui-state-badge-ink: #64707b;
+  color: var(--mint-agent-ui-ink);
+  background: var(--mint-agent-ui-surface);
+  border: 1px solid var(--mint-agent-ui-border);
+  border-radius: var(--radius-lg, 12px);
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  overflow: hidden;
+}
+.mint-agent-trace__header,
+.mint-agent-trace__detail-head {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: var(--mint-agent-ui-space-3) var(--mint-agent-ui-space-4);
+}
+.mint-agent-trace__header {
+  border-bottom: 1px solid var(--mint-agent-ui-border);
+}
+.mint-agent-trace__header h2 {
+  font-size: 16px;
+  line-height: 1.35;
+  margin: var(--mint-agent-ui-space-1) 0 0;
+}
+.mint-agent-trace__eyebrow {
+  color: var(--mint-agent-ui-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin: 0;
+}
+.mint-agent-trace__run-count {
+  color: var(--mint-agent-ui-muted);
+  display: inline-block;
+  font-size: 11px;
+  margin-top: var(--mint-agent-ui-space-1);
+}
+.mint-agent-trace__modes {
+  background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 72%);
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  padding: var(--mint-agent-ui-space-half);
+}
+.mint-agent-trace button {
+  color: inherit;
+  font: inherit;
+}
+.mint-agent-trace__modes button,
+.mint-agent-trace__detail-head button {
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: var(--mint-agent-ui-space-1) var(--mint-agent-ui-space-2);
+}
+.mint-agent-trace__modes button.is-active {
+  background: var(--mint-agent-ui-surface);
+  box-shadow: var(--mint-agent-ui-shadow);
+}
+.mint-agent-trace__notice {
+  background: var(--mint-agent-ui-warning-surface);
+  color: var(--mint-agent-ui-warning-ink);
+  margin: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-4) 0;
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-3);
+  border-radius: var(--radius-md, 8px);
+}
+.mint-agent-trace__overview {
+  border-bottom: 1px solid var(--mint-agent-ui-border);
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-4);
+}
+.mint-agent-trace__lane {
+  align-items: center;
+  color: var(--mint-agent-ui-muted);
+  display: grid;
+  font-size: 11px;
+  grid-template-columns: 40px 1fr;
+  height: 18px;
+}
+.mint-agent-trace__lane > div {
+  background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 55%);
+  height: 6px;
+  position: relative;
+}
+.mint-agent-trace__tick {
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  height: 6px;
+  position: absolute;
+  top: 0;
+  width: 10px;
+}
+.mint-agent-trace__tick--input {
+  background: var(--mint-agent-ui-input);
+}
+.mint-agent-trace__tick--model {
+  background: var(--mint-agent-ui-model);
+}
+.mint-agent-trace__tick--tool {
+  background: var(--mint-agent-ui-tool);
+}
+.mint-agent-trace__tick--outcome_unknown {
+  background: var(--mint-agent-ui-unknown);
+}
+.mint-agent-trace__search {
+  align-items: center;
+  color: var(--mint-agent-ui-muted);
+  display: flex;
+  font-size: 11px;
+  gap: var(--mint-agent-ui-space-2);
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-4);
+}
+.mint-agent-trace__search input {
+  background: transparent;
+  border: 1px solid var(--mint-agent-ui-border);
+  border-radius: var(--radius-sm, 4px);
+  color: var(--mint-agent-ui-ink);
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  padding: var(--mint-agent-ui-space-1) var(--mint-agent-ui-space-2);
+}
+.mint-agent-trace__body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 32%);
+  min-height: 160px;
+}
+.mint-agent-trace__list {
+  list-style: none;
+  margin: 0;
+  max-height: 480px;
+  overflow: auto;
+  padding: 0 var(--mint-agent-ui-space-2);
+}
+.mint-agent-trace__row {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--mint-agent-ui-border);
+  cursor: pointer;
+  display: flex;
+  gap: var(--mint-agent-ui-space-2);
+  min-height: var(--mint-agent-ui-row-height);
+  padding: var(--mint-agent-ui-space-1) var(--mint-agent-ui-space-2);
+  text-align: left;
+  width: 100%;
+}
+.mint-agent-trace__row:hover,
+.mint-agent-trace__row[aria-current='true'] {
+  background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 70%);
+}
+.mint-agent-trace__badge {
+  border-radius: var(--radius-sm, 4px);
+  font-size: 10px;
+  line-height: 1.35;
+  padding: var(--mint-agent-ui-space-half) var(--mint-agent-ui-space-1);
+}
+.mint-agent-trace__badge--input {
+  background: var(--mint-agent-ui-input-badge-bg);
+  color: var(--mint-agent-ui-input-badge-ink);
+}
+.mint-agent-trace__badge--model {
+  background: var(--mint-agent-ui-model-badge-bg);
+  color: var(--mint-agent-ui-model-badge-ink);
+}
+.mint-agent-trace__badge--tool {
+  background: var(--mint-agent-ui-tool-badge-bg);
+  color: var(--mint-agent-ui-tool-badge-ink);
+}
+.mint-agent-trace__badge--lifecycle {
+  background: var(--mint-agent-ui-state-badge-bg);
+  color: var(--mint-agent-ui-state-badge-ink);
+}
+.mint-agent-trace__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mint-agent-trace__status,
+.mint-agent-trace time {
+  color: var(--mint-agent-ui-muted);
+  font-size: 11px;
+}
+.mint-agent-trace__status--outcome_unknown {
+  color: var(--mint-agent-ui-unknown);
+  font-weight: 700;
+}
+.mint-agent-trace__detail {
+  background: color-mix(in srgb, var(--mint-agent-ui-border), transparent 80%);
+  border-left: 1px solid var(--mint-agent-ui-border);
+  min-width: 0;
+  padding: 0 var(--mint-agent-ui-space-3) var(--mint-agent-ui-space-3);
+}
+.mint-agent-trace__detail p {
+  color: var(--mint-agent-ui-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.mint-agent-trace__detail pre {
+  font-size: 10px;
+  line-height: 1.45;
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mint-agent-trace__empty {
+  color: var(--mint-agent-ui-muted);
+  padding: var(--mint-agent-ui-space-3);
+}
+.mint-agent-trace__round {
+  color: var(--mint-agent-ui-muted);
+  font-size: 11px;
+  padding: var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-2) var(--mint-agent-ui-space-1);
+}
+.mint-agent-trace__more {
+  align-self: center;
+  background: transparent;
+  border: 0;
+  color: var(--mint-agent-ui-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: var(--mint-agent-ui-space-2);
+}
+@media (max-width: 720px) {
+  .mint-agent-trace__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .mint-agent-trace__detail {
+    border-left: 0;
+    border-top: 1px solid var(--mint-agent-ui-border);
+  }
+  .mint-agent-trace__row time {
+    display: none;
+  }
+}

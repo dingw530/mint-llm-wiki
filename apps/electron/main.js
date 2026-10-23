@@ -7,6 +7,8 @@ const logger = require('./logger');
 const { registerElectronIpcHandlers } = require('./ipc');
 const { createWindowOptions } = require('./window-options');
 const { lockLightTheme } = require('./theme');
+const { autoUpdater } = require('electron-updater');
+const { configureAutoUpdater } = require('./services/auto-updater');
 
 lockLightTheme(nativeTheme);
 
@@ -15,6 +17,7 @@ let serverBundlePromise = null;
 let electronServiceBootstrapPromise = null;
 let electronShutdownPromise = null;
 let electronShutdownComplete = false;
+let downloadedUpdateInfo = null;
 
 const isDev = !app.isPackaged;
 if (isDev) process.env.NODE_ENV = 'development';
@@ -345,7 +348,12 @@ function createWindow(port) {
     logger.error(`Page load failed: ${errorDescription} (code: ${errorCode}) URL: ${validatedURL}`);
   });
 
-  mainWindow.webContents.on('did-finish-load', () => logger.info('Page loaded successfully'));
+  mainWindow.webContents.on('did-finish-load', () => {
+    logger.info('Page loaded successfully');
+    if (downloadedUpdateInfo && mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('updater:downloaded', downloadedUpdateInfo);
+    }
+  });
 
   mainWindow.webContents.on('console-message', (event, level, message) => {
     if (level >= 2) logger.debug(`[renderer] ${message}`);
@@ -364,6 +372,22 @@ function loadClientApp() {
   } else {
     mainWindow.loadFile(path.join(__dirname, 'client-dist', 'index.html'));
   }
+}
+
+/** Shut down the embedded server once before Electron quits or installs an update.
+ * @param {string} reason Shutdown reason recorded by the Server runtime.
+ * @returns {Promise<void>} Completion of the shared shutdown operation.
+ */
+function shutdownElectronServer(reason) {
+  if (!electronShutdownPromise) {
+    electronShutdownPromise = getServerBundle()
+      .then((bundle) => bundle.shutdownServer(reason))
+      .catch((err) => logger.warn(`Server shutdown failed: ${err.message}`))
+      .finally(() => {
+        electronShutdownComplete = true;
+      });
+  }
+  return electronShutdownPromise;
 }
 
 // ── 旧 userData 迁移（~/.mint 不存在时从 userData 拷贝）──
@@ -447,6 +471,20 @@ app.whenReady().then(async () => {
     }
 
     loadClientApp();
+    configureAutoUpdater({
+      app,
+      autoUpdater,
+      getMainWindow: () => mainWindow,
+      ipcMain,
+      notifyUpdateDownloaded: (info) => {
+        downloadedUpdateInfo = info;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('updater:downloaded', info);
+        } else logger.warn('Update prompt pending until the Mint window opens');
+      },
+      logger,
+      shutdownForInstall: () => shutdownElectronServer('electron-update'),
+    });
   } catch (err) {
     logger.error(`Failed to start: ${err.message}`);
     const { dialog } = require('electron');
@@ -476,13 +514,6 @@ app.on('will-quit', () => {
 app.on('before-quit', (event) => {
   if (electronShutdownComplete) return;
   event.preventDefault();
-  if (!electronShutdownPromise) {
-    electronShutdownPromise = getServerBundle()
-      .then((bundle) => bundle.shutdownServer('electron-quit'))
-      .catch((err) => logger.warn(`Server shutdown failed: ${err.message}`))
-      .finally(() => {
-        electronShutdownComplete = true;
-        app.quit();
-      });
-  }
+  if (electronShutdownPromise) return;
+  void shutdownElectronServer('electron-quit').finally(() => app.quit());
 });

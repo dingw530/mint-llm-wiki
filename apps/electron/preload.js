@@ -1,9 +1,23 @@
 /* eslint-disable no-undef, @typescript-eslint/no-require-imports */
 const { contextBridge, ipcRenderer } = require('electron');
+let latestDownloadedUpdate = null;
+
+ipcRenderer.on('updater:downloaded', (_event, update) => {
+  latestDownloadedUpdate = update;
+});
 
 contextBridge.exposeInMainWorld('electronAPI', {
   isElectron: true,
   platform: process.platform,
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+  checkForUpdates: () => ipcRenderer.invoke('updater:check'),
+  onUpdateDownloaded: (callback) => {
+    const listener = (_event, update) => callback(update);
+    ipcRenderer.on('updater:downloaded', listener);
+    if (latestDownloadedUpdate) callback(latestDownloadedUpdate);
+    return () => ipcRenderer.removeListener('updater:downloaded', listener);
+  },
+  installDownloadedUpdate: () => ipcRenderer.invoke('updater:install-downloaded'),
 
   // ── 流式对话 ──
   sendMessage: (convId, content, agent, regenerate, slashCommand) =>
@@ -58,6 +72,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('conversations:listRecoverableRuns', conversationId),
   resolveAgentRunRecovery: (conversationId, runId, data) =>
     ipcRenderer.invoke('conversations:resolveRecoveryAction', conversationId, runId, data),
+  getConversationTrajectory: (conversationId, query) =>
+    ipcRenderer.invoke('conversations:getTrajectory', conversationId, query),
+  getConversationTrajectoryEvent: (conversationId, eventId) =>
+    ipcRenderer.invoke('conversations:getTrajectoryEvent', conversationId, eventId),
+  subscribeConversationTrajectory: (conversationId, afterSeq) =>
+    ipcRenderer.invoke('conversations:subscribeTrajectory', conversationId, afterSeq),
+  unsubscribeConversationTrajectory: (subscriptionId) =>
+    ipcRenderer.invoke('conversations:unsubscribeTrajectory', subscriptionId),
+  onConversationTrajectoryUpdate: (subscriptionId, callback) => {
+    const listener = (_event, eventSubscriptionId, update) => {
+      if (eventSubscriptionId === subscriptionId) callback(update);
+    };
+    ipcRenderer.on('conversations:trajectoryUpdate', listener);
+    return () => ipcRenderer.removeListener('conversations:trajectoryUpdate', listener);
+  },
+  onConversationTrajectoryError: (subscriptionId, callback) => {
+    const listener = (_event, eventSubscriptionId, error) => {
+      if (eventSubscriptionId === subscriptionId) callback(error);
+    };
+    ipcRenderer.on('conversations:trajectoryError', listener);
+    return () => ipcRenderer.removeListener('conversations:trajectoryError', listener);
+  },
 
   // ── 消息 ──
   getMessages: (convId) => ipcRenderer.invoke('messages:list', convId),

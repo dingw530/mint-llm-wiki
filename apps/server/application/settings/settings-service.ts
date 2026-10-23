@@ -143,6 +143,7 @@ type JevSettingsInput = Pick<
   | 'jevMemoryEnabled'
   | 'jevMemoryGateThreshold'
   | 'jevRerankEnabled'
+  | 'jevWikiIdentityEnabled'
 >;
 
 /**
@@ -170,6 +171,7 @@ function applyJevSettings(target: Record<string, string>, input: JevSettingsInpu
     clampScore(input.jevMemoryGateThreshold, DEFAULT_JEV_MEMORY_GATE_THRESHOLD),
   );
   target.jevRerankEnabled = input.jevRerankEnabled ? 'true' : 'false';
+  target.jevWikiIdentityEnabled = input.jevWikiIdentityEnabled ? 'true' : 'false';
   if (input.jevApiKey) target.jevApiKey = encrypt(input.jevApiKey);
 }
 
@@ -291,6 +293,7 @@ export function getJevSettings(): JevSettings {
     memoryEnabled: raw.jevMemoryEnabled === 'true',
     memoryGateThreshold: clampScore(raw.jevMemoryGateThreshold, DEFAULT_JEV_MEMORY_GATE_THRESHOLD),
     rerankEnabled: raw.jevRerankEnabled === 'true',
+    wikiIdentityEnabled: raw.jevWikiIdentityEnabled === 'true',
   };
 }
 
@@ -308,6 +311,7 @@ export function getVisibleJevSettings(): Pick<
   | 'jevMemoryEnabled'
   | 'jevMemoryGateThreshold'
   | 'jevRerankEnabled'
+  | 'jevWikiIdentityEnabled'
 > {
   const raw: RawSettings = settingsRepo.getAll();
   return {
@@ -325,6 +329,7 @@ export function getVisibleJevSettings(): Pick<
       DEFAULT_JEV_MEMORY_GATE_THRESHOLD,
     ),
     jevRerankEnabled: raw.jevRerankEnabled === 'true',
+    jevWikiIdentityEnabled: raw.jevWikiIdentityEnabled === 'true',
   };
 }
 
@@ -423,6 +428,7 @@ export function save({
   jevMemoryEnabled,
   jevMemoryGateThreshold,
   jevRerankEnabled,
+  jevWikiIdentityEnabled,
 }: SettingsInput): void {
   const settings: Record<string, string> = {
     systemPrompt: systemPrompt || '',
@@ -452,6 +458,7 @@ export function save({
     jevMemoryEnabled,
     jevMemoryGateThreshold,
     jevRerankEnabled,
+    jevWikiIdentityEnabled,
   });
   if (apiUrl !== undefined) settings.apiUrl = apiUrl;
   if (modelId !== undefined) settings.modelId = modelId;

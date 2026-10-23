@@ -35,7 +35,7 @@ the bound repository and index freshness alongside your explanation.
 5. READ gitnexus://repo/{name}/process/{name}      → Trace full execution flow
 ```
 
-> If step 2 says "Index is stale" → run `node .gitnexus/run.cjs analyze` in terminal.
+> If step 2 says "Index is stale" → run `npm run gitnexus -- analyze` in terminal.
 
 ## Checklist
 

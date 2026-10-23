@@ -1,4 +1,6 @@
 import type { AiSettings } from '../../types.js';
+import type { JevSettings } from '../../types.js';
+import type { WikiIdentityProviderCall } from './identity/types.js';
 import { compileSource, type WikiCompileProgressStage } from './wiki-compiler.js';
 import { appendWikiManifestEntry } from '../../infrastructure/filesystem/wiki-content.js';
 import { buildGraphFromPages } from '../knowledge-graph/index.js';
@@ -57,6 +59,8 @@ export interface WikiIngestionRequest {
   sourceFilenameHint?: string;
   category?: string;
   summaryHint?: string;
+  jevSettings?: JevSettings;
+  jevIdentityProvider?: WikiIdentityProviderCall;
   archivedFiles?: WikiArchivedFileInput[];
   /** 异步可重试任务失败时保留其暂存输入；成功后仍会 finalize。 */
   retainStagedFilesOnError?: boolean;
@@ -161,6 +165,8 @@ export async function ingestWikiSource(
       {
         title: request.sourceTitle,
         category: request.category,
+        jevSettings: request.jevSettings,
+        jevIdentityProvider: request.jevIdentityProvider,
         onProgress: request.onCompileProgress,
       },
     );
@@ -264,6 +270,8 @@ async function ingestDurableWikiSource(
         {
           title: request.sourceTitle,
           category: request.category,
+          jevSettings: request.jevSettings,
+          jevIdentityProvider: request.jevIdentityProvider,
           onProgress: request.onCompileProgress,
           persistPages: false,
         },

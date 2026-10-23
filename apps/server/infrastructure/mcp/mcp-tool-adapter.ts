@@ -74,7 +74,7 @@ export class McpToolAdapter extends BaseTool<Record<string, unknown>, unknown> {
       serverName: this.record.serverName,
       riskLevel: 'high',
       sideEffect: 'external',
-      approvalMode: 'always',
+      approvalMode: 'none',
       retrySafety: 'never',
     };
   }

@@ -259,14 +259,18 @@ function getTerminalPhase(type: ReactEventPayload['type']): AgentRunPhase {
 /** Manages active and approval-paused in-process runs; durable recovery is provided separately. */
 export class AgentRunRegistry {
   private readonly runs = new Map<string, AgentRun>();
-  private readonly runsByConversation = new Map<string, string>();
+  private readonly runsByConversation = new Map<string, Set<string>>();
 
   /** Adds a run to the registry and releases it when it reaches a terminal state. */
   register(run: AgentRun): () => void {
     const snapshot = run.getSnapshot();
     this.runs.set(snapshot.runId, run);
-    if (snapshot.conversationId)
-      this.runsByConversation.set(snapshot.conversationId, snapshot.runId);
+    if (snapshot.conversationId) {
+      const conversationRuns =
+        this.runsByConversation.get(snapshot.conversationId) ?? new Set<string>();
+      conversationRuns.add(snapshot.runId);
+      this.runsByConversation.set(snapshot.conversationId, conversationRuns);
+    }
     return run.subscribe((event) => {
       if (TERMINAL_EVENT_TYPES.has(event.type)) this.delete(event.runId);
     });
@@ -277,21 +281,27 @@ export class AgentRunRegistry {
     const run = this.runs.get(runId);
     return run?.isTerminal ? undefined : run;
   }
-
-  /** Finds the active run owned by one conversation. */
+  /** Finds the most recently registered active run for one conversation. */
   getByConversation(conversationId: string): AgentRun | undefined {
-    const runId = this.runsByConversation.get(conversationId);
-    return runId ? this.get(runId) : undefined;
+    const runIds = this.runsByConversation.get(conversationId);
+    if (!runIds) return undefined;
+    const activeRunIds = [...runIds];
+    for (let index = activeRunIds.length - 1; index >= 0; index -= 1) {
+      const run = this.get(activeRunIds[index]);
+      if (run) return run;
+    }
+    return undefined;
   }
-
-  /** Removes a run and its conversation index when the index still points to that run. */
+  /** Removes a run from the registry and its conversation index. */
   delete(runId: string): void {
     const run = this.runs.get(runId);
     if (!run) return;
     const snapshot = run.getSnapshot();
     this.runs.delete(runId);
-    if (snapshot.conversationId && this.runsByConversation.get(snapshot.conversationId) === runId) {
-      this.runsByConversation.delete(snapshot.conversationId);
+    if (snapshot.conversationId) {
+      const conversationRuns = this.runsByConversation.get(snapshot.conversationId);
+      conversationRuns?.delete(runId);
+      if (conversationRuns?.size === 0) this.runsByConversation.delete(snapshot.conversationId);
     }
   }
 

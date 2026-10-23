@@ -8,6 +8,7 @@ import { runAgentChat as reactChat } from '../../../bootstrap/agent-runtime.js';
 import * as conversationRepo from '../../../infrastructure/persistence/conversation-repository.js';
 import { v4 as uuidv4 } from 'uuid';
 import { AgentRun, agentRunRegistry } from '../../../agent-runtime/agent-run.js';
+import type { SessionRecordingPort } from '../../../agent-runtime/tooling/runtime-context.js';
 
 vi.mock('../../../bootstrap/agent-runtime.js', () => ({
   runAgentChat: vi.fn(
@@ -62,6 +63,39 @@ class ApprovalServiceTool extends BaseTool<{ value: string }, string> {
   }
 }
 
+class SafeFailureApprovalTool extends BaseTool<{ value: string }, string> {
+  readonly name = 'safe_failure_approval_tool';
+  readonly description = 'approval tool with a known no-side-effect failure';
+  readonly inputSchema = z.object({ value: z.string() });
+  execute = vi.fn(async () => {
+    throw new Error('safe operation failed');
+  });
+
+  getMetadata() {
+    return {
+      source: 'builtin' as const,
+      riskLevel: 'high' as const,
+      sideEffect: 'none' as const,
+      requiresApproval: true,
+    };
+  }
+}
+
+function createSessionRecorder(): SessionRecordingPort {
+  return {
+    record: vi.fn(() => []),
+    recordModelMessage: vi.fn(),
+    recordToolCatalog: vi.fn(),
+    recordContextSnapshot: vi.fn(),
+    recordToolDispatch: vi.fn(),
+    recordToolResult: vi.fn(),
+    recordApproval: vi.fn(),
+    recordRunTerminal: vi.fn(),
+    pauseForApproval: vi.fn(),
+    close: vi.fn(),
+  } as unknown as SessionRecordingPort;
+}
+
 describe('tool approval service', () => {
   beforeEach(() => {
     agentRunRegistry.clear();
@@ -93,6 +127,87 @@ describe('tool approval service', () => {
     await expect(resolveToolApproval(conversationId, approvalId, 'approve')).rejects.toThrow(
       '审批不存在',
     );
+  });
+
+  it('continues a known no-side-effect approval failure with tools available', async () => {
+    const tool = new SafeFailureApprovalTool();
+    toolRegistry.register(tool);
+    const conversationId = `approval-safe-failure-${uuidv4()}`;
+    conversationRepo.create({
+      id: conversationId,
+      title: 'Approval Safe Failure',
+      routingMode: 'manual',
+    });
+    const approvalId = toolApprovalStore.create({
+      conversationId,
+      reason: '需要确认',
+      toolCall: {
+        id: 'approval-safe-failure-call',
+        type: 'function',
+        function: { name: tool.name, arguments: '{"value":"resume"}' },
+      },
+      resume: {
+        messages: [{ role: 'user', content: 'continue this task' }],
+        settings: { apiUrl: 'https://api.test', apiKey: 'test-key', modelId: 'test-model' },
+        agent: 'general',
+      },
+    });
+
+    const result = await resolveToolApproval(conversationId, approvalId, 'approve');
+    const call = vi.mocked(reactChat).mock.calls.at(-1);
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      continuation: { content: 'continued answer' },
+    });
+    expect(call?.[0]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: 'tool',
+          content: expect.stringContaining('safe operation failed'),
+        }),
+      ]),
+    );
+    expect(call?.[6]).toBeUndefined();
+  });
+
+  it('finalizes an unknown approval failure with tools disabled and sanitized error context', async () => {
+    const tool = new ApprovalServiceTool();
+    tool.execute.mockRejectedValue(new Error('wiki merge failed token=secret-value'));
+    toolRegistry.register(tool);
+    const conversationId = `approval-unknown-failure-${uuidv4()}`;
+    conversationRepo.create({
+      id: conversationId,
+      title: 'Approval Unknown Failure',
+      routingMode: 'manual',
+    });
+    const approvalId = toolApprovalStore.create({
+      conversationId,
+      reason: '需要确认',
+      toolCall: {
+        id: 'approval-unknown-failure-call',
+        type: 'function',
+        function: { name: tool.name, arguments: '{"value":"resume"}' },
+      },
+      resume: {
+        messages: [{ role: 'user', content: 'continue this task' }],
+        settings: { apiUrl: 'https://api.test', apiKey: 'test-key', modelId: 'test-model' },
+        agent: 'general',
+      },
+    });
+
+    const result = await resolveToolApproval(conversationId, approvalId, 'approve');
+    const call = vi.mocked(reactChat).mock.calls.at(-1);
+    const toolMessage = call?.[0].find((message) => message.role === 'tool');
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      continuation: { content: 'continued answer' },
+    });
+    expect(call?.[6]).toEqual({ maxToolCalls: 0 });
+    expect(toolMessage?.content).toContain('wiki merge failed');
+    expect(toolMessage?.content).toContain('token=[REDACTED]');
+    expect(toolMessage?.content).not.toContain('secret-value');
   });
 
   it('resumes the interrupted model round after approval', async () => {
@@ -145,6 +260,7 @@ describe('tool approval service', () => {
     toolRegistry.register(tool);
     const conversationId = `agent-run-approval-${uuidv4()}`;
     const runId = `original-agent-run-${uuidv4()}`;
+    const sessionRecorder = createSessionRecorder();
     conversationRepo.create({
       id: conversationId,
       title: 'AgentRun Approval',
@@ -163,6 +279,7 @@ describe('tool approval service', () => {
         messages: [{ role: 'user', content: 'continue this task' }],
         settings: { apiUrl: 'https://api.test', apiKey: 'test-key', modelId: 'test-model' },
         agent: 'general',
+        sessionRecorder,
       },
     });
     const run = new AgentRun({ runId, conversationId });
@@ -198,8 +315,83 @@ describe('tool approval service', () => {
       conversationId,
       undefined,
       run,
+      expect.objectContaining({ sessionRecorder }),
     );
+    expect(sessionRecorder.recordApproval).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'agent-run-approval-call', status: 'approved' }),
+    );
+    expect(sessionRecorder.recordToolDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'agent-run-approval-call' }),
+    );
+    expect(sessionRecorder.recordToolResult).toHaveBeenCalledWith(
+      expect.objectContaining({ callId: 'agent-run-approval-call', status: 'success' }),
+    );
+    expect(sessionRecorder.recordRunTerminal).toHaveBeenCalledWith('completed');
+    expect(sessionRecorder.close).toHaveBeenCalledOnce();
     expect(agentRunRegistry.get(runId)).toBeUndefined();
+  });
+
+  it('continues an active run after unknown approval failure with tools disabled', async () => {
+    const tool = new ApprovalServiceTool();
+    tool.execute.mockRejectedValue(new Error('wiki merge failed token=secret-value'));
+    toolRegistry.register(tool);
+    const conversationId = `agent-run-approval-failure-${uuidv4()}`;
+    const runId = `original-failed-approval-run-${uuidv4()}`;
+    conversationRepo.create({
+      id: conversationId,
+      title: 'AgentRun Approval Failure',
+      routingMode: 'manual',
+    });
+    const approvalId = toolApprovalStore.create({
+      conversationId,
+      reason: '需要确认',
+      toolCall: {
+        id: 'agent-run-failed-approval-call',
+        type: 'function',
+        function: { name: tool.name, arguments: '{"value":"resume"}' },
+      },
+      resume: {
+        runId,
+        messages: [{ role: 'user', content: 'continue this task' }],
+        settings: { apiUrl: 'https://api.test', apiKey: 'test-key', modelId: 'test-model' },
+        agent: 'general',
+      },
+    });
+    const run = new AgentRun({ runId, conversationId });
+    agentRunRegistry.register(run);
+    run.publish({ type: 'run_started', state: 'running' });
+    run.publish({
+      type: 'tool_call_start',
+      state: 'executing_tools',
+      round: 1,
+      callId: 'agent-run-failed-approval-call',
+      toolName: tool.name,
+      arguments: { value: 'resume' },
+    });
+    run.publish({
+      type: 'approval_required',
+      round: 1,
+      callId: 'agent-run-failed-approval-call',
+      toolName: tool.name,
+      approvalId,
+      reason: '需要确认',
+    });
+
+    const result = await resolveToolApproval(conversationId, approvalId, 'approve');
+    const call = vi.mocked(reactChat).mock.calls.at(-1);
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      continuation: { content: 'continued answer' },
+    });
+    expect(call?.[6]).toEqual({ maxToolCalls: 0 });
+    expect(call?.[7]).toBe(run);
+    expect(call?.[0]).toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        content: expect.stringContaining('wiki merge failed'),
+      }),
+    );
   });
 
   it('ends the original AgentRun when approval is denied without executing the tool', async () => {

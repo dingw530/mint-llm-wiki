@@ -227,6 +227,7 @@ describe('settingsService Jev settings', () => {
       memoryEnabled: false,
       memoryGateThreshold: 0.4,
       rerankEnabled: false,
+      wikiIdentityEnabled: false,
     });
   });
 
@@ -249,6 +250,13 @@ describe('settingsService Jev settings', () => {
     expect(settingsService.getJevSettings().routingEnabled).toBe(true);
   });
 
+  it('round-trips the independent Wiki identity switch and defaults it off', () => {
+    expect(settingsService.getJevSettings().wikiIdentityEnabled).toBe(false);
+    settingsService.save({ jevWikiIdentityEnabled: true });
+    expect(settingsService.getJevSettings().wikiIdentityEnabled).toBe(true);
+    expect(settingsService.getVisibleJevSettings().jevWikiIdentityEnabled).toBe(true);
+  });
+
   it('resets the switches to off when a save omits them, matching the full-overwrite contract', () => {
     settingsService.save({ jevRoutingEnabled: true, jevMemoryEnabled: true });
     expect(settingsService.getJevSettings().routingEnabled).toBe(true);
@@ -257,6 +265,7 @@ describe('settingsService Jev settings', () => {
 
     expect(settingsService.getJevSettings().routingEnabled).toBe(false);
     expect(settingsService.getJevSettings().memoryEnabled).toBe(false);
+    expect(settingsService.getJevSettings().wikiIdentityEnabled).toBe(false);
   });
 
   it('clamps out-of-range thresholds and timeouts instead of storing them', () => {

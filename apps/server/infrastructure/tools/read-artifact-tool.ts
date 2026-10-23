@@ -43,7 +43,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export class ReadArtifactTool extends BaseTool<ReadArtifactInput, ReadArtifactOutput> {
   readonly name = 'read_artifact';
   readonly description =
-    '读取大工具结果保存的 artifact。只能读取 Mint context-artifacts 目录内的 JSON 文件，支持 offset 和 max_chars 分页。';
+    '读取大工具结果保存的 artifact。只能读取 Mint context-artifacts 目录内的 JSON 文件，支持 offset 和 max_chars 分页。示例：{"path":"/.../result.json"} 从头读取；{"path":"/.../result.json","offset":12000,"max_chars":30000} 继续分页。';
   readonly inputSchema = ReadArtifactInputSchema;
 
   isReadOnly(): boolean {
@@ -95,8 +95,9 @@ export class ReadArtifactTool extends BaseTool<ReadArtifactInput, ReadArtifactOu
     }
 
     const content = await readFile(resolvedPath, 'utf8');
-    const offset = Math.min(input.offset, content.length);
-    const end = Math.min(content.length, offset + input.max_chars);
+    const offset = Math.min(input.offset ?? 0, content.length);
+    const maxChars = input.max_chars ?? 12_000;
+    const end = Math.min(content.length, offset + maxChars);
     const slice = content.slice(offset, end);
 
     return {

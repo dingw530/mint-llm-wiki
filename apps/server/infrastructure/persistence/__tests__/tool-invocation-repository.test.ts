@@ -41,7 +41,10 @@ describe('ToolInvocationRepository', () => {
       allowed: false,
       errorCode: 'INVOCATION_ALREADY_COMPLETED',
     });
-    expect(repository.get(input.runId, input.callId)).toMatchObject({ status: 'succeeded', attempt: 1 });
+    expect(repository.get(input.runId, input.callId)).toMatchObject({
+      status: 'succeeded',
+      attempt: 1,
+    });
   });
 
   it('allows a new attempt only after a known retryable failure with matching input', () => {
@@ -71,5 +74,58 @@ describe('ToolInvocationRepository', () => {
       errorCode: 'OUTCOME_UNKNOWN',
     });
     expect(repository.begin(input)).toMatchObject({ allowed: false, errorCode: 'OUTCOME_UNKNOWN' });
+  });
+
+  it('encrypts the exact argument JSON and retains it through unknown recovery', () => {
+    const argumentsJson = '{ "path": "report.md", "content": "partial body" }';
+    expect(repository.begin({ ...input, argumentsJson }).allowed).toBe(true);
+
+    const row = db
+      .prepare(
+        'SELECT arguments_encrypted FROM agent_tool_invocations WHERE run_id = ? AND call_id = ?',
+      )
+      .get(input.runId, input.callId) as { arguments_encrypted: string };
+    expect(row.arguments_encrypted).not.toContain('partial body');
+    expect(repository.get(input.runId, input.callId)).not.toHaveProperty('argumentsJson');
+    expect(repository.getArguments(input.runId, input.callId)).toBe(argumentsJson);
+
+    repository.markInterruptedUnknown();
+    expect(repository.begin({ ...input, argumentsJson })).toMatchObject({
+      allowed: false,
+      errorCode: 'OUTCOME_UNKNOWN',
+    });
+    expect(repository.getArguments(input.runId, input.callId)).toBe(argumentsJson);
+  });
+
+  it('keeps the first snapshot after safe retry and supports older rows without arguments', () => {
+    const firstArguments = '{"path":"first.txt"}';
+    expect(repository.begin({ ...input, argumentsJson: firstArguments }).allowed).toBe(true);
+    repository.finish({ ...input, status: 'failed', retryable: true });
+    expect(repository.begin({ ...input, argumentsJson: '{"path":"second.txt"}' }).allowed).toBe(
+      true,
+    );
+    expect(repository.getArguments(input.runId, input.callId)).toBe(firstArguments);
+
+    expect(
+      repository.begin({
+        ...input,
+        callId: 'legacy-call',
+        invocationId: 'legacy-invocation',
+      }).allowed,
+    ).toBe(true);
+    expect(repository.getArguments(input.runId, 'legacy-call')).toBeUndefined();
+  });
+
+  it('fails closed when arguments cannot be encrypted', () => {
+    const originalKey = process.env.AI_CHAT_ENCRYPTION_KEY;
+    delete process.env.AI_CHAT_ENCRYPTION_KEY;
+    try {
+      expect(() => repository.begin({ ...input, argumentsJson: '{"secret":"body"}' })).toThrow(
+        'Tool invocation encryption key is unavailable',
+      );
+    } finally {
+      process.env.AI_CHAT_ENCRYPTION_KEY = originalKey;
+    }
+    expect(repository.get(input.runId, input.callId)).toBeUndefined();
   });
 });

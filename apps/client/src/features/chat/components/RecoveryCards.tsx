@@ -52,11 +52,17 @@ export default function RecoveryCards({ runs, onResolve }: RecoveryCardsProps) {
             </div>
           </div>
           {run.unknownTools.length > 0 && (
-            <p className="agent-run-recovery-card__warning">工具结果未知，不会自动重放。</p>
+            <p className="agent-run-recovery-card__warning">
+              {run.unknownTools.some((tool) => tool.ledgerStatus === 'succeeded')
+                ? '工具账本记录执行成功，但原结果未保存。继续时会先核对外部状态，不会重试已成功的调用。'
+                : run.unknownTools.some((tool) => !tool.argumentsAvailable)
+                  ? '原始参数未恢复，无法安全重试。继续运行会先确认目标或核对实际状态。'
+                  : '工具结果未知，不会自动重放。'}
+            </p>
           )}
           {confirming === run.runId ? (
             <div className="agent-run-recovery-card__confirmation">
-              <p>这会创建新的运行，无法确认旧工具调用是否已经执行。</p>
+              <p>这会创建新的运行。先确认旧工具调用的实际状态，再决定后续操作。</p>
               <button
                 className="btn-primary"
                 type="button"

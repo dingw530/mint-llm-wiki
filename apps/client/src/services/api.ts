@@ -51,6 +51,11 @@ export {
 } from './api/settings';
 export { sendMessageStream } from './api/streaming';
 export { resolveToolApproval } from './api/toolApprovals';
+export {
+  getConversationTrajectory,
+  getConversationTrajectoryEvent,
+  subscribeConversationTrajectory,
+} from './api/trajectory';
 export { getSkills } from './api/skills';
 export {
   listWiki,

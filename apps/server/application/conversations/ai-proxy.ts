@@ -12,6 +12,8 @@ import type { ReactEventPayload } from '../../agent-runtime/react-events.js';
 import { estimateMessagesTokens } from '../../utils/token-estimator.js';
 import { randomUUID } from 'node:crypto';
 import { withLangfuseAgentContext } from '../../infrastructure/observability/langfuse.js';
+import type { RuntimeContext } from '../../agent-runtime/tooling/runtime-context.js';
+import { toStoredSessionMessage } from '../../agent-runtime/session-message-adapter.js';
 
 function getApiAdapter(settings: AiSettings): ApiAdapter {
   const adapter = getAdapter(settings.apiType || 'openai-chat');
@@ -44,6 +46,7 @@ export async function streamChat(
   agent?: string,
   conversationId?: string,
   existingRun?: AgentRun,
+  runtimeContext?: RuntimeContext,
 ): Promise<StreamResult> {
   await initializeAgentRuntime();
   const run = existingRun || createDurableAgentRun({ runId: randomUUID(), conversationId });
@@ -98,6 +101,18 @@ export async function streamChat(
           emitEvent: (event) => events.emit(event),
         }),
       );
+      runtimeContext?.sessionRecorder?.recordToolCatalog(1, []);
+      runtimeContext?.sessionRecorder?.recordModelMessage(
+        1,
+        [
+          toStoredSessionMessage({
+            role: 'assistant',
+            content: result.content,
+            reasoning: result.reasoning,
+          }),
+        ],
+        runtimeContext?.assistantMessageId,
+      );
       complete(messages, result);
       return result;
     } catch (err) {
@@ -115,6 +130,9 @@ export async function streamChat(
         settings,
         tools,
         adapter,
+        runId: run.runId,
+        round: 1,
+        runtimeContext,
         label: 'streamChat-tool1',
       }),
     );
@@ -142,6 +160,7 @@ export async function streamChat(
       tc,
       result.reasoning,
       conversationId,
+      { runId: run.runId, runtimeContext },
     );
     toolMessages.push(assistantMsg, toolMsg);
   }
@@ -158,6 +177,9 @@ export async function streamChat(
         messages: secondMessages,
         settings,
         adapter,
+        runId: run.runId,
+        round: 2,
+        runtimeContext,
         label: 'react-answer',
         emitEvent: (event) => events.emit(event),
       }),

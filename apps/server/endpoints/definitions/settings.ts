@@ -4,6 +4,7 @@ import type { EndpointDescriptor } from '../types.js';
 import type { SettingsInput } from '../../types.js';
 import * as vectorConnectionService from '../../infrastructure/search/vector-connection-verification.js';
 import * as jevConnectionService from '../../infrastructure/ai/jev-connection-verification.js';
+import * as networkProxyService from '../../infrastructure/network/network-proxy-service.js';
 import {
   MAX_JEV_TIMEOUT_MS,
   MIN_JEV_TIMEOUT_MS,
@@ -54,6 +55,8 @@ function toSettingsInput(data: Record<string, unknown>): SettingsInput {
       typeof data.jevMemoryGateThreshold === 'number' ? data.jevMemoryGateThreshold : undefined,
     jevRerankEnabled:
       typeof data.jevRerankEnabled === 'boolean' ? data.jevRerankEnabled : undefined,
+    jevWikiIdentityEnabled:
+      typeof data.jevWikiIdentityEnabled === 'boolean' ? data.jevWikiIdentityEnabled : undefined,
   };
 }
 
@@ -142,8 +145,72 @@ function saveSettings(data: Record<string, unknown>) {
     }
   }
   validateJevSettings(data);
+  validateNetworkProxySettings(data);
   settingsService.save(toSettingsInput(data));
+  if (hasNetworkProxySettings(data)) {
+    networkProxyService.saveNetworkProxySettings({
+      ...(typeof data.networkProxyEnabled === 'boolean'
+        ? { networkProxyEnabled: data.networkProxyEnabled }
+        : {}),
+      ...(typeof data.networkProxyUrl === 'string'
+        ? { networkProxyUrl: data.networkProxyUrl }
+        : {}),
+      ...(typeof data.networkProxyNoProxy === 'string'
+        ? { networkProxyNoProxy: data.networkProxyNoProxy }
+        : {}),
+      ...(typeof data.networkProxyClearUrl === 'boolean'
+        ? { networkProxyClearUrl: data.networkProxyClearUrl }
+        : {}),
+    });
+  }
   return { success: true };
+}
+
+function hasNetworkProxySettings(data: Record<string, unknown>): boolean {
+  return [
+    'networkProxyEnabled',
+    'networkProxyUrl',
+    'networkProxyNoProxy',
+    'networkProxyClearUrl',
+  ].some((key) => data[key] !== undefined);
+}
+
+function validateNetworkProxySettings(data: Record<string, unknown>): void {
+  if (data.networkProxyEnabled !== undefined && typeof data.networkProxyEnabled !== 'boolean') {
+    throw httpError(400, 'networkProxyEnabled must be a boolean');
+  }
+  if (data.networkProxyUrl !== undefined) {
+    if (typeof data.networkProxyUrl !== 'string' || data.networkProxyUrl.length > 2048) {
+      throw httpError(400, 'networkProxyUrl must be a URL under 2048 characters');
+    }
+    if (data.networkProxyUrl.trim()) {
+      try {
+        networkProxyService.validateNetworkProxyUrl(data.networkProxyUrl.trim());
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '代理地址无效';
+        throw httpError(400, message);
+      }
+    }
+  }
+  if (
+    data.networkProxyNoProxy !== undefined &&
+    (typeof data.networkProxyNoProxy !== 'string' || data.networkProxyNoProxy.length > 2048)
+  ) {
+    throw httpError(400, 'networkProxyNoProxy must be a string under 2048 characters');
+  }
+  if (data.networkProxyClearUrl !== undefined && typeof data.networkProxyClearUrl !== 'boolean') {
+    throw httpError(400, 'networkProxyClearUrl must be a boolean');
+  }
+}
+
+function getSettings() {
+  const settings = settingsService.get();
+  const networkProxySettings = networkProxyService.getVisibleNetworkProxySettings();
+  if (!networkProxySettings) return settings;
+  return {
+    ...settings,
+    ...networkProxySettings,
+  };
 }
 
 /** 校验 Jev 前先解析出待测连接配置：表单值优先，留空则用已存值。 */
@@ -162,7 +229,7 @@ export const settingsEndpoints: EndpointDescriptor[] = [
     method: 'GET',
     path: '/',
     preloadMethod: 'getSettings',
-    service: settingsService.get,
+    service: getSettings,
     result: 'direct',
   },
   {

@@ -1,0 +1,219 @@
+{
+  "mode": "claims",
+  "claims": [
+    {
+      "id": "AC-001",
+      "statement": "会话事件按持久序号确定性投影，保留模型消息与工具调用的分组、顺序和配对，不修改输入。",
+      "risk": "medium",
+      "invariants": ["contiguous_sequence", "tool_pairing", "detached_projection"],
+      "requiredEvidence": ["unit"],
+      "probes": ["session-contract"]
+    },
+    {
+      "id": "AC-002",
+      "statement": "每轮完整模型消息、模型可见工具结果及上下文变更均可从持久记录重建；可用的提供方消息字段按适配器契约保留。",
+      "risk": "high",
+      "invariants": ["semantic_round_durable", "context_provenance", "provider_payload_preserved"],
+      "requiredEvidence": ["integration"],
+      "probes": ["session-runtime"]
+    },
+    {
+      "id": "AC-003",
+      "statement": "每条工具执行路径在正文产生副作用前持久提交分派凭据和 Ledger 占位；提交失败不执行。",
+      "risk": "high",
+      "invariants": ["intent_before_effect", "atomic_dispatch_claim", "fail_closed"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-storage", "session-crash"]
+    },
+    {
+      "id": "AC-004",
+      "statement": "实际模型可见工具结果在下一次模型请求前已持久化；Ledger 成功而结果缺失时仍禁止盲目重放。",
+      "risk": "high",
+      "invariants": ["result_before_next_model", "success_without_result_no_replay"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-runtime", "session-crash"]
+    },
+    {
+      "id": "AC-005",
+      "statement": "冷恢复区分未分派、结果未知和已有结果，持久追加幂等修复，不自动执行旧工具。",
+      "risk": "high",
+      "invariants": [
+        "not_started_proven",
+        "unknown_not_failure",
+        "repair_idempotence",
+        "no_auto_replay"
+      ],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-recovery", "session-crash"]
+    },
+    {
+      "id": "AC-006",
+      "statement": "同进程活动运行不被冷修复；重启后从持久 Session 重建中断状态；追加按 lastSequence 比较并交换，冲突整批回滚。",
+      "risk": "high",
+      "invariants": ["no_live_repair", "session_reconstruction", "sequence_cas", "atomic_append"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-recovery", "session-crash"]
+    },
+    {
+      "id": "AC-007",
+      "statement": "普通新消息和恢复按钮使用同一历史构建入口，保留前序已完成调用与结果，保存新回答并关联 successor run。",
+      "risk": "high",
+      "invariants": [
+        "unified_history",
+        "successor_link",
+        "assistant_projection_once",
+        "no_history_loss"
+      ],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-runtime", "session-crash"]
+    },
+    {
+      "id": "AC-008",
+      "statement": "摘要和上下文替换可重建当前有效历史；恢复使用当前授权与适配器规则，不伪造 reasoning 或沿用失效审批。",
+      "risk": "high",
+      "invariants": ["active_view_replay", "current_authorization", "no_reasoning_fabrication"],
+      "requiredEvidence": ["integration"],
+      "probes": ["session-runtime"]
+    },
+    {
+      "id": "AC-009",
+      "statement": "旧会话仅导入真实消息并标记轨迹不完整；重复导入不重复，不补造历史调用、参数或结果。",
+      "risk": "medium",
+      "invariants": ["legacy_partial_marked", "no_fabricated_events", "seed_idempotence"],
+      "requiredEvidence": ["integration"],
+      "probes": ["session-storage"]
+    },
+    {
+      "id": "AC-010",
+      "statement": "Session 事件按 JSON 明文保存，详情读取校验会话归属；API 凭据及独立 Ledger 的敏感参数继续加密。",
+      "risk": "high",
+      "invariants": [
+        "payload_json",
+        "scope_checked",
+        "explicit_detail",
+        "ledger_secrets_encrypted"
+      ],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["session-api", "browser-ac"]
+    },
+    {
+      "id": "AC-011",
+      "statement": "历史快照和增量读取以同一持久游标衔接，重复或断线补拉不丢不重，HTTP 与 Electron IPC 返回同等语义。",
+      "risk": "high",
+      "invariants": [
+        "snapshot_watermark",
+        "cursor_gap_free",
+        "no_duplicate_rows",
+        "http_ipc_parity"
+      ],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-api", "session-transport"]
+    },
+    {
+      "id": "AC-012",
+      "statement": "独立 @mint/agent-ui 组件库可在最小 React 宿主运行，轨迹组件不导入 Mint API、路由、store 或服务端模块。",
+      "risk": "medium",
+      "invariants": ["portable_ui", "no_host_imports", "token_isolation"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-packages", "session-ui-integration"]
+    },
+    {
+      "id": "AC-013",
+      "statement": "聊天标题下提供可键盘操作的对话和轨迹页签；轨迹面板按 DeepSeek 参考布局呈现三泳道总览和有序事件列表。",
+      "risk": "medium",
+      "invariants": [
+        "tabs_accessible",
+        "three_lane_layout",
+        "independent_panel",
+        "safe_content_render"
+      ],
+      "requiredEvidence": ["browser"],
+      "probes": ["browser-ac"]
+    },
+    {
+      "id": "AC-014",
+      "statement": "轨迹面板支持时长、轮次、调用视图、搜索、类型过滤、总览定位及展开参数和结果，未知结果明确区别于执行失败。",
+      "risk": "medium",
+      "invariants": [
+        "search_and_filter",
+        "selection_links_row",
+        "details_exact",
+        "unknown_distinct"
+      ],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["session-api", "browser-ac"]
+    },
+    {
+      "id": "AC-015",
+      "statement": "强退重启或刷新后，已提交轨迹及新旧运行关联仍可查看；未持久化的流式尾部和旧记录缺口有明确说明。",
+      "risk": "high",
+      "invariants": [
+        "restart_same_trajectory",
+        "successor_visible",
+        "no_duplicate_rows",
+        "partial_tail_marked"
+      ],
+      "requiredEvidence": ["process-smoke", "browser"],
+      "probes": ["session-crash", "browser-ac", "session-restart-browser"]
+    },
+    {
+      "id": "AC-016",
+      "statement": "中断修复后用户可直接发送新问题；模型先获得原调用和未知结果再决定核对，输入草稿在切换轨迹页签时保留。",
+      "risk": "high",
+      "invariants": ["repair_before_new_turn", "no_automatic_retry", "draft_preserved"],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": ["session-runtime", "browser-ac", "session-restart-browser"]
+    },
+    {
+      "id": "AC-017",
+      "statement": "删除会话清除所属事件与载荷；关闭时停止接纳、排空已提交写入并释放所有权，不再由后台任务访问已关闭存储。",
+      "risk": "high",
+      "invariants": [
+        "conversation_cascade",
+        "no_new_work",
+        "drain",
+        "no_background_access_after_close"
+      ],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-storage", "session-crash"]
+    },
+    {
+      "id": "AC-018",
+      "statement": "ReAct、普通 stream 工具路径、审批继续、重新生成及取消均遵守统一记录规则，两个新包在 Web 和 Electron 构建中可加载。",
+      "risk": "high",
+      "invariants": ["react_stream_parity", "approval_and_abort_preserved", "web_electron_load"],
+      "requiredEvidence": ["integration", "process-smoke"],
+      "probes": ["session-runtime", "session-packages"]
+    },
+    {
+      "id": "AC-019",
+      "statement": "刷新或重启后聊天正文、推理和工具调用均从 Session 投影；messages 投影只用于关联已有消息 ID 和 A2UI。",
+      "risk": "high",
+      "invariants": [
+        "session_authoritative",
+        "chat_projection_complete",
+        "a2ui_linked",
+        "no_duplicate_messages"
+      ],
+      "requiredEvidence": ["integration", "browser"],
+      "probes": [
+        "session-authoritative-history",
+        "session-chat-ui-projection",
+        "session-restart-browser"
+      ]
+    },
+    {
+      "id": "AC-020",
+      "statement": "迁移一次性解密既有事件到 payload_json；迁移后新写入和读取均不依赖加解密，旧事件内容和顺序保持一致。",
+      "risk": "high",
+      "invariants": [
+        "legacy_payload_preserved",
+        "plaintext_json",
+        "migration_atomic",
+        "no_read_decrypt"
+      ],
+      "requiredEvidence": ["integration"],
+      "probes": ["session-authoritative-history"]
+    }
+  ]
+}

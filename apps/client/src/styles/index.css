@@ -163,90 +163,6 @@ body::after {
 
 /* === Extracted to separate CSS file (see styles/) === */
 
-/* Skills Panel */
-.skills-panel-body {
-  max-height: 70vh;
-  overflow-y: auto;
-  padding: 16px 24px 24px;
-}
-
-.skills-loading,
-.skills-empty {
-  text-align: center;
-  padding: 32px 0;
-  color: var(--text-tertiary);
-  font-size: 14px;
-}
-
-.skills-empty-hint {
-  margin-top: 8px;
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.skills-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.skill-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: var(--radius-md);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-subtle);
-  transition: all 0.15s ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-}
-
-.skill-card:hover {
-  border-color: var(--accent-border);
-  box-shadow: 0 2px 8px var(--accent-glow);
-}
-
-.skill-card-icon {
-  flex-shrink: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  background: var(--accent-subtle);
-  color: var(--accent);
-}
-
-.skill-card-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.skill-card-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.skill-card-desc {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
-  line-height: 1.3;
-}
-
-.skill-card-hint {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--text-tertiary);
-  background: var(--bg-tertiary);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-}
-
 /* === Extracted to separate CSS file (see styles/) === */
 
 /* --------------------------------------------
@@ -377,6 +293,40 @@ body::after {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-view-tabs {
+  align-self: stretch;
+  display: flex;
+  gap: 18px;
+  margin-left: 20px;
+  -webkit-app-region: no-drag;
+}
+
+.chat-view-tabs button {
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0 2px;
+}
+
+.chat-view-tabs button.is-active {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+
+.chat-conversation-view,
+.chat-trajectory-view {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.chat-trajectory-view {
+  padding: 20px 24px;
 }
 
 .memory-scope-control {
@@ -1396,6 +1346,11 @@ body::after {
   border-left-color: var(--warning-text, #d99a2b);
 }
 
+.tool-call-segment.tool-call-outcome_unknown {
+  opacity: 1;
+  border-left-color: var(--warning-text, #d99a2b);
+}
+
 .tool-call-header {
   display: flex;
   align-items: center;
@@ -1429,6 +1384,12 @@ body::after {
 }
 
 .tool-call-status-approval {
+  color: var(--warning-text, #d99a2b);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tool-call-status-unknown {
   color: var(--warning-text, #d99a2b);
   font-size: 11px;
   font-weight: 700;
@@ -1471,6 +1432,14 @@ body::after {
   margin-top: 4px;
   padding: 4px 8px;
   background: var(--error-bg);
+  border-radius: var(--radius-sm);
+}
+
+.tool-call-unknown-body {
+  color: var(--warning-text, #d99a2b);
+  font-size: 12px;
+  margin-top: 4px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
 }
 
@@ -1972,6 +1941,88 @@ body::after {
   background: var(--error-bg);
   color: var(--error-text);
   border: 1px solid var(--error-border);
+}
+
+.update-toast {
+  position: fixed;
+  z-index: 1000;
+  top: 20px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: min(520px, calc(100vw - 32px));
+  padding: 16px 18px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  animation: toastDrop 0.4s var(--ease-spring);
+  font-family: var(--font-body);
+}
+
+.update-toast__copy {
+  display: grid;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.update-toast__copy strong {
+  font-size: 13px;
+}
+
+.update-toast__copy span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.update-toast__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.update-toast__actions button {
+  padding: 7px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.update-toast__actions .update-toast__install {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.update-toast__actions button:hover {
+  filter: brightness(1.08);
+}
+
+.update-toast__actions button:disabled {
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.6;
+}
+
+@media (max-width: 560px) {
+  .update-toast {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .update-toast__actions {
+    justify-content: flex-end;
+  }
 }
 
 /* --------------------------------------------
@@ -3921,11 +3972,12 @@ body::after {
 }
 
 .agent-run-status {
-  display: inline-flex;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   width: auto;
-  max-width: none;
+  max-width: min(100%, 720px);
   padding: 7px 2px;
   border: 0;
   border-radius: 0;
@@ -3933,8 +3985,9 @@ body::after {
   box-shadow: none;
   color: var(--text-secondary);
   font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
+  white-space: normal;
+  overflow: visible;
+  pointer-events: auto;
 }
 
 .agent-run-status-pulse {
@@ -3969,6 +4022,34 @@ body::after {
 .agent-run-status-warning,
 .agent-run-status-error {
   color: var(--error-text, #c55);
+}
+.agent-run-status-summary,
+.agent-run-subagent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.agent-run-subagent {
+  padding-left: 15px;
+}
+.agent-run-subagent-reason {
+  color: var(--text-secondary);
+}
+.agent-run-subagent-actions {
+  display: inline-flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+.agent-run-subagent-actions button {
+  padding: 3px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .decision-trace summary {

@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
 import './styles/index.css';
+import '@mint/agent-ui/styles.css';
 
 /**
  * Apply the platform marker used by macOS Electron-only surfaces.

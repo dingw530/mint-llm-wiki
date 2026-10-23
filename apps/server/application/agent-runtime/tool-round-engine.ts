@@ -10,7 +10,7 @@ import type {
   ParsedChunk,
 } from '../../infrastructure/ai/adapters/api-adapter.js';
 import { getAdapter } from '../../infrastructure/ai/adapters/api-adapter.js';
-import { executeTool, executeToolDetailed, getToolResultSummary } from './tool-execution-service.js';
+import { executeToolDetailed, getToolResultSummary } from './tool-execution-service.js';
 import { createLogger } from '../../infrastructure/observability/logger.js';
 import type { Sink } from '../../agent-runtime/output-sink.js';
 import type { ReactEventPayload } from '../../agent-runtime/react-events.js';
@@ -24,6 +24,8 @@ import type {
 import { getErrorMessage } from '../../utils/typeGuards.js';
 import type { RuntimeContext } from '../../agent-runtime/tooling/runtime-context.js';
 import { ToolRetryableError } from '../../agent-runtime/tooling/tool-errors.js';
+import { copyJsonValue } from '@mint/session';
+import { toStoredSessionMessage } from '../../agent-runtime/session-message-adapter.js';
 
 const log = createLogger('tool-loop');
 
@@ -151,15 +153,32 @@ export class ToolLoopEngine {
 
     log.debug('executeRound', { label: label || 'unnamed', toolCount: tools?.length || 0 });
 
+    input.runtimeContext?.sessionRecorder?.recordToolCatalog(
+      input.round ?? 1,
+      (tools ?? []).map((tool) => copyJsonValue(tool)),
+    );
     const stream = await adapter.stream(messages, settings, apiUrl, apiKey, tools, { signal });
 
     const eventType =
       label === 'react-answer' ? 'answer' : label === 'react-thought' ? 'thought' : undefined;
-    return await parseSSEStream(stream, adapter, sink, {
+    const result = await parseSSEStream(stream, adapter, sink, {
       eventType,
       signal,
       emitEvent: input.emitEvent,
     });
+    input.runtimeContext?.sessionRecorder?.recordModelMessage(
+      input.round ?? 1,
+      [
+        toStoredSessionMessage({
+          role: 'assistant',
+          content: result.content,
+          reasoning: result.reasoning,
+          ...(result.toolCalls ? { tool_calls: result.toolCalls } : {}),
+        }),
+      ],
+      !result.toolCalls ? input.runtimeContext?.assistantMessageId : undefined,
+    );
+    return result;
   }
 
   // 执行工具并返回拼接用的 message 对
@@ -167,10 +186,19 @@ export class ToolLoopEngine {
     tc: ToolCall,
     reasoning?: string,
     conversationId = '',
+    options: { runId?: string; runtimeContext?: RuntimeContext } = {},
   ): Promise<ToolExecutionResult> {
+    let execution: Awaited<ReturnType<typeof executeToolDetailed>> | undefined;
     let toolResult: unknown;
     try {
-      toolResult = await executeTool(tc, conversationId);
+      execution = await executeToolDetailed(tc, conversationId, options);
+      toolResult = execution.success
+        ? execution.data
+        : {
+            error: execution.error,
+            errorCode: execution.errorCode,
+            ...(execution.outcomeUnknown ? { outcomeUnknown: true } : {}),
+          };
       log.debug('tool executed', {
         name: tc.function.name,
         resultPreview: JSON.stringify(toolResult).substring(0, 200),
@@ -196,7 +224,29 @@ export class ToolLoopEngine {
       content: resultStr,
     };
 
-    return { assistantMsg, toolMsg, succeeded: true, rawResult: toolResult };
+    if (options.runtimeContext?.sessionRecorder) {
+      options.runtimeContext.sessionRecorder.recordToolResult({
+        callId: tc.id,
+        toolName: tc.function.name,
+        status: execution?.outcomeUnknown
+          ? 'outcome_unknown'
+          : execution?.success
+            ? 'success'
+            : 'failed',
+        message: toStoredSessionMessage(toolMsg),
+      });
+    }
+
+    return {
+      assistantMsg,
+      toolMsg,
+      succeeded: execution?.success ?? false,
+      ...(execution?.outcomeUnknown ? { outcomeUnknown: true } : {}),
+      ...(execution?.dispatchCommitted === undefined
+        ? {}
+        : { dispatchCommitted: execution.dispatchCommitted }),
+      rawResult: toolResult,
+    };
   }
 
   // 执行工具并支持重试（用于 reactChat 场景）
@@ -226,8 +276,9 @@ export class ToolLoopEngine {
         execution = {
           success: false,
           error: getErrorMessage(error),
-          errorCode: 'TOOL_FAILED',
+          errorCode: 'OUTCOME_UNKNOWN',
           retryable: false,
+          outcomeUnknown: true,
           duration: 0,
         };
       }
@@ -258,9 +309,9 @@ export class ToolLoopEngine {
           errorCode: execution.errorCode,
           retryable: execution.retryable,
           ...(execution.outcomeUnknown ? { outcomeUnknown: true } : {}),
+          ...(execution.diagnosticError ? { diagnosticError: execution.diagnosticError } : {}),
           ...(approvalRequired ? { approvalRequired } : {}),
         };
-
     const resultStr = await serializeToolResultForContext(toolResult, {
       summary: succeeded ? getToolResultSummary(stableCall, toolResult) : undefined,
       conversationId,
@@ -284,6 +335,8 @@ export class ToolLoopEngine {
       succeeded,
       errorCode: execution.errorCode,
       retryable: execution.retryable,
+      outcomeUnknown: execution.outcomeUnknown,
+      diagnosticError: execution.diagnosticError,
       resultSummary: succeeded ? getToolResultSummary(stableCall, toolResult) : undefined,
       approvalRequired,
       rawResult: toolResult,

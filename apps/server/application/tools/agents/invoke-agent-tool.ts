@@ -13,6 +13,111 @@ import * as agentService from '../../../domains/agents/index.js';
 import * as settingsService from '../../../application/settings/settings-service.js';
 import { AccumulatingSink } from '../../../infrastructure/transports/sinks.js';
 
+import { agentRunRegistry, type AgentRun } from '../../../agent-runtime/agent-run.js';
+import type { ReactEvent } from '../../../agent-runtime/react-events.js';
+
+/** Captures child events locally and relays lifecycle changes to the parent run. */
+class SubagentEventSink extends AccumulatingSink {
+  private detachChild?: () => void;
+  private childObserved = false;
+
+  constructor(
+    private readonly parentRun: AgentRun | undefined,
+    private readonly agentId: string,
+  ) {
+    super();
+  }
+
+  /** Accumulates child events and forwards the events not covered by observation. */
+  override writeEvent(event: ReactEvent): void {
+    super.writeEvent(event);
+    if (event.type === 'run_started') {
+      const childRun = agentRunRegistry.get(event.runId);
+      this.publishStatus(event.runId, 'running');
+      if (childRun) {
+        this.detachChild = childRun.subscribe((childEvent) => this.forward(childEvent));
+        this.childObserved = true;
+      }
+      return;
+    }
+    if (!this.childObserved) this.forward(event);
+  }
+
+  /** Relays selected child lifecycle events and approval state. */
+  private forward(event: ReactEvent): void {
+    switch (event.type) {
+      case 'round_started':
+        this.publishStatus(event.runId, 'running', { round: event.round });
+        break;
+      case 'tool_call_start':
+        this.publishStatus(event.runId, 'running', {
+          round: event.round,
+          toolName: event.toolName,
+        });
+        break;
+      case 'approval_required':
+        this.publishStatus(event.runId, 'awaiting_parent_action', {
+          approvalId: event.approvalId,
+          round: event.round,
+          toolName: event.toolName,
+          reason: event.reason,
+        });
+        break;
+      case 'subagent_status':
+        this.parentRun?.publish({
+          type: 'subagent_status',
+          childRunId: event.childRunId,
+          agentId: event.agentId,
+          status: event.status,
+          approvalId: event.approvalId,
+          round: event.round,
+          toolName: event.toolName,
+          reason: event.reason,
+        });
+        break;
+      case 'run_completed':
+        this.publishStatus(event.runId, 'completed');
+        this.detachChild?.();
+        this.detachChild = undefined;
+        this.childObserved = false;
+        break;
+      case 'run_failed':
+        this.publishStatus(event.runId, 'failed', { reason: event.error });
+        this.detachChild?.();
+        this.detachChild = undefined;
+        this.childObserved = false;
+        break;
+      case 'run_cancelled':
+        this.publishStatus(event.runId, 'cancelled');
+        this.detachChild?.();
+        this.detachChild = undefined;
+        this.childObserved = false;
+        break;
+      default:
+        break;
+    }
+  }
+
+  /** Publishes one child status through the parent run's ordered event stream. */
+  private publishStatus(
+    childRunId: string,
+    status: 'running' | 'awaiting_parent_action' | 'completed' | 'failed' | 'cancelled',
+    details: {
+      approvalId?: string;
+      round?: number;
+      toolName?: string;
+      reason?: string;
+    } = {},
+  ): void {
+    this.parentRun?.publish({
+      type: 'subagent_status',
+      childRunId,
+      agentId: this.agentId,
+      status,
+      ...details,
+    });
+  }
+}
 // ── 输入 Schema ──
 
 const InvokeAgentInputSchema = z.object({
@@ -142,7 +247,8 @@ ${agents || '(暂无可用 Worker)'}
     const signal = controller.signal;
 
     // 6. 走完整 ReAct 循环（或无工具直连路径）
-    const sink = new AccumulatingSink();
+    const parentRun = context.runId ? agentRunRegistry.get(context.runId) : undefined;
+    const sink = new SubagentEventSink(parentRun, agentId);
 
     try {
       const result = await runAgentChat(

@@ -55,6 +55,71 @@ export function getNodesWithSource(): GraphNode[] {
   return graphRepo.getAllNodesWithSource();
 }
 
+/** Merge graph nodes for a retired Wiki path into its canonical page node. */
+export function mergeWikiPageNode(
+  sourcePath: string,
+  targetPath: string,
+  targetLabel: string,
+  targetType: string,
+): { targetNodeId: string; mergedNodeCount: number; rewiredEdgeCount: number } {
+  return graphRepo.transaction(() => {
+    const allNodes = graphRepo.getAllNodesWithSource();
+    const sourceNodes = allNodes.filter((node) => node.sourceFile === sourcePath);
+    const targetNode =
+      allNodes.find((node) => node.sourceFile === targetPath) ||
+      graphRepo
+        .searchNodes(targetLabel)
+        .find(
+          (node) =>
+            node.label === targetLabel && !sourceNodes.some((source) => source.id === node.id),
+        );
+    const canonicalNode =
+      targetNode ||
+      sourceNodes[0] ||
+      graphRepo.createNode({
+        label: targetLabel,
+        type: targetType,
+        sourceFile: targetPath,
+      });
+    graphRepo.updateNodeType(canonicalNode.id, targetType);
+    graphRepo.updateNodeSourceFile(canonicalNode.id, targetPath);
+
+    let mergedNodeCount = 0;
+    let rewiredEdgeCount = 0;
+    for (const sourceNode of sourceNodes) {
+      if (sourceNode.id === canonicalNode.id) continue;
+      const neighbors = graphRepo.getNodeNeighbors(sourceNode.id);
+      for (const edge of neighbors?.edges || []) {
+        const sourceId = edge.sourceId === sourceNode.id ? canonicalNode.id : edge.sourceId;
+        const targetId = edge.targetId === sourceNode.id ? canonicalNode.id : edge.targetId;
+        if (
+          sourceId === targetId ||
+          graphRepo.findEdgeByTriple(sourceId, edge.relation, targetId)
+        ) {
+          continue;
+        }
+        graphRepo.createEdge({
+          sourceId,
+          relation: edge.relation,
+          targetId,
+          properties: edge.properties,
+          source: graphEdgeSource(edge.source),
+        });
+        rewiredEdgeCount += 1;
+      }
+      graphRepo.deleteNode(sourceNode.id);
+      mergedNodeCount += 1;
+    }
+    return { targetNodeId: canonicalNode.id, mergedNodeCount, rewiredEdgeCount };
+  });
+}
+
+/** Keep only graph edge provenance values accepted by the repository contract. */
+function graphEdgeSource(source: string): 'manual' | 'auto-extracted' | 'ai-generated' {
+  if (source === 'auto-extracted' || source === 'ai-generated') return source;
+  return 'manual';
+}
+
 /** Find the canonical graph node matching an exact label. */
 export function findNodeByLabel(label: string): GraphNode | null {
   return graphRepo.searchNodes(label).find((node) => node.label === label) ?? null;

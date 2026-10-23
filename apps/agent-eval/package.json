@@ -25,7 +25,7 @@
     "eval:pairwise:elo": "node ../../scripts/with-node-version.cjs tsx src/cli.ts pairwise:elo"
   },
   "dependencies": {
-    "mint-server": "1.0.0"
+    "mint-server": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

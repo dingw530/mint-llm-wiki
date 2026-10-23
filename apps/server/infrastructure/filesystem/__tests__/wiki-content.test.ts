@@ -47,6 +47,7 @@ describe('tryParseLooseJson', () => {
           filename: 'pages/test/cat.md',
           title: 'Test',
           tags: ['tag1'],
+          aliases: ['RAG', 'Retrieval Augmented Generation'],
           created: '2026-06-23',
           source: 'src.txt',
           content: '# Title\n\nBody\n',
@@ -58,6 +59,7 @@ describe('tryParseLooseJson', () => {
     expect(result.pages).toHaveLength(1);
     expect(result.pages[0].content).toContain('\n');
     expect(result.pages[0].content).not.toContain('\\n');
+    expect(result.pages[0].aliases).toEqual(['RAG', 'Retrieval Augmented Generation']);
   });
 
   it('解析 AI 返回的带真实换行符的非标准 JSON（内容中有未转义换行）', () => {
@@ -68,6 +70,7 @@ describe('tryParseLooseJson', () => {
       "filename": "pages/ai/test.md",
       "title": "标题",
       "tags": ["标签1", "标签2"],
+      "aliases": ["RAG", "检索增强生成"],
       "created": "2026-06-23",
       "source": "source.txt",
       "content": "# 第一章
@@ -91,6 +94,7 @@ describe('tryParseLooseJson', () => {
     expect(result.pages[0].content).not.toContain('\\n');
     expect(result.pages[0].title).toBe('标题');
     expect(result.pages[0].tags).toEqual(['标签1', '标签2']);
+    expect(result.pages[0].aliases).toEqual(['RAG', '检索增强生成']);
     expect(result.pages[0].filename).toBe('pages/ai/test.md');
   });
 
@@ -194,6 +198,23 @@ describe('writeWikiPages', () => {
     // body should have real newlines, not literal \n
     expect(content).toContain('# Title\n\nParagraph 1\n\nParagraph 2');
     expect(content).not.toContain('\\n');
+  });
+
+  it('写入 aliases 到 frontmatter 以供后续身份匹配', () => {
+    const pages: CompiledPage[] = [
+      {
+        filename: 'pages/test/alias-page.md',
+        title: 'Canonical Name',
+        tags: [],
+        aliases: ['Short Name', '译名'],
+        content: '# Canonical Name\n\nBody',
+      },
+    ];
+
+    writeWikiPages(tmpDir, pages);
+
+    const content = fs.readFileSync(path.join(tmpDir, 'pages/test/alias-page.md'), 'utf-8');
+    expect(content).toContain('aliases: ["Short Name", "译名"]');
   });
 
   it('重建索引时保留多级目录页面', () => {

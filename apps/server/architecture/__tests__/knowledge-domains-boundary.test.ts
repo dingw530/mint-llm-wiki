@@ -16,11 +16,6 @@ describe('Skills, knowledge graph and Wiki management boundaries', () => {
     ['domains/skills/skill-service.ts', 'domains/wiki/wiki-service.ts', false],
     ['endpoints/definitions/wiki.ts', 'domains/wiki/wiki-service.ts', false],
     [
-      'application/tools/skills/skill-tool.ts',
-      'infrastructure/filesystem/skills-directory.ts',
-      false,
-    ],
-    [
       'application/conversations/message-service.ts',
       'infrastructure/persistence/graph-repository.ts',
       false,

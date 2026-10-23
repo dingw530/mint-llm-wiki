@@ -4,12 +4,14 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const adapter = { call: vi.fn() };
+const resolveWikiPageIdentity = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../infrastructure/ai/adapters/api-adapter.js', () => ({
   getAdapter: vi.fn(() => adapter),
 }));
+vi.mock('../identity/wiki-identity-resolver.js', () => ({ resolveWikiPageIdentity }));
 
-import { compileSource } from '../wiki-compiler.js';
+import { compileSource, prepareExistingWikiPageMerge } from '../wiki-compiler.js';
 
 const settings = {
   apiUrl: 'https://example.com/v1',
@@ -43,6 +45,8 @@ describe('compileSource', () => {
   beforeEach(() => {
     wikiPath = createWikiFixture();
     vi.clearAllMocks();
+    adapter.call.mockReset();
+    resolveWikiPageIdentity.mockReset().mockResolvedValue({ kind: 'different', provider: 'llm' });
   });
 
   afterEach(() => {
@@ -205,7 +209,7 @@ describe('compileSource', () => {
     );
   });
 
-  it('deduplicates a page whose title already exists', async () => {
+  it('maps an exact title to the existing path and keeps old and new page content', async () => {
     fs.mkdirSync(path.join(wikiPath, 'pages', 'concepts'), { recursive: true });
     fs.writeFileSync(
       path.join(wikiPath, 'pages', 'concepts', 'existing.md'),
@@ -231,14 +235,255 @@ describe('compileSource', () => {
 
     const result = await compileSource(settings, wikiPath, 'source text', 'notes.md');
 
-    expect(result.pages).toEqual([]);
-    expect(result.relationships).toEqual([
-      expect.objectContaining({
-        source: 'Existing Concept',
-        target: 'Existing Concept',
-        relation: '属于',
+    expect(result.pages).toHaveLength(1);
+    expect(result.pages[0]).toMatchObject({
+      filename: 'pages/concepts/existing.md',
+      title: 'Existing Concept',
+    });
+    const savedPage = fs.readFileSync(path.join(wikiPath, result.pages[0].filename), 'utf-8');
+    expect(savedPage).toContain('old');
+    expect(savedPage).toContain('duplicate');
+    expect(resolveWikiPageIdentity).not.toHaveBeenCalled();
+  });
+
+  it('maps an exact existing alias to its canonical page and remaps claims and relationships', async () => {
+    fs.mkdirSync(path.join(wikiPath, 'pages', 'concepts'), { recursive: true });
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'concepts', 'retrieval-augmented-generation.md'),
+      '---\ntitle: Retrieval-Augmented Generation\naliases: [RAG]\n---\n\nold',
+    );
+    adapter.call.mockResolvedValue(
+      JSON.stringify({
+        pages: [
+          {
+            filename: 'pages/concepts/rag.md',
+            title: 'RAG',
+            tags: [],
+            content: 'source text',
+          },
+          {
+            filename: 'pages/concepts/embeddings.md',
+            title: 'Embeddings',
+            tags: [],
+            content: 'source text',
+          },
+        ],
+        claims: [
+          { pageTitle: 'RAG', text: 'source text', evidenceQuote: 'source text' },
+          { pageTitle: 'Embeddings', text: 'source text', evidenceQuote: 'source text' },
+        ],
+        relationships: [{ source: 'RAG', target: 'Embeddings', relation: '相关于' }],
+        summary: 'alias match',
       }),
+    );
+
+    const result = await compileSource(settings, wikiPath, 'source text', 'notes.md');
+
+    expect(result.pages.map((page) => page.filename)).toContain(
+      'pages/concepts/retrieval-augmented-generation.md',
+    );
+    expect(result.compiledPages.map((page) => page.title)).toContain(
+      'Retrieval-Augmented Generation',
+    );
+    expect(result.claims.find((claim) => claim.text === 'source text')?.pageTitle).toBe(
+      'Retrieval-Augmented Generation',
+    );
+    expect(result.relationships).toContainEqual({
+      source: 'Retrieval-Augmented Generation',
+      target: 'Embeddings',
+      relation: '相关于',
+    });
+    expect(
+      fs.readFileSync(
+        path.join(wikiPath, 'pages/concepts/retrieval-augmented-generation.md'),
+        'utf-8',
+      ),
+    ).toContain('aliases: ["RAG"]');
+  });
+
+  it('recalls and unions a separate Top-K candidate set for each title and alias', async () => {
+    const pagesDir = path.join(wikiPath, 'pages', 'concepts');
+    fs.mkdirSync(pagesDir, { recursive: true });
+    const existingTitles = [
+      ...['A', 'B', 'C', 'D', 'E', 'F'].map((suffix) => `AlphaProject ${suffix}`),
+      ...['A', 'B', 'C', 'D', 'E', 'F'].map((suffix) => `BetaProject ${suffix}`),
+    ];
+    existingTitles.forEach((title, index) => {
+      const slug = title.replace(/\s+/g, '-').toLowerCase();
+      fs.writeFileSync(
+        path.join(pagesDir, `${slug}.md`),
+        `---\ntitle: ${title}\n---\n\nexisting content ${index}`,
+      );
+    });
+    adapter.call.mockResolvedValue(
+      JSON.stringify({
+        pages: [
+          {
+            filename: 'pages/concepts/portfolio.md',
+            title: 'Portfolio',
+            aliases: ['AlphaProject', 'BetaProject', 'Alpha Project'],
+            tags: [],
+            content: 'source text',
+          },
+        ],
+        claims: [{ pageTitle: 'Portfolio', text: 'source text', evidenceQuote: 'source text' }],
+        relationships: [],
+        summary: 'candidate recall',
+      }),
+    );
+
+    await compileSource(settings, wikiPath, 'source text', 'notes.md');
+
+    const candidates = resolveWikiPageIdentity.mock.calls[0]?.[1];
+    expect(candidates).toHaveLength(10);
+    expect(candidates?.map((candidate) => candidate.title)).toEqual(
+      expect.arrayContaining([
+        'AlphaProject A',
+        'AlphaProject B',
+        'AlphaProject C',
+        'AlphaProject D',
+        'AlphaProject E',
+        'BetaProject A',
+        'BetaProject B',
+        'BetaProject C',
+        'BetaProject D',
+        'BetaProject E',
+      ]),
+    );
+    expect(candidates?.map((candidate) => candidate.filename)).toHaveLength(
+      new Set(candidates?.map((candidate) => candidate.filename)).size,
+    );
+  });
+
+  it('prepares an existing-page merge with the same exact-alias target without writing files', async () => {
+    const pagesDir = path.join(wikiPath, 'pages', 'concepts');
+    fs.mkdirSync(pagesDir, { recursive: true });
+    const targetPath = 'pages/concepts/canonical.md';
+    const sourcePath = 'pages/concepts/source-alias.md';
+    const targetMarkdown = '---\ntitle: Canonical\naliases: [Source Alias]\n---\n\ntarget body';
+    const sourceMarkdown = '---\ntitle: Source Alias\n---\n\nsource body';
+    fs.writeFileSync(path.join(wikiPath, targetPath), targetMarkdown);
+    fs.writeFileSync(path.join(wikiPath, sourcePath), sourceMarkdown);
+    adapter.call.mockResolvedValue(
+      '---\ntitle: Canonical\naliases: [Source Alias]\n---\n\ntarget body\n\nsource body',
+    );
+
+    const plan = await prepareExistingWikiPageMerge(settings, wikiPath, sourcePath);
+
+    expect(plan.decision).toEqual({
+      kind: 'match',
+      targetPath,
+      provider: 'deterministic',
+    });
+    expect(plan.candidates.map((candidate) => candidate.filename)).toEqual([targetPath]);
+    expect(plan.mergedTargetPage).toMatchObject({ filename: targetPath, title: 'Canonical' });
+    expect(plan.mergedTargetPage?.content).toContain('target body');
+    expect(plan.mergedTargetPage?.content).toContain('source body');
+    expect(fs.readFileSync(path.join(wikiPath, targetPath), 'utf8')).toBe(targetMarkdown);
+    expect(fs.readFileSync(path.join(wikiPath, sourcePath), 'utf8')).toBe(sourceMarkdown);
+    expect(resolveWikiPageIdentity).not.toHaveBeenCalled();
+  });
+
+  it('coalesces multiple alias matches into one update without dropping either page body', async () => {
+    fs.mkdirSync(path.join(wikiPath, 'pages', 'concepts'), { recursive: true });
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'concepts', 'canonical.md'),
+      '---\ntitle: Canonical Concept\naliases: [Alias A, Alias B]\n---\n\nold body',
+    );
+    adapter.call.mockResolvedValue(
+      JSON.stringify({
+        pages: [
+          {
+            filename: 'pages/concepts/alias-a.md',
+            title: 'Alias A',
+            tags: ['a'],
+            content: 'fact from alias A',
+          },
+          {
+            filename: 'pages/concepts/alias-b.md',
+            title: 'Alias B',
+            tags: ['b'],
+            content: 'fact from alias B',
+          },
+        ],
+        claims: [
+          { pageTitle: 'Alias A', text: 'claim A', evidenceQuote: 'source text' },
+          { pageTitle: 'Alias B', text: 'claim B', evidenceQuote: 'source text' },
+        ],
+        relationships: [],
+        summary: 'two aliases',
+      }),
+    );
+
+    const result = await compileSource(settings, wikiPath, 'source text', 'notes.md');
+
+    expect(result.pages).toHaveLength(1);
+    expect(result.pages[0].filename).toBe('pages/concepts/canonical.md');
+    expect(result.claims.map((claim) => claim.pageTitle)).toEqual([
+      'Canonical Concept',
+      'Canonical Concept',
     ]);
+    const savedPage = fs.readFileSync(path.join(wikiPath, result.pages[0].filename), 'utf-8');
+    expect(savedPage).toContain('old body');
+    expect(savedPage).toContain('fact from alias A');
+    expect(savedPage).toContain('fact from alias B');
+  });
+
+  it('keeps a title-similar page when the identity resolver says it is different', async () => {
+    fs.mkdirSync(path.join(wikiPath, 'pages', 'concepts'), { recursive: true });
+    fs.writeFileSync(
+      path.join(wikiPath, 'pages', 'concepts', 'new.md'),
+      '---\ntitle: Existing Concept\n---\n\nold',
+    );
+    adapter.call
+      .mockResolvedValueOnce(
+        JSON.stringify({
+          pages: [
+            {
+              filename: 'pages/concepts/new.md',
+              title: 'Existing Concept v2',
+              tags: [],
+              content: 'source text',
+            },
+          ],
+          claims: [
+            { pageTitle: 'Existing Concept v2', text: 'source text', evidenceQuote: 'source text' },
+          ],
+          relationships: [],
+          summary: 'different page',
+        }),
+      )
+      .mockResolvedValueOnce(JSON.stringify({ decision: 'different' }));
+
+    const result = await compileSource(settings, wikiPath, 'source text', 'notes.md', {
+      jevSettings: {
+        apiUrl: 'https://typesafe.example/v1/systemone',
+        apiKey: 'secret',
+        model: 'jev-test',
+        timeoutMs: 1000,
+        routingEnabled: false,
+        routingMinConfidence: 0.5,
+        routingBypassOnKeyword: true,
+        memoryEnabled: false,
+        memoryGateThreshold: 0.4,
+        wikiIdentityEnabled: true,
+      },
+    });
+
+    expect(resolveWikiPageIdentity).toHaveBeenCalledOnce();
+    expect(resolveWikiPageIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Existing Concept v2' }),
+      expect.arrayContaining([expect.objectContaining({ title: 'Existing Concept' })]),
+      expect.objectContaining({ jevEnabled: true }),
+      { jev: undefined },
+    );
+    expect(result.pages).toHaveLength(1);
+    expect(result.pages[0].filename).toMatch(/^pages\/concepts\/new-[a-f0-9]{8}\.md$/);
+    expect(result.pages[0].title).toBe('Existing Concept v2');
+    expect(fs.readFileSync(path.join(wikiPath, result.pages[0].filename), 'utf-8')).toContain(
+      'source text',
+    );
+    expect(fs.readFileSync(path.join(wikiPath, 'pages/concepts/new.md'), 'utf-8')).toContain('old');
   });
 
   it('rejects compiled pages without claims before writing', async () => {

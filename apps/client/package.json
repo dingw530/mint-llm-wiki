@@ -1,19 +1,24 @@
 {
   "name": "mint-client",
   "private": true,
-  "version": "1.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "type": "module",
   "scripts": {
+    "predev": "npm run build -w @mint/session && npm run build -w @mint/agent-ui",
     "dev": "vite",
+    "prebuild": "npm run build -w @mint/session && npm run build -w @mint/agent-ui",
     "build": "vite build",
-    "typecheck": "node ../../scripts/with-node-version.cjs tsc --noEmit",
+    "typecheck": "npm run build -w @mint/session && npm run build -w @mint/agent-ui && node ../../scripts/with-node-version.cjs tsc --noEmit",
     "preview": "vite preview",
+    "pretest": "npm run build -w @mint/session && npm run build -w @mint/agent-ui",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
     "lint": "eslint . --config ../../eslint.config.mjs"
   },
   "dependencies": {
+    "@mint/session": "*",
+    "@mint/agent-ui": "*",
     "@a2ui/react": "0.9.1",
     "@a2ui/web_core": "0.9.2",
     "@modelcontextprotocol/server-everything": "^2026.1.26",

@@ -17,6 +17,42 @@ function emptyMemoryContextResult() {
   };
 }
 
+/** 隔离普通路由单测中的 Session 持久化端口。 */
+function mockSessionPersistence(): void {
+  vi.doMock('../../../infrastructure/persistence/conversation-session-repository.js', () => ({
+    ConversationSessionRepository: vi.fn().mockImplementation(() => ({
+      ensureConversation: vi.fn(() => ({ generation: 'routing-test', lastSequence: 0 })),
+      withTransaction: vi.fn((operation: () => unknown) => operation()),
+      readAll: vi.fn(() => []),
+      appendBatch: vi.fn(
+        (_conversationId: string, expectedLastSequence: number, batch: unknown[]) => ({
+          lastSequence: expectedLastSequence + batch.length,
+        }),
+      ),
+    })),
+  }));
+  vi.doMock('../conversation-session-recovery-service.js', () => ({
+    repairInterruptedConversation: vi.fn(() => ({
+      status: 'nothing_to_repair',
+      lastSequence: 0,
+      events: [],
+    })),
+  }));
+  vi.doMock('../session-run-writer.js', () => ({
+    ConversationSessionRunWriter: vi.fn().mockImplementation(() => ({
+      startUserTurn: vi.fn(),
+      startTurn: vi.fn(),
+      recordContextSnapshot: vi.fn(),
+      recordToolCatalog: vi.fn(),
+      recordModelMessage: vi.fn(),
+      recordToolDispatch: vi.fn(),
+      recordToolResult: vi.fn(),
+      recordRunTerminal: vi.fn(),
+      close: vi.fn(),
+    })),
+  }));
+}
+
 // Ensure encryption key is set
 if (!process.env.AI_CHAT_ENCRYPTION_KEY) {
   process.env.AI_CHAT_ENCRYPTION_KEY = crypto.randomBytes(16).toString('hex');
@@ -106,6 +142,7 @@ describe('Tool Routing — messageService reactChat vs streamChat', () => {
 
   beforeEach(() => {
     vi.resetModules();
+    mockSessionPersistence();
   });
 
   it('should route to streamChat when agent has no tools', async () => {
